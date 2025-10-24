@@ -1,12 +1,12 @@
-/* style.css - v2 con Estética iOS 3.0 Mejorada */
+/* style.css - v2 con Estética iOS 3.0 Mejorada y Textura Activada */
 
 body {
     margin: 0;
     padding: 0;
     /* Textura de lino como fondo - ¡Asegúrate de subir plain-linen.jpeg! */
-    /* background-color: #d1d5db; /* Color base si la imagen falla */
-    /* background-image: url('plain-linen.jpeg'); */ /* Ajusta la ruta si es necesario */
-    background-color: #E1E1E1; /* Un gris lino claro como fallback simple */
+    /* background-color: #d1d5db; */ /* Color base si la imagen falla */
+     background-image: url('plain-linen.jpeg'); /* Ajusta la ruta si es necesario */
+    /* background-color: #E1E1E1; */ /* Un gris lino claro como fallback simple */
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     color: #333;
 }
@@ -206,3 +206,4 @@ main {
     color: green;
     min-height: 1.2em; /* Espacio para el mensaje */
 }
+
