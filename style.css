@@ -1,10 +1,8 @@
-/* style.css - v4.2 - Final Polish & Image Backgrounds */
+/* style.css - v4.3 - Footer Icons & Add Memory Modal */
 
 body {
-    margin: 0; padding: 0 0 60px 0; /* Space for footer */
-    /* Lino background still default */
-    background-image: url('plain-linen.jpeg');
-    background-color: #E1E1E1; /* Fallback */
+    margin: 0; padding: 0 0 60px 0;
+    background-image: url('plain-linen.jpeg'); background-color: #E1E1E1;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: #333;
 }
 
@@ -13,9 +11,9 @@ header {
     border-bottom: 1px solid #6d6d6d; padding: 10px 0; text-align: center;
     box-shadow: 0 1px 2px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 10;
 }
-header h1 { /* Ephemerides Title */
+header h1 {
     margin: 0; font-size: 20px; color: #ffffff; font-weight: bold;
-    text-shadow: 0 -1px 0 rgba(0,0,0,0.5); font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; /* Explicitly set */
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.5); font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 .month-nav {
@@ -23,12 +21,12 @@ header h1 { /* Ephemerides Title */
     padding: 8px 15px; background-color: #f0f0f0; border-bottom: 1px solid #bbb;
     position: sticky; top: 45px; z-index: 9;
 }
-#month-name-display { /* Month Name */
-    font-size: 16px; font-weight: bold; color: #000000; /* Black text */
+#month-name-display {
+    font-size: 16px; font-weight: bold; color: #000000;
     text-align: center; flex-grow: 1;
 }
 .month-nav button.aqua-button,
-.aqua-button { /* General Aqua Button Style */
+.aqua-button {
     background: linear-gradient(to bottom, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%);
     border: 1px solid #3c82b1; border-radius: 15px; padding: 6px 12px;
     font-size: 13px; font-weight: bold; color: #fff; cursor: pointer;
@@ -42,7 +40,7 @@ header h1 { /* Ephemerides Title */
 
 main { padding: 10px; }
 .calendario-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding-bottom: 20px; }
-.dia-btn { /* Calendar Day Button - Leaf Style */
+.dia-btn {
     background-color: #fdfdfd; border: 1px solid #ccc; border-radius: 3px;
     padding: 10px 0; text-align: center; cursor: pointer;
     box-shadow: 1px 1px 3px rgba(0,0,0,0.2), inset 0 0 5px rgba(0,0,0,0.05);
@@ -52,34 +50,36 @@ main { padding: 10px; }
 }
 .dia-btn:active { background-color: #eee; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); transform: translateY(1px); }
 .dia-numero { font-size: 24px; font-weight: bold; color: #444; line-height: 1; }
-.dia-btn::before { /* Red stripe */
+.dia-btn::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0;
-    height: 5px; /* Increased height */
-    background-color: #e57373; /* Red color */
-    box-shadow: 0 1px 1px rgba(0,0,0,0.2); /* Subtle shadow */
+    height: 5px; background-color: #e57373;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.2);
 }
-.dia-btn .nombre-especial { display: none; } /* Hidden as requested */
+.dia-btn .nombre-especial { display: none; }
 
 /* --- Modals --- */
-.modal-preview, .modal-edit {
+.modal-preview, .modal-edit, .modal-add-memory { /* Added new modal class */
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4);
     display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px; box-sizing: border-box;
     opacity: 0; transform: scale(0.9); transition: opacity 0.2s ease-out, transform 0.2s ease-out;
 }
-.modal-preview.visible, .modal-edit.visible { display: flex; opacity: 1; transform: scale(1); }
+.modal-preview.visible, .modal-edit.visible, .modal-add-memory.visible { display: flex; opacity: 1; transform: scale(1); }
 
-/* --- Preview Modal --- */
-.modal-preview-content {
-    /* Beige Paper Background */
-    background-image: url('beige-paper.jpg');
-    background-color: #f5f5dc; /* Fallback beige */
-    background-size: cover; /* Adjust as needed */
-    padding: 15px; border-radius: 10px; width: 100%; max-width: 320px;
+.modal-preview-content,
+.modal-edit .modal-content,
+.modal-add-memory-content { /* Added new modal class */
+    background: #f7f7f7; padding: 0; border-radius: 10px; width: 100%; max-width: 320px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #888;
     max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
 }
+
+/* --- Preview Modal --- */
+.modal-preview-content {
+    background-image: url('beige-paper.jpg'); background-color: #f5f5dc; background-size: cover;
+    padding: 15px;
+}
 .modal-preview-header {
-    display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #aaa; /* Darker border */
+    display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #aaa;
     padding-bottom: 10px; margin-bottom: 10px;
 }
 .modal-preview-header h3 { margin: 0; font-size: 16px; font-weight: bold; color: #333; text-align: left; flex-grow: 1; }
@@ -88,18 +88,11 @@ main { padding: 10px; }
 #edit-from-preview-btn svg { width: 20px; height: 20px; }
 .modal-preview-memorias { flex-grow: 1; overflow-y: auto; text-align: left; margin-bottom: 15px; }
 .modal-preview-memorias h4 { margin: 0 0 10px 0; font-size: 14px; color: #555; }
-#preview-memorias-list {
-     /* Remove default list background/border */
-     min-height: 30px;
-}
+#preview-memorias-list { min-height: 30px; }
 #close-preview-btn { margin-top: auto; }
 
 /* --- Edit Modal --- */
-.modal-edit .modal-content {
-    background: #f7f7f7; padding: 0; border-radius: 10px; width: 100%; max-width: 320px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #888;
-    max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
-}
+.modal-edit .modal-content { padding: 0; }
 .modal-section { padding: 15px; border-bottom: 1px solid #ccc; }
 .modal-section:last-child { border-bottom: none; }
 .modal-edit .modal-content h3 { font-size: 16px; font-weight: bold; margin: 0 0 5px 0; text-align: center;}
@@ -116,40 +109,28 @@ main { padding: 10px; }
 .modal-main-buttons button:active { background-color: #d9d9d9; }
 .modal-main-buttons #close-edit-btn { color: #555; font-weight: normal; }
 .modal-main-buttons #close-edit-btn:active { color: #007aff; }
+#save-status, #memoria-status { font-size: 12px; margin-top: 5px; min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px; }
+.success { color: green; } .error { color: red; }
+.memorias-section { text-align: left; }
+.memorias-section h4 { margin: 0 0 10px 0; font-size: 14px; color: #555; }
+#edit-memorias-list { max-height: 120px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #ccc; background-color: #fff; padding: 5px; border-radius: 5px; min-height: 30px; }
 
 /* Memory Items (Both Preview & Edit) */
-#preview-memorias-list,
-#edit-memorias-list {
-     max-height: 150px; /* Adjust height as needed */
-     overflow-y: auto; margin-bottom: 15px;
-     border-radius: 5px; min-height: 30px;
-}
-#edit-memorias-list { border: 1px solid #ccc; background-color: #fff; padding: 5px; } /* Edit list has border */
-
 .memoria-item {
-    /* Frame Background for Memories */
-    background-image: url('memory-frame.jpg');
-    background-color: #fff; /* Fallback */
-    background-size: contain; /* Make image fit */
-    background-repeat: no-repeat;
-    background-position: center center;
-    border: none; /* Remove previous border */
-    padding: 20px 15px 15px 15px; /* Adjust padding for frame */
-    margin-bottom: 10px; /* Space between memories */
-    font-size: 12px;
-    display: flex; justify-content: space-between; align-items: flex-start; /* Align top for actions */
-    box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-    border-radius: 4px; /* Slight rounding if needed */
+    background-image: url('memory-frame.jpg'); background-color: #fff;
+    background-size: cover; background-repeat: no-repeat; background-position: center center;
+    border: none; padding: 20px 15px 15px 15px; margin-bottom: 10px; font-size: 12px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.1); border-radius: 4px;
 }
 .memoria-item-content { flex-grow: 1; margin-right: 5px; color: #333; }
 .memoria-item small { display: block; color: #555; margin-bottom: 4px; font-weight: bold; }
-.memoria-actions { display: flex; flex-direction: column; } /* Stack edit/delete */
+.memoria-actions { display: flex; flex-direction: column; }
 .memoria-actions button { background: none; border: none; padding: 2px 0; margin-bottom: 5px; cursor: pointer; font-size: 14px; color: #007aff; line-height: 0; }
 .memoria-actions button svg { width: 14px; height: 14px; }
 .memoria-actions button:hover { color: #0056b3; }
 .delete-btn { color: #ff3b30; } .delete-btn:hover { color: #c00; }
 
-/* Form Elements */
 #add-memoria-form { margin-top: 10px; }
 #add-memoria-btn {
     background: linear-gradient(to bottom, #ABD14B 0%, #7C9F2F 100%); border: 1px solid #637F1D; color: #fff; text-shadow: 0 -1px 0 rgba(0,0,0,0.3); border-radius: 15px; padding: 8px 12px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); display: block; width: 100%; margin-top: 10px; transition: all 0.1s ease-in-out;
@@ -165,55 +146,129 @@ main { padding: 10px; }
 /* Confirmation Dialog */
 #confirm-delete-dialog {
     position: absolute; background-color: rgba(247, 247, 247, 0.95); border: 1px solid #888; border-radius: 8px;
-    padding: 10px; /* Reduced padding */
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1002; text-align: center; max-width: 80%;
-    top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; /* Centered */
+    padding: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1002; text-align: center; max-width: 80%;
+    top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;
 }
-#confirm-delete-dialog p {
-    margin-bottom: 10px; /* Reduced margin */
-    font-size: 13px;
-}
-#confirm-delete-dialog button {
-     margin-left: 15px; /* Increased separation */
-     margin-right: 15px; /* Increased separation */
-     margin-top: 5px; /* Add some top margin */
-}
+#confirm-delete-dialog p { margin-bottom: 10px; font-size: 13px; }
+#confirm-delete-dialog button { margin-left: 15px; margin-right: 15px; margin-top: 5px; }
 #confirm-delete-yes {
      background: linear-gradient(to bottom, #ff8a80 0%, #ff5252 100%); border: 1px solid #c62828; color: white; text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
 }
 #confirm-delete-yes:hover { background: linear-gradient(to bottom, #ff9e9e 0%, #ff6b6b 100%);}
 #confirm-delete-yes:active { background: linear-gradient(to top, #ff8a80 0%, #ff5252 100%);}
 
-/* Footer Dock */
+/* --- Footer Dock --- */
 .footer-dock {
     position: fixed; bottom: 0; left: 0; right: 0; height: 50px;
-    /* Grid Texture */
-    background-image: url('grid-texture.jpg');
-    background-color: rgba(50,50,50,0.85); /* Fallback */
-    background-size: cover; /* Adjust as needed */
-    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); /* Less blur */
-    border-top: 1px solid rgba(255, 255, 255, 0.1); /* Subtler border */
-    display: flex; justify-content: space-around; align-items: center; padding: 0 10px; z-index: 20;
-    box-shadow: 0 -2px 5px rgba(0,0,0,0.2); /* Add shadow */
+    background-image: url('grid-texture.jpg'); background-color: rgba(50,50,50,0.85); background-size: cover;
+    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex;
+    justify-content: space-around; align-items: center; padding: 0 10px; z-index: 20;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
 }
 .dock-button {
-    background: none; border: none; color: #fff; text-align: center; cursor: pointer; padding: 0;
-    display: flex; flex-direction: column; align-items: center; opacity: 0.9; /* Slightly less opaque */
+    background: none; border: none; color: #fff; /* Text Color White */
+    text-align: center; cursor: pointer; padding: 0;
+    display: flex; flex-direction: column; align-items: center; opacity: 0.9;
     transition: opacity 0.2s, transform 0.1s;
 }
 .dock-button:hover, .dock-button:active { opacity: 1; transform: scale(1.1); }
-.dock-button svg { margin-bottom: 2px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5)); /* Icon shadow */ }
-.dock-button span { font-size: 10px; text-shadow: 0 1px 1px rgba(0,0,0,0.7); } /* Darker text shadow */
+.dock-button svg {
+    margin-bottom: 2px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+    color: #ffffff; /* Explicitly set icon color to white */
+}
+.dock-button span { font-size: 10px; text-shadow: 0 1px 1px rgba(0,0,0,0.7); }
 
 /* Status Messages */
 .modal-section p.success { color: green; font-size: 12px; margin-top: 5px; display: block; text-align: center; }
 .modal-section p.error { color: red; font-size: 12px; margin-top: 5px; display: block; text-align: center; }
 
 /* Search Results Specific Style */
-.search-result {
-    background: #fff; border: 1px solid #ddd; margin-bottom: 8px; border-radius: 4px; cursor: pointer;
-    transition: background-color 0.1s;
-}
+.search-result { background: #fff; border: 1px solid #ddd; margin-bottom: 8px; border-radius: 4px; cursor: pointer; transition: background-color 0.1s; }
 .search-result:hover { background-color: #f0f0f0; }
 #search-results-list { padding: 10px; }
+
+/* --- NEW Add Memory Modal --- */
+.modal-add-memory-content {
+    /* Same base as other modals but potentially different background/padding */
+    background: #f0f0f0; /* Light grey background */
+    padding: 15px;
+    max-height: 95vh; /* Allow slightly more height */
+    overflow-y: auto; /* Enable scrolling if content overflows */
+}
+.add-memory-form-section {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+}
+.add-memory-form-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+.modal-add-memory-content h3 {
+    text-align: center;
+    font-size: 18px;
+    margin: 0 0 15px 0;
+    color: #333;
+}
+.modal-add-memory-content label {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    margin: 10px 0 3px 0;
+    color: #444;
+    text-align: left;
+}
+.modal-add-memory-content input[type="text"],
+.modal-add-memory-content input[type="number"],
+.modal-add-memory-content select,
+.modal-add-memory-content textarea {
+    width: 100%;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    border: 1px solid #aaa;
+    border-radius: 5px;
+    box-sizing: border-box;
+    font-size: 14px;
+    background-color: #fff;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    font-family: inherit;
+}
+.modal-add-memory-content select {
+    /* Basic styling for select dropdown */
+    appearance: none; /* Remove default arrow */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007AFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+    background-repeat: no-repeat;
+    background-position: right 10px top 50%;
+    background-size: .65em auto;
+    padding-right: 30px; /* Space for arrow */
+}
+
+.modal-add-memory-content textarea {
+    height: 80px;
+    resize: vertical;
+}
+.modal-add-memory-content .button-group {
+    display: flex;
+    justify-content: space-between; /* Space out buttons */
+    margin-top: 15px;
+}
+.modal-add-memory-content .button-group button {
+     width: 48%; /* Adjust width for two buttons */
+}
+#add-memory-status {
+    font-size: 12px; margin-top: 10px; min-height: 1.2em; text-align: center;
+}
+
+/* Specific styles for placeholder buttons */
+.placeholder-button {
+     background: #eee;
+     border: 1px dashed #aaa;
+     color: #777;
+     padding: 10px;
+     text-align: center;
+     margin-top: 5px;
+     font-size: 13px;
+     cursor: not-allowed;
+}
 
