@@ -1,4 +1,4 @@
-/* app.js - v7.4 - Fix Global Functions Scope & Polish */
+/* app.js - v7.5 - Corrected Batch Deletion Logic */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
@@ -40,28 +40,27 @@ const pencilIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height
 
 // --- Check/Repair DB ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v7.4..."); // Version updated
+    console.log("Starting Check/Repair v7.5..."); // Version updated
     appContent.innerHTML = "<p>Verifying database...</p>";
     try {
         const diasRef = collection(db, "Dias");
         const checkSnapshot = await getDocs(diasRef);
         const currentDocCount = checkSnapshot.size;
         console.log(`Docs in 'Dias': ${currentDocCount}`);
-        // Only repair if the count is drastically wrong (e.g., less than 366)
         if (currentDocCount < 366) {
             console.warn(`Repairing... Found ${currentDocCount} docs, expected 366.`);
             await generateCleanDatabase();
         } else if (currentDocCount > 366) {
              console.warn(`Found ${currentDocCount} docs, expected 366. Check for duplicates?`);
              console.log("DB verified (>= 366 days).");
-        }
-         else {
+        } else {
             console.log("DB verified (366 days).");
         }
         await loadDataAndDrawCalendar();
     } catch (e) { appContent.innerHTML = `<p class="error">Critical error during startup: ${e.message}</p>`; console.error(e); }
 }
 
+// ** CORRECTED generateCleanDatabase using for...of for deletion **
 async function generateCleanDatabase() {
      console.log("--- Starting Regeneration ---");
     const diasRef = collection(db, "Dias");
@@ -69,15 +68,20 @@ async function generateCleanDatabase() {
         console.log("Deleting existing 'Dias' collection..."); appContent.innerHTML = "<p>Deleting old data...</p>";
         const oldDocsSnapshot = await getDocs(diasRef);
         if (!oldDocsSnapshot.empty) {
-            let batch = writeBatch(db); let deleteCount = 0;
-            oldDocsSnapshot.forEach(docSnap => {
-                batch.delete(docSnap.ref); deleteCount++;
+            let batch = writeBatch(db);
+            let deleteCount = 0;
+            // Use for...of loop for async operations
+            for (const docSnap of oldDocsSnapshot.docs) {
+                batch.delete(docSnap.ref);
+                deleteCount++;
                 if (deleteCount >= 400) {
                    console.log(`Committing delete batch (${deleteCount})...`);
                    await batch.commit(); // Await is needed here
-                   batch = writeBatch(db); deleteCount = 0;
+                   batch = writeBatch(db); // Reinitialize batch
+                   deleteCount = 0;
                 }
-            });
+            }
+            // Commit any remaining deletes
             if (deleteCount > 0) {
                 console.log(`Committing final delete batch (${deleteCount})...`);
                 await batch.commit(); // Await is needed here
