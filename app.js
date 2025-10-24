@@ -65,7 +65,6 @@ function dibujarMesActual() {
     const monthString = (currentMonthIndex + 1).toString().padStart(2, '0');
     
     // 3. Filtrar nuestro almacén para este mes
-    // ¡AQUÍ ESTABA EL "BUG"! Con los datos corruptos, esto fallaba.
     const diasDelMes = allDaysData.filter(dia => dia.id.startsWith(monthString + '-'));
 
     // 4. Limpiar el contenido anterior y preparar la cuadrícula
