@@ -1,4 +1,4 @@
-/* app.js - v7.1 - English UI, Button Repositioning */
+/* app.js - v7.2 - Footer Actions & Add Memory Modal Stubs */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
@@ -22,7 +22,6 @@ const db = getFirestore(app);
 
 const appContent = document.getElementById("app-content");
 const monthNameDisplayEl = document.getElementById("month-name-display");
-// English Month Names
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
@@ -40,7 +39,7 @@ const pencilIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height
 
 // --- Check/Repair DB (Unchanged) ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v7.1 (English)...");
+    console.log("Starting Check/Repair v7.2...");
     appContent.innerHTML = "<p>Verifying database...</p>";
     try {
         const diasRef = collection(db, "Dias");
@@ -54,7 +53,7 @@ async function checkAndRunApp() {
         await loadDataAndDrawCalendar();
     } catch (e) { appContent.innerHTML = `<p class="error">Critical error: ${e.message}</p>`; console.error(e); }
 }
-async function generateCleanDatabase() {
+async function generateCleanDatabase() { /* ... Unchanged ... */
     console.log("--- Starting Regeneration ---");
     const diasRef = collection(db, "Dias");
     try {
@@ -77,7 +76,7 @@ async function generateCleanDatabase() {
             const numDays = daysInMonth[m];
             for (let d = 1; d <= numDays; d++) {
                 const dayStr = d.toString().padStart(2, '0'); const diaId = `${monthStr}-${dayStr}`;
-                const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day" }; // Use English month name
+                const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day" };
                 const docRef = doc(db, "Dias", diaId); batch.set(docRef, diaData); ops++; created++;
                 if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`;
                 if (ops >= 499) { await batch.commit(); batch = writeBatch(db); ops = 0; }
@@ -87,7 +86,7 @@ async function generateCleanDatabase() {
         appContent.innerHTML = `<p class="success">✅ Database regenerated with ${created} days!</p>`;
     } catch(e) { console.error("Error generating:", e); throw e; }
 }
-async function loadDataAndDrawCalendar() {
+async function loadDataAndDrawCalendar() { /* ... Unchanged ... */
     console.log("Loading data..."); appContent.innerHTML = "<p>Loading calendar...</p>";
     try {
         const diasSnapshot = await getDocs(collection(db, "Dias")); allDaysData = [];
@@ -95,17 +94,17 @@ async function loadDataAndDrawCalendar() {
         if (allDaysData.length === 0) throw new Error("DB empty post-load.");
         console.log(`Loaded ${allDaysData.length} valid days.`); allDaysData.sort((a, b) => a.id.localeCompare(b.id));
         configurarNavegacion();
-        configurarFooter();
+        configurarFooter(); // Setup footer buttons
         dibujarMesActual();
     } catch (e) { appContent.innerHTML = `<p class="error">Error loading: ${e.message}</p>`; console.error(e); }
 }
-function configurarNavegacion() {
+function configurarNavegacion() { /* ... Unchanged ... */
      document.getElementById("prev-month").onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); };
     document.getElementById("next-month").onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); };
 }
 
 // --- Draw Current Month (Unchanged) ---
-function dibujarMesActual() {
+function dibujarMesActual() { /* ... Unchanged ... */
     monthNameDisplayEl.textContent = monthNames[currentMonthIndex];
     const monthNumberTarget = currentMonthIndex + 1;
     console.log(`Drawing month ${monthNumberTarget} (${monthNames[currentMonthIndex]})`);
@@ -128,19 +127,59 @@ function dibujarMesActual() {
     console.log(`Rendered ${diasDelMes.length} buttons.`);
 }
 
-// --- Footer (Unchanged) ---
+// --- Footer Actions ---
 function configurarFooter() {
+    // Today Button: Find today's date and open preview
     document.getElementById('btn-hoy').onclick = () => {
-        currentMonthIndex = new Date().getMonth(); dibujarMesActual(); window.scrollTo(0, 0);
+        const today = new Date();
+        const todayMonth = (today.getMonth() + 1).toString().padStart(2, '0');
+        const todayDay = today.getDate().toString().padStart(2, '0');
+        const todayId = `${todayMonth}-${todayDay}`;
+        console.log("Today button clicked, searching for ID:", todayId);
+
+        const todayDia = allDaysData.find(d => d.id === todayId);
+        if (todayDia) {
+             // Go to the correct month first
+             currentMonthIndex = today.getMonth();
+             dibujarMesActual();
+             // Open preview after a short delay to allow rendering
+             setTimeout(() => abrirModalPreview(todayDia), 50);
+             window.scrollTo(0, 0); // Scroll to top
+        } else {
+            console.error("Could not find today's data:", todayId);
+            // Optionally show a message to the user
+        }
     };
+
+    // Search Button (Unchanged)
     document.getElementById('btn-buscar').onclick = () => {
         const searchTerm = prompt("Search memories by text (case-insensitive):");
         if (searchTerm && searchTerm.trim() !== '') { buscarMemorias(searchTerm.trim().toLowerCase()); }
     };
+
+    // Shuffle Button: Pick random day and open preview
+    document.getElementById('btn-shuffle').onclick = () => {
+        if (allDaysData.length > 0) {
+            const randomIndex = Math.floor(Math.random() * allDaysData.length);
+            const randomDia = allDaysData[randomIndex];
+            console.log("Shuffle button clicked, opening random day:", randomDia.id);
+             // Go to the correct month first
+             currentMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1;
+             dibujarMesActual();
+             // Open preview after a short delay
+             setTimeout(() => abrirModalPreview(randomDia), 50);
+             window.scrollTo(0, 0); // Scroll to top
+        }
+    };
+
+    // Add Memory Button: Open the new modal
+    document.getElementById('btn-add-memory').onclick = () => {
+        abrirModalAddMemory();
+    };
 }
 
-// --- Search (Unchanged logic, translated UI) ---
-async function buscarMemorias(term) {
+// --- Search Memories (Unchanged) ---
+async function buscarMemorias(term) { /* ... Unchanged ... */
     console.log("Searching memories containing:", term);
     appContent.innerHTML = `<p>Searching memories containing "${term}"...</p>`;
     let results = [];
@@ -183,9 +222,8 @@ async function buscarMemorias(term) {
     } catch (e) { appContent.innerHTML = `<p class="error">Error during search: ${e.message}</p>`; console.error(e); }
 }
 
-
-// --- Preview Modal (Unchanged logic, translated UI) ---
-async function abrirModalPreview(dia) {
+// --- Preview Modal (Unchanged) ---
+async function abrirModalPreview(dia) { /* ... Unchanged ... */
     console.log("Opening preview for:", dia.id);
     currentlyOpenDay = dia;
     let modal = document.getElementById('preview-modal');
@@ -212,13 +250,13 @@ async function abrirModalPreview(dia) {
     modal.style.display = 'flex'; setTimeout(() => modal.classList.add('visible'), 10);
     await cargarYMostrarMemorias(dia.id, 'preview-memorias-list');
 }
-function cerrarModalPreview() {
+function cerrarModalPreview() { /* ... Unchanged ... */
     const modal = document.getElementById('preview-modal');
     if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); }
 }
 
-// --- Edit Modal (Button moved, translated UI) ---
-async function abrirModalEdicion(dia) {
+// --- Edit Modal (Unchanged) ---
+async function abrirModalEdicion(dia) { /* ... Unchanged ... */
     console.log("Opening EDIT modal for:", dia.id);
     currentlyOpenDay = dia;
     let modal = document.getElementById('edit-modal');
@@ -226,17 +264,13 @@ async function abrirModalEdicion(dia) {
         modal = document.createElement('div'); modal.id = 'edit-modal'; modal.className = 'modal-edit';
         modal.innerHTML = `
             <div class="modal-content">
-                <!-- Section for Day Name -->
                 <div class="modal-section">
                     <h3 id="edit-modal-title"></h3>
                     <label for="nombre-especial-input">Name this day:</label>
                     <input type="text" id="nombre-especial-input" placeholder="e.g., Pizza Day" maxlength="25">
-                    <!-- MOVED Save Name Button Here -->
                     <button id="save-name-btn" class="aqua-button" style="margin-top: 10px;">Save Name</button>
                      <p id="save-status"></p>
                 </div>
-
-                <!-- Section for Memories -->
                 <div class="modal-section memorias-section">
                     <h4>Memories for this day:</h4>
                     <div id="edit-memorias-list">Loading...</div>
@@ -249,15 +283,11 @@ async function abrirModalEdicion(dia) {
                          <p id="memoria-status"></p>
                     </form>
                 </div>
-
-                <!-- Delete Confirmation Dialog (hidden) -->
                 <div id="confirm-delete-dialog" style="display: none;">
                     <p id="confirm-delete-text">Are you sure?</p>
                     <button id="confirm-delete-no" class="aqua-button">Cancel</button>
                     <button id="confirm-delete-yes" class="aqua-button delete-confirm">Yes, delete</button>
                 </div>
-
-                <!-- Main Bottom Buttons (Only Close now) -->
                 <div class="modal-main-buttons">
                      <button id="close-edit-btn">Close</button>
                 </div>
@@ -267,18 +297,14 @@ async function abrirModalEdicion(dia) {
         modal.onclick = (e) => { if (e.target.id === 'edit-modal') cerrarModalEdicion(); };
         document.getElementById('confirm-delete-no').onclick = () => document.getElementById('confirm-delete-dialog').style.display = 'none';
     }
-
     resetMemoryForm();
-
     document.getElementById('edit-modal-title').textContent = `Editing: ${dia.Nombre_Dia} (${dia.id})`;
     const inputNombreEspecial = document.getElementById('nombre-especial-input');
     inputNombreEspecial.value = dia.Nombre_Especial === 'Unnamed Day' ? '' : dia.Nombre_Especial;
     document.getElementById('save-status').textContent = '';
     document.getElementById('memoria-status').textContent = '';
     document.getElementById('confirm-delete-dialog').style.display = 'none';
-
     document.getElementById('save-name-btn').onclick = () => guardarNombreEspecial(dia.id, inputNombreEspecial.value.trim());
-
     const addMemoriaForm = document.getElementById('add-memoria-form');
     addMemoriaForm.onsubmit = async (e) => {
         e.preventDefault();
@@ -287,19 +313,16 @@ async function abrirModalEdicion(dia) {
         if (editingMemoryId) { await updateMemoria(dia.id, editingMemoryId, fechaInput, descInput.trim()); }
         else { await guardarNuevaMemoria(dia.id, fechaInput, descInput.trim()); }
     };
-
     modal.style.display = 'flex'; setTimeout(() => modal.classList.add('visible'), 10);
     await cargarYMostrarMemorias(dia.id, 'edit-memorias-list');
 }
-
-function cerrarModalEdicion() {
+function cerrarModalEdicion() { /* ... Unchanged ... */
     const modal = document.getElementById('edit-modal');
     if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; resetMemoryForm(); }, 200); }
 }
 
-
-// --- Load/Display Memories (Unchanged logic, translated UI) ---
-async function cargarYMostrarMemorias(diaId, targetDivId) {
+// --- Load/Display Memories (Display logic only) ---
+async function cargarYMostrarMemorias(diaId, targetDivId) { /* ... Unchanged - shows text/date ... */
     const memoriasListDiv = document.getElementById(targetDivId);
     if (!memoriasListDiv) { console.error("Target div missing:", targetDivId); return; }
     memoriasListDiv.innerHTML = 'Loading...'; currentMemories = [];
@@ -317,15 +340,30 @@ async function cargarYMostrarMemorias(diaId, targetDivId) {
                  try { fechaStr = memoria.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); }
                  catch(e) { fechaStr = memoria.Fecha_Original.toDate().toISOString().split('T')[0]; }
             } else if (memoria.Fecha_Original) { fechaStr = memoria.Fecha_Original.toString(); }
+
+            // Display different types of memories
+            let contentHTML = `<small>${fechaStr}</small>`;
+            if (memoria.Tipo === 'Lugar' && memoria.LugarNombre) {
+                contentHTML += `📍 Visited: ${memoria.LugarNombre}`;
+            } else if (memoria.Tipo === 'Musica' && memoria.CancionInfo) {
+                contentHTML += `🎵 Listened to: ${memoria.CancionInfo}`; // Placeholder display
+            } else if (memoria.Tipo === 'Imagen' && memoria.ImagenURL) {
+                contentHTML += `🖼️ Added Image (URL: ${memoria.ImagenURL.substring(0,20)}...)`; // Placeholder display
+            } else {
+                 contentHTML += memoria.Descripcion || ''; // Default description
+            }
+
             const actionsHTML = (targetDivId === 'edit-memorias-list') ? `
                 <div class="memoria-actions">
                     <button class="edit-btn" title="Edit">${editIconSVG}</button>
                     <button class="delete-btn" title="Delete">${deleteIconSVG}</button>
                 </div>` : '';
-            itemDiv.innerHTML = `<div class="memoria-item-content"><small>${fechaStr}</small>${memoria.Descripcion || ''}</div>${actionsHTML}`;
+            itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>${actionsHTML}`;
+
             if (targetDivId === 'edit-memorias-list') {
-                itemDiv.querySelector('.edit-btn').onclick = () => startEditMemoria(memoria);
-                itemDiv.querySelector('.delete-btn').onclick = () => confirmDeleteMemoria(diaId, memoria.id, memoria.Descripcion);
+                // Edit button should load correct data based on type (for now, only loads Descripcion)
+                 itemDiv.querySelector('.edit-btn').onclick = () => startEditMemoria(memoria); // For now, only edits Description/Date
+                itemDiv.querySelector('.delete-btn').onclick = () => confirmDeleteMemoria(diaId, memoria.id, memoria.Descripcion || memoria.LugarNombre || memoria.CancionInfo || "this memory");
             }
             memoriasListDiv.appendChild(itemDiv);
         });
@@ -334,39 +372,41 @@ async function cargarYMostrarMemorias(diaId, targetDivId) {
 }
 
 
-// --- CRUD Functions (Unchanged logic, translated UI) ---
-function startEditMemoria(memoria) {
+// --- CRUD Functions (Adapted for potential new fields, only edit/update Desc/Date for now) ---
+function startEditMemoria(memoria) { // Only loads Desc/Date into form
     editingMemoryId = memoria.id;
     const fechaInput = document.getElementById('memoria-fecha'); const descInput = document.getElementById('memoria-desc');
     const addButton = document.getElementById('add-memoria-btn');
     if (memoria.Fecha_Original?.toDate) {
         try { fechaInput.value = memoria.Fecha_Original.toDate().toISOString().split('T')[0]; } catch(e) { fechaInput.value = ''; }
     } else { fechaInput.value = ''; }
+    // Only load Description into the textarea for now
     descInput.value = memoria.Descripcion || '';
     addButton.textContent = 'Update Memory'; addButton.classList.add('update-mode'); descInput.focus();
 }
-async function updateMemoria(diaId, memoriaId, fechaStr, descripcion) {
+async function updateMemoria(diaId, memoriaId, fechaStr, descripcion) { // Only updates Desc/Date for now
     const memoriaStatus = document.getElementById('memoria-status');
     if (!fechaStr || !descripcion) { memoriaStatus.textContent = 'Date and description required.'; memoriaStatus.className = 'error'; setTimeout(() => memoriaStatus.textContent = '', 3000); return; }
     memoriaStatus.textContent = 'Updating...'; memoriaStatus.className = '';
     try {
         const dateParts = fechaStr.split('-'); const localDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
         const fechaOriginalTimestamp = Timestamp.fromDate(localDate); const memoriaRef = doc(db, "Dias", diaId, "Memorias", memoriaId);
+        // Only update these fields for now
         await updateDoc(memoriaRef, { Fecha_Original: fechaOriginalTimestamp, Descripcion: descripcion });
         memoriaStatus.textContent = 'Memory Updated!'; memoriaStatus.className = 'success'; resetMemoryForm();
         await cargarYMostrarMemorias(diaId, 'edit-memorias-list');
         setTimeout(() => memoriaStatus.textContent = '', 2000);
     } catch (e) { console.error("Error updating:", e); memoriaStatus.textContent = `Error: ${e.message}`; memoriaStatus.className = 'error'; }
 }
-function confirmDeleteMemoria(diaId, memoriaId, descripcion) {
+function confirmDeleteMemoria(diaId, memoriaId, displayInfo) { // Uses displayInfo for confirmation text
     const dialog = document.getElementById('confirm-delete-dialog'); const yesButton = document.getElementById('confirm-delete-yes');
     const textElement = document.getElementById('confirm-delete-text');
-    const descPreview = descripcion ? (descripcion.length > 50 ? descripcion.substring(0, 47) + '...' : 'this memory') : 'this memory';
+    const descPreview = displayInfo ? (displayInfo.length > 50 ? displayInfo.substring(0, 47) + '...' : displayInfo) : 'this memory';
     textElement.textContent = `Delete "${descPreview}"?`; dialog.style.display = 'block';
-    const editModal = document.getElementById('edit-modal'); if (editModal) editModal.appendChild(dialog);
+    const editModal = document.getElementById('edit-modal'); if (editModal) editModal.appendChild(dialog); // Append to ensure z-index
     yesButton.onclick = async () => { dialog.style.display = 'none'; await deleteMemoria(diaId, memoriaId); };
 }
-async function deleteMemoria(diaId, memoriaId) {
+async function deleteMemoria(diaId, memoriaId) { /* ... Unchanged ... */
     const memoriaStatus = document.getElementById('memoria-status');
     memoriaStatus.textContent = 'Deleting...'; memoriaStatus.className = '';
     try {
@@ -376,20 +416,25 @@ async function deleteMemoria(diaId, memoriaId) {
         setTimeout(() => memoriaStatus.textContent = '', 2000);
     } catch (e) { console.error("Error deleting:", e); memoriaStatus.textContent = `Error: ${e.message}`; memoriaStatus.className = 'error'; }
 }
-async function guardarNuevaMemoria(diaId, fechaStr, descripcion) {
+async function guardarNuevaMemoria(diaId, fechaStr, descripcion) { // Only saves description type for now
     const memoriaStatus = document.getElementById('memoria-status');
     if (!fechaStr || !descripcion) { memoriaStatus.textContent = 'Date and description required.'; memoriaStatus.className = 'error'; setTimeout(() => memoriaStatus.textContent = '', 3000); return; }
     memoriaStatus.textContent = 'Saving...'; memoriaStatus.className = '';
     try {
         const dateParts = fechaStr.split('-'); const localDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
         const fechaOriginalTimestamp = Timestamp.fromDate(localDate); const memoriasRef = collection(db, "Dias", diaId, "Memorias");
-        await addDoc(memoriasRef, { Fecha_Original: fechaOriginalTimestamp, Descripcion: descripcion, Creado_En: Timestamp.now() });
+        // Save as standard description memory for now
+        await addDoc(memoriasRef, {
+             Fecha_Original: fechaOriginalTimestamp,
+             Descripcion: descripcion, // Standard field
+             Creado_En: Timestamp.now()
+         });
         memoriaStatus.textContent = 'Memory Saved!'; memoriaStatus.className = 'success'; resetMemoryForm();
         await cargarYMostrarMemorias(diaId, 'edit-memorias-list');
         setTimeout(() => memoriaStatus.textContent = '', 2000);
     } catch (e) { console.error("Error saving new:", e); memoriaStatus.textContent = `Error: ${e.message}`; memoriaStatus.className = 'error'; }
 }
-function resetMemoryForm() {
+function resetMemoryForm() { /* ... Unchanged ... */
     editingMemoryId = null;
     const form = document.getElementById('add-memoria-form');
     if(form) {
@@ -401,7 +446,7 @@ function resetMemoryForm() {
         if(statusEl) statusEl.textContent = '';
     }
 }
-async function guardarNombreEspecial(diaId, nuevoNombre) {
+async function guardarNombreEspecial(diaId, nuevoNombre) { /* ... Unchanged ... */
     const status = document.getElementById('save-status');
     try {
         status.textContent = "Saving..."; status.className = ''; const diaRef = doc(db, "Dias", diaId); const valorFinal = nuevoNombre || "Unnamed Day";
@@ -409,17 +454,224 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
         if (diaIndex !== -1) allDaysData[diaIndex].Nombre_Especial = valorFinal;
         status.textContent = "Name Saved!"; status.className = 'success';
          if(currentlyOpenDay && currentlyOpenDay.id === diaId) { currentlyOpenDay.Nombre_Especial = valorFinal; }
-        // No cerrar modal aquí, solo actualizar vista
-         setTimeout(() => { status.textContent = ''; dibujarMesActual(); }, 1200); // Redibuja mes para actualizar botón si está visible
-         // Actualizar título si la preview estuviera abierta (aunque no debería)
+         setTimeout(() => { status.textContent = ''; dibujarMesActual(); }, 1200);
          const previewTitle = document.getElementById('preview-title');
          if(previewTitle && currentlyOpenDay && currentlyOpenDay.id === diaId) {
              previewTitle.textContent = `${currentlyOpenDay.Nombre_Dia} ${valorFinal !== 'Unnamed Day' ? '('+valorFinal+')' : ''}`;
          }
-
     } catch (e) { status.textContent = `Error: ${e.message}`; status.className = 'error'; console.error(e); }
-} // <-- ¡LA LLAVE QUE FALTABA ESTÁ AQUÍ!
+}
+
+// --- NEW Add Memory Modal ---
+function abrirModalAddMemory() {
+    console.log("Opening Add Memory modal...");
+    let modal = document.getElementById('add-memory-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'add-memory-modal';
+        modal.className = 'modal-add-memory'; // Use specific class
+        modal.innerHTML = `
+             <div class="modal-add-memory-content">
+                <h3>Add New Memory</h3>
+
+                <!-- Date Selection -->
+                <div class="add-memory-form-section">
+                    <label for="add-mem-day">Select Day (MM-DD):</label>
+                    <select id="add-mem-day"></select> <!-- Populate with all 366 days -->
+
+                    <label for="add-mem-year">Year of Memory:</label>
+                    <input type="number" id="add-mem-year" placeholder="YYYY" min="1900" max="${new Date().getFullYear()}" required>
+                </div>
+
+                <!-- Memory Type Specific Inputs (Placeholders) -->
+                <div class="add-memory-form-section">
+                    <label for="add-mem-type">Type of Memory:</label>
+                    <select id="add-mem-type">
+                        <option value="Texto">Description</option>
+                        <option value="Lugar">Place</option>
+                        <option value="Musica">Music</option>
+                        <option value="Imagen">Image</option>
+                    </select>
+
+                    <!-- Text Area (for Description type) -->
+                    <div id="input-type-Texto">
+                        <label for="add-mem-desc">Description:</label>
+                        <textarea id="add-mem-desc" placeholder="Write your memory..."></textarea>
+                    </div>
+
+                    <!-- Place Input (Placeholder) -->
+                    <div id="input-type-Lugar" style="display: none;">
+                        <label for="add-mem-place">Place Name:</label>
+                        <input type="text" id="add-mem-place" placeholder="Enter place name...">
+                        <button type="button" class="placeholder-button">Search Place (Future)</button>
+                    </div>
+
+                    <!-- Music Input (Placeholder) -->
+                    <div id="input-type-Musica" style="display: none;">
+                         <label for="add-mem-music">Song / Album:</label>
+                        <input type="text" id="add-mem-music" placeholder="Enter song or album title...">
+                        <button type="button" class="placeholder-button">Search Music (Future)</button>
+                        <!-- Display search results here later -->
+                    </div>
+
+                    <!-- Image Input (Placeholder) -->
+                    <div id="input-type-Imagen" style="display: none;">
+                        <label for="add-mem-image">Image URL:</label>
+                        <input type="url" id="add-mem-image" placeholder="http://...">
+                        <button type="button" class="placeholder-button">Upload Image (Future)</button>
+                    </div>
+                </div>
+
+
+                <div class="button-group">
+                    <button type="button" id="close-add-mem-btn" class="aqua-button">Cancel</button>
+                    <button type="button" id="save-add-mem-btn" class="aqua-button">Save Memory</button> <!-- Changed to type="button" -->
+                </div>
+                 <p id="add-memory-status"></p>
+            </div>`;
+        document.body.appendChild(modal);
+
+        // Populate day dropdown
+        const daySelect = document.getElementById('add-mem-day');
+        allDaysData.forEach(dia => {
+            const option = document.createElement('option');
+            option.value = dia.id; // MM-DD
+            option.textContent = dia.Nombre_Dia; // e.g., "1 January"
+            daySelect.appendChild(option);
+        });
+        // Set default year to current year
+         document.getElementById('add-mem-year').value = new Date().getFullYear();
+
+        // Add listener to change visible input based on type
+        document.getElementById('add-mem-type').addEventListener('change', handleMemoryTypeChange);
+
+        // Add listeners for close and save
+        document.getElementById('close-add-mem-btn').onclick = () => cerrarModalAddMemory();
+        document.getElementById('save-add-mem-btn').onclick = () => saveMemoryFromAddModal(); // Use specific function
+        modal.onclick = (e) => { if (e.target.id === 'add-memory-modal') cerrarModalAddMemory(); };
+    }
+
+    // Reset fields and show
+    document.getElementById('add-memory-status').textContent = '';
+    handleMemoryTypeChange(); // Show correct input fields for default type
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('visible'), 10);
+}
+
+function handleMemoryTypeChange() {
+    const selectedType = document.getElementById('add-mem-type').value;
+    // Hide all type-specific divs
+    document.getElementById('input-type-Texto').style.display = 'none';
+    document.getElementById('input-type-Lugar').style.display = 'none';
+    document.getElementById('input-type-Musica').style.display = 'none';
+    document.getElementById('input-type-Imagen').style.display = 'none';
+    // Show the selected one
+    const divToShow = document.getElementById(`input-type-${selectedType}`);
+    if (divToShow) {
+        divToShow.style.display = 'block';
+    }
+}
+
+function cerrarModalAddMemory() {
+    const modal = document.getElementById('add-memory-modal');
+    if (modal) {
+        modal.classList.remove('visible');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            // Optionally reset form fields here if needed
+            // document.getElementById('add-mem-day').selectedIndex = 0;
+            // document.getElementById('add-mem-year').value = new Date().getFullYear();
+            // document.getElementById('add-mem-type').selectedIndex = 0;
+            // ... clear other fields ...
+        }, 200);
+    }
+}
+
+// Stub function to save memory from the Add Memory modal
+async function saveMemoryFromAddModal() {
+    const statusDiv = document.getElementById('add-memory-status');
+    statusDiv.className = '';
+    statusDiv.textContent = 'Saving...';
+
+    const diaId = document.getElementById('add-mem-day').value; // MM-DD
+    const year = parseInt(document.getElementById('add-mem-year').value, 10);
+    const type = document.getElementById('add-mem-type').value;
+
+    if (!diaId || !year || year < 1900 || year > new Date().getFullYear()) {
+        statusDiv.textContent = 'Please select a valid day and year.';
+        statusDiv.className = 'error';
+        return;
+    }
+
+    // Construct the date using year and MM-DD
+    const month = parseInt(diaId.substring(0, 2), 10);
+    const day = parseInt(diaId.substring(3), 10);
+    const dateOfMemory = new Date(year, month - 1, day);
+    const fechaOriginalTimestamp = Timestamp.fromDate(dateOfMemory);
+
+    let memoryData = {
+        Fecha_Original: fechaOriginalTimestamp,
+        Tipo: type,
+        Creado_En: Timestamp.now()
+    };
+    let isValid = true;
+
+    // Get data based on type
+    if (type === 'Texto') {
+        memoryData.Descripcion = document.getElementById('add-mem-desc').value.trim();
+        if (!memoryData.Descripcion) isValid = false;
+    } else if (type === 'Lugar') {
+        memoryData.LugarNombre = document.getElementById('add-mem-place').value.trim();
+        if (!memoryData.LugarNombre) isValid = false;
+         // Placeholder for future location data { lat: ..., lon: ... }
+         memoryData.LugarData = null;
+    } else if (type === 'Musica') {
+        memoryData.CancionInfo = document.getElementById('add-mem-music').value.trim(); // Just the search term for now
+        if (!memoryData.CancionInfo) isValid = false;
+         // Placeholder for future structured data { trackId: ..., artistName: ..., trackName: ..., artworkUrl: ... }
+         memoryData.CancionData = null;
+    } else if (type === 'Imagen') {
+        memoryData.ImagenURL = document.getElementById('add-mem-image').value.trim();
+        if (!memoryData.ImagenURL) isValid = false; // Basic URL check is flimsy, but ok for now
+         // Placeholder for future description/tags
+         memoryData.Descripcion = "";
+    } else {
+        isValid = false;
+    }
+
+    if (!isValid) {
+        statusDiv.textContent = 'Please fill in the required fields for the selected memory type.';
+        statusDiv.className = 'error';
+        return;
+    }
+
+    try {
+        const memoriasRef = collection(db, "Dias", diaId, "Memorias");
+        const docRef = await addDoc(memoriasRef, memoryData);
+        console.log("New memory saved with ID:", docRef.id, "Data:", memoryData);
+        statusDiv.textContent = 'Memory Saved!';
+        statusDiv.className = 'success';
+
+        // Close modal after delay
+        setTimeout(() => {
+            cerrarModalAddMemory();
+             // Optionally, navigate to the day and open preview/edit?
+             // currentMonthIndex = month - 1;
+             // dibujarMesActual();
+             // const targetDia = allDaysData.find(d => d.id === diaId);
+             // if(targetDia) setTimeout(() => abrirModalPreview(targetDia), 50);
+        }, 1500);
+
+    } catch (e) {
+        console.error("Error saving new advanced memory:", e);
+        statusDiv.textContent = `Error: ${e.message}`;
+        statusDiv.className = 'error';
+    }
+}
+
 
 // --- Start App ---
 checkAndRunApp();
+
+
 
