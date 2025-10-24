@@ -1,303 +1,259 @@
-/* style.css - v2 con Estética iOS 3.0 Mejorada y Textura Activada */
+/* style.css - v3.0 - iOS 3/Aqua Enhancements & CRUD */
 
 body {
     margin: 0;
     padding: 0;
-    /* Textura de lino como fondo - ¡Asegúrate de subir plain-linen.jpeg! */
-    /* background-color: #d1d5db; */ /* Color base si la imagen falla */
-     background-image: url('plain-linen.jpeg'); /* Ajusta la ruta si es necesario */
-    /* background-color: #E1E1E1; */ /* Un gris lino claro como fallback simple */
+    background-image: url('plain-linen.jpeg'); /* Textura activada */
+    background-color: #E1E1E1; /* Fallback */
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     color: #333;
 }
 
 header {
-    /* Barra superior clásica con degradado */
     background: linear-gradient(to bottom, #bcc6d1 0%, #a4b0bd 50%, #909dad 51%, #a4b0bd 100%);
     border-bottom: 1px solid #6d6d6d;
     padding: 10px 0;
     text-align: center;
     box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    position: sticky; /* Fija la cabecera arriba */
-    top: 0;
-    z-index: 10;
+    position: sticky; top: 0; z-index: 10;
 }
 
 header h1 {
-    margin: 0;
-    font-size: 20px; /* Tamaño más ajustado */
-    color: #ffffff;
-    font-weight: bold;
-    text-shadow: 0 -1px 0 rgba(0,0,0,0.5); /* Sombra de texto clásica */
+    margin: 0; font-size: 20px; color: #ffffff;
+    font-weight: bold; text-shadow: 0 -1px 0 rgba(0,0,0,0.5);
 }
 
-/* Navegación de meses con estilo iOS 3 */
 .month-nav {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 15px; /* Más compacto */
-    background-color: #f0f0f0; /* Fondo gris claro */
+    display: flex; justify-content: space-between;
+    padding: 8px 15px; background-color: #f0f0f0;
     border-bottom: 1px solid #bbb;
-    position: sticky; /* Fija la navegación debajo del header */
-    top: 45px; /* Altura aproximada del header */
-    z-index: 9;
+    position: sticky; top: 45px; /* Altura aprox header */ z-index: 9;
 }
 
+/* Estilo Aqua/iOS3 para botones de navegación y modales */
+.aqua-button {
+    background: linear-gradient(to bottom, #fefefe 0%, #e6e6e6 100%);
+    border: 1px solid #777; /* Borde más oscuro */
+    border-radius: 15px; /* Más redondeado */
+    padding: 6px 12px;
+    font-size: 13px; font-weight: bold; color: #333; /* Texto más oscuro */
+    cursor: pointer;
+    box-shadow: 0 2px 3px rgba(0,0,0,0.2), /* Sombra más pronunciada */
+                inset 0 1px 0 rgba(255,255,255,0.6), /* Brillo interior superior */
+                inset 0 -1px 0 rgba(0,0,0,0.1); /* Sombra interior inferior */
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7); /* Sombra blanca */
+    transition: all 0.1s ease-in-out;
+}
+.aqua-button:hover {
+    background: linear-gradient(to bottom, #ffffff 0%, #f0f0f0 100%);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.7),
+                inset 0 -1px 0 rgba(0,0,0,0.1);
+}
+.aqua-button:active {
+    background: linear-gradient(to top, #fefefe 0%, #e6e6e6 100%); /* Invertido al pulsar */
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.2); /* Sombra interior */
+    transform: translateY(1px); /* Efecto pulsado */
+}
+
+/* Aplicar estilo Aqua a botones de navegación */
 .month-nav button {
-    /* Botones con relieve y brillo */
-    background: linear-gradient(to bottom, #fefefe 0%, #e6e6e6 100%); /* Blanco a gris claro */
-    border: 1px solid #aaa;
-    border-radius: 5px;
-    padding: 6px 10px; /* Más compacto */
-    font-size: 13px;
-    font-weight: bold;
-    color: #444; /* Texto gris oscuro */
-    cursor: pointer;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5); /* Sombra y brillo interior */
-    text-shadow: 0 1px 0 #fff; /* Sombra blanca sutil */
+    background: linear-gradient(to bottom, #fefefe 0%, #e6e6e6 100%);
+    border: 1px solid #aaa; border-radius: 5px; padding: 6px 10px;
+    font-size: 13px; font-weight: bold; color: #444; cursor: pointer;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5);
+    text-shadow: 0 1px 0 #fff;
 }
-
-.month-nav button:hover {
-    background: linear-gradient(to bottom, #f0f0f0 0%, #dcdcdc 100%); /* Hover más oscuro */
-}
-.month-nav button:active { /* Efecto pulsado */
-    background: linear-gradient(to bottom, #dcdcdc 0%, #f0f0f0 100%);
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
-}
+.month-nav button:hover { background: linear-gradient(to bottom, #f0f0f0 0%, #dcdcdc 100%); }
+.month-nav button:active { background: linear-gradient(to bottom, #dcdcdc 0%, #f0f0f0 100%); box-shadow: inset 0 1px 2px rgba(0,0,0,0.2); }
 
 
-main {
-    padding: 10px; /* Menos padding */
-}
+main { padding: 10px; }
 
-/* Cuadrícula de días */
 .calendario-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px; /* Menos espacio */
-    padding-bottom: 20px; /* Espacio al final */
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 6px; /* Un poco más de espacio */ padding-bottom: 20px;
 }
 
-/* Botones de día estilo iOS 3 */
+/* Botones de día estilo Hoja de Calendario Skeuomorfista */
 .dia-btn {
-    background: linear-gradient(to bottom, #ffffff 0%, #f1f1f1 100%); /* Blanco a gris muy claro */
-    border: 1px solid #b7b7b7;
-    border-radius: 5px;
-    padding: 8px 4px; /* Ajustado */
-    text-align: center;
-    cursor: pointer;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
-    font-size: 10px; /* Tamaño principal día/mes */
+    background-color: #fdfdfd; /* Blanco papel */
+    border: 1px solid #ccc;
+    border-radius: 3px; /* Esquinas menos redondeadas */
+    padding: 0; /* Sin padding interno */
+    text-align: center; cursor: pointer;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.2), /* Sombra hoja */
+                inset 0 0 5px rgba(0,0,0,0.05); /* Sombra interior sutil */
     color: #333;
-    min-height: 50px; /* Altura mínima */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    min-height: 60px; /* Más altura */
+    display: flex; flex-direction: column;
+    justify-content: space-between; /* Día arriba, nombre abajo */
     align-items: center;
+    position: relative; /* Para pseudo-elementos */
+    overflow: hidden;
 }
 .dia-btn:active {
-     background: linear-gradient(to bottom, #e1e1e1 0%, #f1f1f1 100%);
+     background-color: #eee;
      box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+     transform: translateY(1px);
 }
-
-/* Icono dentro del botón (si lo usamos más adelante) */
-.dia-btn .icono {
-    font-size: 14px;
-    margin-bottom: 2px;
+/* Número del día grande */
+.dia-numero {
+    font-size: 24px; /* Mucho más grande */
+    font-weight: bold;
+    color: #444;
+    margin-top: 5px; /* Espacio superior */
+    line-height: 1;
 }
-
-/* Nombre especial del día */
+/* Nombre especial (más pequeño y abajo) */
 .nombre-especial {
-    display: block;
-    font-size: 9px; /* Más pequeño */
-    font-weight: normal; /* Normal, no bold */
-    color: #007aff; /* Azul link */
-    margin-top: 2px;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: nowrap;
-    width: 90%; /* Evita que se pegue a los bordes */
+    font-size: 9px; color: #007aff;
+    margin-bottom: 3px; /* Pegado abajo */
+    text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
+    width: 90%;
+    font-weight: normal;
+}
+/* Simular borde superior rojo de hoja arrancada (opcional) */
+.dia-btn::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 3px; background-color: #e57373; /* Rojo claro */
+    /* box-shadow: 0 1px 1px rgba(0,0,0,0.1); */
 }
 
-/* --- Ventana Modal estilo iOS 3 --- */
+
+/* --- Ventana Modal estilo iOS 3 (Revisado) --- */
 .modal {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0,0,0,0.4); /* Fondo oscuro semitransparente */
+    background-color: rgba(0,0,0,0.4);
     display: none; justify-content: center; align-items: center;
-    z-index: 1000;
-    padding: 20px;
-    box-sizing: border-box;
+    z-index: 1000; padding: 20px; box-sizing: border-box;
+    /* Animación */
+    opacity: 0; transform: scale(0.9);
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+.modal.visible { /* Clase para mostrar con animación */
+    display: flex; opacity: 1; transform: scale(1);
 }
 .modal-content {
-    background: #f7f7f7; /* Gris muy claro */
-    padding: 0; /* Sin padding, lo controlan los elementos internos */
-    border-radius: 10px;
-    width: 100%;
-    max-width: 300px; /* Más estrecho, como alerta iOS */
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    border: 1px solid #888;
-    overflow: hidden; /* Para que el contenido respete el borde redondeado */
-    text-align: center;
+    background: #f7f7f7; padding: 0; border-radius: 10px;
+    width: 100%; max-width: 320px; /* Un poco más ancho */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #888;
+    overflow: hidden; text-align: center;
+    display: flex; flex-direction: column; /* Para ordenar secciones */
 }
 
-.modal-content h3 {
-    font-size: 16px;
-    font-weight: bold;
-    margin: 15px 15px 5px 15px; /* Padding interno */
+/* Contenido general del modal */
+.modal-section {
+    padding: 15px;
+    border-bottom: 1px solid #ccc;
 }
-.modal-content p {
-     font-size: 13px;
-     margin: 5px 15px 10px 15px;
+.modal-section:last-child {
+    border-bottom: none;
 }
 
-.modal-content input[type="text"] {
-    width: calc(100% - 30px); /* Ancho completo menos padding */
-    padding: 8px 10px;
-    margin: 10px 15px;
-    border: 1px solid #aaa;
-    border-radius: 5px;
-    box-sizing: border-box;
-    font-size: 14px;
-    background-color: #fff;
+.modal-content h3 { font-size: 16px; font-weight: bold; margin: 0 0 5px 0; }
+.modal-content p { font-size: 13px; margin: 0 0 10px 0; }
+.modal-content label { display: block; font-size: 13px; font-weight: bold; margin-top: 10px; margin-bottom: 3px; color: #444; text-align: left;}
+
+.modal-content input[type="text"],
+.modal-content input[type="date"],
+.modal-content textarea {
+    width: 100%; padding: 8px 10px; margin-bottom: 10px;
+    border: 1px solid #aaa; border-radius: 5px; box-sizing: border-box;
+    font-size: 14px; background-color: #fff;
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    font-family: inherit;
 }
+.modal-content textarea { height: 60px; resize: vertical; }
 
-.modal-buttons {
-    display: flex;
-    border-top: 1px solid #ababab; /* Línea divisoria */
+/* Botones Principales (Guardar Nombre, Cerrar) - AHORA ABAJO */
+.modal-main-buttons {
+    display: flex; border-top: 1px solid #ababab; margin-top: auto; /* Empuja al fondo */
 }
+.modal-main-buttons button {
+    flex: 1; background: transparent; border: none;
+    border-left: 1px solid #ababab; padding: 12px 10px; font-size: 16px;
+    color: #007aff; cursor: pointer; margin: 0; border-radius: 0;
+    box-shadow: none; text-shadow: none; font-weight: bold;
+}
+.modal-main-buttons button:first-child { border-left: none; }
+.modal-main-buttons button:active { background-color: #d9d9d9; }
+.modal-main-buttons #close-btn { color: #555; font-weight: normal; }
+.modal-main-buttons #close-btn:active { color: #007aff; }
 
-.modal-buttons button {
-    flex: 1; /* Ocupan el mismo espacio */
-    background: transparent; /* Fondo transparente */
-    border: none;
-    border-left: 1px solid #ababab; /* Separador vertical */
-    padding: 12px 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #007aff; /* Azul */
-    cursor: pointer;
-    margin: 0;
-    border-radius: 0; /* Sin borde redondeado */
-    box-shadow: none;
-    text-shadow: none;
+#save-status, #memoria-status {
+    font-size: 12px; margin-top: 5px; /* Menos margen */
+    min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px;
 }
-.modal-buttons button:first-child {
-    border-left: none; /* Sin borde a la izquierda para el primero */
-}
-.modal-buttons button:active { /* Efecto pulsado */
-    background-color: #d9d9d9;
-}
-
-/* Botón de Guardar a la derecha y con peso normal si es Cancelar/Cerrar */
-#save-btn {
-   /* font-weight: bold; /* Ya es bold por defecto */
-}
-#close-btn {
-   font-weight: normal;
-   color: #555; /* Un gris para Cerrar */
-}
-#close-btn:active{ color: #007aff; } /* Se pone azul al pulsar */
+.success { color: green; } .error { color: red; }
 
 
-#save-status {
-    font-size: 12px;
-    margin: 10px 15px 15px 15px;
-    color: green;
-    min-height: 1.2em; /* Espacio para el mensaje */
-}
-
-/* --- NUEVO: Estilos para la Sección de Memorias en el Modal --- */
+/* --- Estilos Sección Memorias (Revisado) --- */
 .memorias-section {
-    margin: 15px;
-    padding-top: 15px;
-    border-top: 1px solid #ccc; /* Separador */
-    text-align: left; /* Alinear texto a la izquierda */
+    text-align: left;
 }
-
-.memorias-section h4 {
-    margin: 0 0 10px 0;
-    font-size: 14px;
-    color: #555;
-}
+.memorias-section h4 { margin: 0 0 10px 0; font-size: 14px; color: #555; }
 
 #memorias-list {
-    max-height: 150px; /* Altura máxima con scroll */
-    overflow-y: auto;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    background-color: #fff; /* Fondo blanco para la lista */
-    padding: 5px;
-    border-radius: 5px;
+    max-height: 120px; /* Un poco menos alto */ overflow-y: auto;
+    margin-bottom: 15px; border: 1px solid #ccc;
+    background-color: #fff; padding: 5px; border-radius: 5px;
 }
 
 .memoria-item {
-    font-size: 12px;
-    padding: 5px;
-    border-bottom: 1px dotted #eee;
+    font-size: 12px; padding: 5px; border-bottom: 1px dotted #eee;
+    display: flex; /* Para alinear botones */
+    justify-content: space-between;
+    align-items: center;
 }
-.memoria-item:last-child {
-    border-bottom: none;
-}
-.memoria-item small {
-    display: block;
-    color: #777;
-    margin-bottom: 3px;
-}
+.memoria-item:last-child { border-bottom: none; }
+.memoria-item-content { flex-grow: 1; margin-right: 5px;} /* Ocupa espacio disponible */
+.memoria-item small { display: block; color: #777; margin-bottom: 3px; }
 
-/* Formulario para nueva memoria */
-#add-memoria-form label {
-    display: block;
-    font-size: 13px;
-    font-weight: bold;
-    margin-top: 10px;
-    margin-bottom: 3px;
-    color: #444;
+/* Botones Editar/Borrar Memoria */
+.memoria-actions button {
+    background: none; border: none; padding: 2px 4px; margin-left: 3px;
+    cursor: pointer; font-size: 14px; color: #007aff;
 }
+.memoria-actions button:hover { color: #0056b3; }
+.delete-btn { color: #ff3b30; } /* Rojo iOS */
+.delete-btn:hover { color: #c00; }
 
-#add-memoria-form input[type="date"],
-#add-memoria-form textarea {
-    width: 100%;
-    padding: 6px 8px;
-    margin-bottom: 10px;
-    border: 1px solid #aaa;
-    border-radius: 5px;
-    box-sizing: border-box;
-    font-size: 13px;
-    background-color: #fff;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; /* Heredar fuente */
-}
-#add-memoria-form textarea {
-    height: 60px; /* Altura para descripción */
-    resize: vertical; /* Permitir redimensionar verticalmente */
-}
+#add-memoria-form { margin-top: 10px; } /* Espacio antes del form */
 
+/* Botón Añadir Memoria */
 #add-memoria-btn {
-    /* Usar estilo similar a botones de navegación */
-    background: linear-gradient(to bottom, #fefefe 0%, #e6e6e6 100%);
-    border: 1px solid #aaa;
-    border-radius: 5px;
-    padding: 8px 12px;
-    font-size: 13px;
-    font-weight: bold;
-    color: #444;
-    cursor: pointer;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5);
-    text-shadow: 0 1px 0 #fff;
-    display: block; /* Ocupar ancho completo */
-    width: 100%;
-    margin-top: 5px;
+    /* Estilo Aqua */
+    background: linear-gradient(to bottom, #ABD14B 0%, #7C9F2F 100%); /* Verde */
+    border: 1px solid #637F1D; color: #fff; text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+    border-radius: 15px; padding: 8px 12px; font-size: 13px; font-weight: bold;
+    cursor: pointer; box-shadow: 0 2px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);
+    display: block; width: 100%; margin-top: 10px; /* Más margen arriba */
+    transition: all 0.1s ease-in-out;
 }
-#add-memoria-btn:active {
-    background: linear-gradient(to bottom, #dcdcdc 0%, #f0f0f0 100%);
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
-}
+#add-memoria-btn:hover { background: linear-gradient(to bottom, #BCE45D 0%, #8CAF3F 100%); }
+#add-memoria-btn:active { background: linear-gradient(to top, #ABD14B 0%, #7C9F2F 100%); box-shadow: inset 0 2px 3px rgba(0,0,0,0.3); transform: translateY(1px); }
 
-#memoria-status {
-    font-size: 12px;
-    margin-top: 10px;
-    color: green;
-    min-height: 1.2em; /* Espacio para el mensaje */
+/* Estilo para botón cuando está en modo "Actualizar" */
+#add-memoria-btn.update-mode {
+     background: linear-gradient(to bottom, #87CEFA 0%, #4682B4 100%); /* Azul */
+     border-color: #36668e;
 }
+#add-memoria-btn.update-mode:hover { background: linear-gradient(to bottom, #ADD8E6 0%, #5A9BD6 100%);}
+#add-memoria-btn.update-mode:active { background: linear-gradient(to top, #87CEFA 0%, #4682B4 100%);}
+
+/* Simple confirmación de borrado */
+#confirm-delete-dialog {
+    display: none; /* Oculto por defecto */
+    position: absolute; /* Superpuesto dentro del modal */
+    background-color: rgba(247, 247, 247, 0.9); /* Fondo semi-transparente */
+    border: 1px solid #888; border-radius: 8px; padding: 15px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1001; /* Encima del contenido del modal */
+    text-align: center; max-width: 80%;
+    /* Centrarlo (requiere JS para posicionar bien, lo haremos simple) */
+    top: 30%; left: 50%; transform: translateX(-50%);
+}
+#confirm-delete-dialog p { margin-bottom: 15px; font-size: 13px; }
+#confirm-delete-dialog button { margin: 0 5px; padding: 5px 10px; }
+#confirm-delete-yes { background-color: #ff3b30; color: white; border: 1px solid #c00;}
 
