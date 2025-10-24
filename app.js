@@ -1,4 +1,4 @@
-/* app.js - CÓDIGO FINAL CON DEPURACIÓN PRE-FILTRO (v2.1-debug8) */
+/* app.js - CÓDIGO FINAL DE LA APP (VERSIÓN 3.0 - FILTRO NUMÉRICO) */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
@@ -25,111 +25,83 @@ let allDaysData = [];
 let currentMonthIndex = new Date().getMonth();
 
 async function iniciarApp() {
-    console.log("DEBUG: Iniciando app (v2.1-debug8 - pre-filtro)...");
-    appContent.innerHTML = "<p>Cargando calendario (modo debug pre-filtro)...</p>";
+    console.log("Iniciando app v3.0 (Filtro Numérico)..."); // Log simple de inicio
+    appContent.innerHTML = "<p>Cargando calendario...</p>";
 
     try {
-        console.log("DEBUG: Obteniendo datos de Firebase...");
         const diasSnapshot = await getDocs(collection(db, "Dias"));
 
         if (diasSnapshot.empty) {
             appContent.innerHTML = "<p>Error: La colección 'Dias' está vacía.</p>";
-            console.error("DEBUG: La colección 'Dias' está vacía.");
             return;
         }
 
-        let count = 0;
         allDaysData = [];
         diasSnapshot.forEach((doc) => {
             const cleanId = String(doc.id).trim();
+            // Validación estricta del formato MM-DD
             if (/^\d{2}-\d{2}$/.test(cleanId)) {
                 allDaysData.push({ id: cleanId, ...doc.data() });
-                count++;
             } else {
-                 console.warn(`DEBUG: ID con formato inválido ignorado al cargar: '${doc.id}'`);
+                 console.warn(`ID inválido ignorado: '${doc.id}'`);
             }
         });
-        console.log(`DEBUG: Se leyeron y validaron ${count} documentos de Firebase.`);
+        console.log(`Se leyeron ${allDaysData.length} días válidos.`);
 
-        if (count !== 366) {
-             console.warn(`DEBUG: ¡Alerta! Se validaron ${count} documentos. Deberían ser 366.`);
-        }
-
-        console.log("DEBUG: Ordenando los datos...");
+        // Ordenar cronológicamente
         allDaysData.sort((a, b) => a.id.localeCompare(b.id));
-        console.log("DEBUG: Datos ordenados. Primer día:", allDaysData[0]?.id, "Último día:", allDaysData[allDaysData.length - 1]?.id);
 
         configurarNavegacion();
         dibujarMesActual();
 
     } catch (e) {
         appContent.innerHTML = `<p>Error fatal al cargar: ${e.message}</p>`;
-        console.error("Error fatal en iniciarApp:", e);
+        console.error("Error en iniciarApp:", e);
     }
 }
 
 function dibujarMesActual() {
-    console.log(`-----------------------------------------------------`);
-    console.log(`DEBUG: Dibujando mes índice ${currentMonthIndex} (${monthNames[currentMonthIndex]})`);
     monthNameEl.textContent = monthNames[currentMonthIndex];
-    const monthString = (currentMonthIndex + 1).toString().padStart(2, '0');
-    console.log(`DEBUG: Mes buscado: '${monthString}'`);
+    // Convertimos el mes buscado a NÚMERO (1 para Enero, 10 para Octubre)
+    const monthNumberTarget = currentMonthIndex + 1;
+    console.log(`Dibujando mes ${monthNumberTarget} (${monthNames[currentMonthIndex]})`);
 
-    let diasEncontradosCount = 0;
-    const idsEncontrados = [];
-    let firstFailureLogged = false; // Para loguear solo el primer fallo y no inundar
-
-    // *** FILTRO CON LOG PREVIO ***
-    console.log(`DEBUG: Iniciando filtro para mes '${monthString}'...`);
+    // *** FILTRO NUMÉRICO ***
     const diasDelMes = allDaysData.filter(dia => {
-        let match = false;
-        const currentId = dia.id; // Ya está trim() y validado
-
+        const currentId = dia.id;
         if (currentId && currentId.length === 5 && currentId.includes('-')) {
-            const monthPart = currentId.substring(0, 2); // Extraemos los primeros 2 caracteres
-
-            // *** LOG PREVIO ***
-            // Mostramos qué extrae substring ANTES de comparar, especialmente para el mes 10
-            if (monthString === '10') {
-                 console.log(`   [PRE-FILTRO MES 10] ID: '${currentId}' -> Substring(0,2) extrajo: '${monthPart}' (longitud: ${monthPart.length})`);
+            try {
+                // Extraemos la parte del mes y la convertimos a NÚMERO
+                const monthNumPart = parseInt(currentId.substring(0, 2), 10);
+                // Comparamos los NÚMEROS
+                return monthNumPart === monthNumberTarget;
+            } catch (e) {
+                // Si falla la conversión (muy improbable), lo descartamos
+                console.error(`Error parseando ID '${currentId}'`, e);
+                return false;
             }
-            // ****************
-
-            // Comparación
-            match = (monthPart === monthString);
-
-            if (match) {
-                diasEncontradosCount++;
-                idsEncontrados.push(currentId);
-            } else if (monthPart === monthString.substring(0,1) && !firstFailureLogged && parseInt(currentId.substring(3,5), 10) > 12) {
-                // Loguea el primer fallo sospechoso (día > 12) donde el mes debería coincidir
-                 console.error(`   [FALLO SOSPECHOSO MES ${monthString}] ID: '${currentId}' | Substring extrajo: '${monthPart}' | NO COINCIDE con '${monthString}'`);
-                 firstFailureLogged = true;
-            }
-
-        } else {
-             console.warn(`   - ID con formato inesperado encontrado durante el filtro: '${currentId}'`);
         }
-        return match; // La función filter usa esto para decidir si incluir el día
+        return false; // Descartamos IDs mal formados
     });
-    // ****************************
+    // **********************
 
-    console.log(`DEBUG: Se encontraron ${diasEncontradosCount} días DESPUÉS de filtrar (pre-filtro) para el mes ${monthString}.`);
-    if(idsEncontrados.length > 0) console.log("DEBUG: IDs ENCONTRADOS:", idsEncontrados.join(', '));
+    console.log(`Se encontraron ${diasDelMes.length} días para el mes ${monthNumberTarget}.`);
 
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div>`;
     const grid = document.getElementById("grid-dias");
 
     if (diasDelMes.length === 0) {
         grid.innerHTML = "<p>No se encontraron días para este mes.</p>";
-        console.error(`DEBUG: ERROR GRAVE - El filtro pre-filtro no encontró ningún día para el mes '${monthString}'`);
-        return;
+        return; // Salimos si no hay días
     }
-    const diasEsperados = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][currentMonthIndex];
-     if (diasDelMes.length !== diasEsperados) {
-        console.warn(`DEBUG: ALERTA - Se encontraron ${diasDelMes.length} días para ${monthNames[currentMonthIndex]}, pero deberían ser ${diasEsperados}. ¡El filtro sigue fallando!`);
-     }
 
+    // Comprobación final (opcional, pero útil)
+    const diasEsperados = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][currentMonthIndex];
+    if (diasDelMes.length !== diasEsperados) {
+       console.warn(`ALERTA: Se encontraron ${diasDelMes.length} días para ${monthNames[currentMonthIndex]}, pero deberían ser ${diasEsperados}.`);
+    }
+
+    // Dibujar botones
     diasDelMes.forEach(dia => {
         const btn = document.createElement("button");
         btn.className = "dia-btn";
@@ -141,11 +113,10 @@ function dibujarMesActual() {
         btn.addEventListener('click', () => abrirModalEdicion(dia));
         grid.appendChild(btn);
     });
-    console.log(`DEBUG: Se dibujaron ${diasDelMes.length} botones.`);
-    console.log(`-----------------------------------------------------`);
+    console.log(`Se dibujaron ${diasDelMes.length} botones.`);
 }
 
-// --- El resto de funciones (configurarNavegacion, abrirModalEdicion, guardarNombreEspecial) no cambian ---
+// --- Resto de funciones sin cambios ---
 function configurarNavegacion() {
     document.getElementById("prev-month").onclick = () => {
         currentMonthIndex--;
