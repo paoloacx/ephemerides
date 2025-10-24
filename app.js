@@ -48,13 +48,11 @@ async function checkAndRunApp() {
         const currentDocCount = checkSnapshot.size;
         console.log(`Docs in 'Dias': ${currentDocCount}`);
         // Only repair if the count is drastically wrong (e.g., less than 366)
-        // Allows for potential future data structures without triggering repair
         if (currentDocCount < 366) {
             console.warn(`Repairing... Found ${currentDocCount} docs, expected 366.`);
             await generateCleanDatabase();
         } else if (currentDocCount > 366) {
              console.warn(`Found ${currentDocCount} docs, expected 366. Check for duplicates?`);
-             // For now, proceed anyway. Consider adding duplicate check later if needed.
              console.log("DB verified (>= 366 days).");
         }
          else {
@@ -74,21 +72,19 @@ async function generateCleanDatabase() {
             let batch = writeBatch(db); let deleteCount = 0;
             oldDocsSnapshot.forEach(docSnap => {
                 batch.delete(docSnap.ref); deleteCount++;
-                // Commit batches frequently during delete
-                if (deleteCount >= 400) { // Slightly lower threshold for safety
+                if (deleteCount >= 400) {
                    console.log(`Committing delete batch (${deleteCount})...`);
-                   // CORRECTED: await the commit
-                   await batch.commit();
+                   await batch.commit(); // Await is needed here
                    batch = writeBatch(db); deleteCount = 0;
                 }
             });
             if (deleteCount > 0) {
                 console.log(`Committing final delete batch (${deleteCount})...`);
-                await batch.commit();
+                await batch.commit(); // Await is needed here
             }
              console.log(`Deletion complete (${oldDocsSnapshot.size}).`);
         } else { console.log("'Dias' collection was already empty."); }
-    } catch(e) { console.error("Error deleting collection:", e); appContent.innerHTML = `<p class="error">Error cleaning database: ${e.message}</p>`; throw e; } // Stop if cleanup fails
+    } catch(e) { console.error("Error deleting collection:", e); appContent.innerHTML = `<p class="error">Error cleaning database: ${e.message}</p>`; throw e; }
 
     console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>";
     let batch = writeBatch(db); let ops = 0, created = 0;
@@ -101,20 +97,20 @@ async function generateCleanDatabase() {
                 const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day" };
                 const docRef = doc(db, "Dias", diaId); batch.set(docRef, diaData); ops++; created++;
                 if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`;
-                if (ops >= 400) { // Commit batches frequently
+                if (ops >= 400) {
                     console.log(`Committing generate batch (${ops})...`);
-                    await batch.commit(); // This await IS correct
+                    await batch.commit(); // Await is needed here
                     batch = writeBatch(db); ops = 0;
                 }
             }
         }
         if (ops > 0) {
             console.log(`Committing final generate batch (${ops})...`);
-            await batch.commit(); // This await IS correct
+            await batch.commit(); // Await is needed here
         }
          console.log(`--- Regeneration complete: ${created} days created ---`);
         appContent.innerHTML = `<p class="success">✅ Database regenerated with ${created} days!</p>`;
-    } catch(e) { console.error("Error generating days:", e); appContent.innerHTML = `<p class="error">Error generating database: ${e.message}</p>`; throw e; } // Stop if generation fails
+    } catch(e) { console.error("Error generating days:", e); appContent.innerHTML = `<p class="error">Error generating database: ${e.message}</p>`; throw e; }
 }
 
 async function loadDataAndDrawCalendar() {
@@ -122,9 +118,9 @@ async function loadDataAndDrawCalendar() {
     try {
         const diasSnapshot = await getDocs(collection(db, "Dias")); allDaysData = [];
         diasSnapshot.forEach((doc) => { if (doc.id?.length === 5 && doc.id.includes('-')) allDaysData.push({ id: doc.id, ...doc.data() }); });
-        if (allDaysData.length === 0) throw new Error("Database empty or invalid after loading."); // More specific error
+        if (allDaysData.length === 0) throw new Error("Database empty or invalid after loading.");
         console.log(`Loaded ${allDaysData.length} valid days.`);
-        allDaysData.sort((a, b) => a.id.localeCompare(b.id)); // Ensure correct order
+        allDaysData.sort((a, b) => a.id.localeCompare(b.id));
         console.log("Data sorted. First:", allDaysData[0]?.id, "Last:", allDaysData[allDaysData.length - 1]?.id);
         configurarNavegacion();
         configurarFooter();
@@ -142,7 +138,6 @@ function dibujarMesActual() {
     monthNameDisplayEl.textContent = monthNames[currentMonthIndex];
     const monthNumberTarget = currentMonthIndex + 1;
     console.log(`Drawing month ${monthNumberTarget} (${monthNames[currentMonthIndex]})`);
-    // Use the robust numeric filter
     const diasDelMes = allDaysData.filter(dia => {
         try { return parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget; }
         catch (e) { console.error(`Error parsing ID '${dia.id}' during filter`, e); return false; }
@@ -150,14 +145,14 @@ function dibujarMesActual() {
     console.log(`Found ${diasDelMes.length} days for month ${monthNumberTarget}.`);
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div>`;
     const grid = document.getElementById("grid-dias");
-    if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found for this month.</p>"; return; } // Clearer message
+    if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found for this month.</p>"; return; }
     const diasEsperados = daysInMonth[currentMonthIndex];
     if (diasDelMes.length !== diasEsperados) console.warn(`ALERT: Found ${diasDelMes.length}/${diasEsperados} days for ${monthNames[currentMonthIndex]}.`);
 
     diasDelMes.forEach(dia => {
         const btn = document.createElement("button");
         btn.className = "dia-btn";
-        btn.innerHTML = `<span class="dia-numero">${dia.id.substring(3)}</span>`; // Only number
+        btn.innerHTML = `<span class="dia-numero">${dia.id.substring(3)}</span>`;
         btn.dataset.diaId = dia.id;
         btn.addEventListener('click', () => abrirModalPreview(dia));
         grid.appendChild(btn);
@@ -213,7 +208,6 @@ async function buscarMemorias(term) {
 
                 if (searchableText.toLowerCase().includes(term)) { results.push(memoria); }
             });
-             // if (daysSearched % 50 === 0) appContent.innerHTML = `<p>Searching... (${daysSearched}/${allDaysData.length})</p>`;
         }
         if (results.length === 0) { appContent.innerHTML = `<p>No memories found containing "${term}".</p>`; }
         else {
@@ -611,15 +605,15 @@ function abrirModalAddMemory() {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'add-memory-modal';
-        modal.className = 'modal-add-memory';
+        modal.className = 'modal-add-memory'; // Use specific class for styling
         modal.innerHTML = `
-             <div class="modal-add-memory-content">
+             <div class="modal-add-memory-content"> {/* Use specific class */}
                 <h3>Add New Memory</h3>
                 <div class="add-memory-form-section">
                     <label for="add-mem-day">Select Day (MM-DD):</label>
                     <select id="add-mem-day"></select>
                     <label for="add-mem-year">Year of Memory:</label>
-                    <input type="number" id="add-mem-year" placeholder="YYYY" min="1900" max="${new Date().getFullYear()}" required>
+                    <input type="number" id="add-mem-year" placeholder="YYYY" min="1800" max="${new Date().getFullYear() + 1}" required> {/* Adjusted year range */}
                 </div>
                 <div class="add-memory-form-section">
                     <label for="add-mem-type">Type of Memory:</label>
@@ -632,10 +626,10 @@ function abrirModalAddMemory() {
                     {/* Inputs */}
                     <div id="input-type-Texto"><label for="add-mem-desc">Description:</label><textarea id="add-mem-desc" placeholder="Write your memory..."></textarea></div>
                     <div id="input-type-Lugar" style="display: none;"><label for="add-mem-place">Place Name:</label><input type="text" id="add-mem-place" placeholder="Enter place name..."><button type="button" class="placeholder-button" onclick="alert('Place search coming soon!')">Search Place (Future)</button></div>
-                    <div id="input-type-Musica" style="display: none;"><label for="add-mem-music-search">Search iTunes:</label><input type="text" id="add-mem-music-search" placeholder="Enter song or album title..."><button type="button" class="aqua-button" id="btn-search-itunes">Search Music</button><div id="itunes-results" class="mt-4 flex flex-col gap-2"></div><input type="hidden" id="add-mem-music-info"></div>
+                    <div id="input-type-Musica" style="display: none;"><label for="add-mem-music-search">Search iTunes:</label><input type="text" id="add-mem-music-search" placeholder="Enter song or album title..."><button type="button" class="aqua-button" id="btn-search-itunes">Search Music</button><div id="itunes-results"></div></div> {/* Removed extra classes */}
                     <div id="input-type-Imagen" style="display: none;"><label for="add-mem-image-url">Image URL:</label><input type="url" id="add-mem-image-url" placeholder="http://..."><label for="add-mem-image-desc">Image Description (Optional):</label><input type="text" id="add-mem-image-desc" placeholder="Describe the image..."><button type="button" class="placeholder-button" onclick="alert('Image upload coming soon!')">Upload Image (Future)</button></div>
                 </div>
-                <div class="button-group">
+                <div class="button-group"> {/* Standardized button group */}
                     <button type="button" id="close-add-mem-btn" class="aqua-button">Cancel</button>
                     <button type="button" id="save-add-mem-btn" class="aqua-button">Save Memory</button>
                 </div>
@@ -644,7 +638,7 @@ function abrirModalAddMemory() {
         document.body.appendChild(modal);
 
         const daySelect = document.getElementById('add-mem-day');
-        daySelect.innerHTML = ''; // Clear options before repopulating
+        daySelect.innerHTML = '';
         allDaysData.forEach(dia => {
             const option = document.createElement('option');
             option.value = dia.id; option.textContent = dia.Nombre_Dia; daySelect.appendChild(option);
@@ -660,7 +654,7 @@ function abrirModalAddMemory() {
         document.getElementById('close-add-mem-btn').onclick = () => cerrarModalAddMemory();
         document.getElementById('save-add-mem-btn').onclick = () => saveMemoryFromAddModal();
         modal.onclick = (e) => { if (e.target.id === 'add-memory-modal') cerrarModalAddMemory(); };
-        document.getElementById('btn-search-itunes').onclick = buscarBSO;
+        document.getElementById('btn-search-itunes').onclick = buscarBSO; // Attach search listener
     }
 
     // Reset fields and show
@@ -725,25 +719,22 @@ async function buscarBSO() {
     try {
         const response = await fetch(url);
         if (!response.ok) {
-             let errorText = await response.text(); // Try to get error details from proxy/target
+             let errorText = await response.text();
              console.error("iTunes fetch failed:", response.status, errorText);
              throw new Error(`HTTP error ${response.status}: ${errorText.substring(0, 100)}`);
          }
         const data = await response.json();
-
-        // Check if proxy wrapped the response (corsproxy.io usually doesn't wrap if successful)
-        const actualData = data; // Assuming direct JSON response
+        const actualData = data; // Assuming direct JSON response from this proxy
 
         if (!actualData.results || actualData.resultCount === 0) {
             resultsDiv.innerHTML = '<p style="padding: 5px;">No results found.</p>';
             return;
         }
 
-        resultsDiv.innerHTML = '';
+        resultsDiv.innerHTML = ''; // Clear results before adding new ones
         actualData.results.forEach(track => {
             const trackDiv = document.createElement('div');
             trackDiv.className = 'itunes-track';
-            // Use slightly larger artwork, provide placeholder if missing
             const artworkUrl = track.artworkUrl100 || track.artworkUrl60 || '';
             trackDiv.innerHTML = `
                 <img src="${artworkUrl}" alt="Artwork" style="${artworkUrl ? '' : 'display:none;'}" onerror="this.style.display='none'">
@@ -753,10 +744,13 @@ async function buscarBSO() {
                 </div>
                 <div class="itunes-track-select">➔</div>
             `;
+            // Add click listener to select the track
             trackDiv.onclick = () => {
-                selectedMusicTrack = track;
+                selectedMusicTrack = track; // Store the selected track data
+                // Update the input field to show selection (optional)
                 queryInput.value = `${track.trackName} - ${track.artistName}`;
-                resultsDiv.innerHTML = `<p style="padding: 5px; color: green;">Selected: ${track.trackName}</p>`;
+                // Visually indicate selection and clear other results
+                resultsDiv.innerHTML = `<p style="padding: 5px; color: green; font-weight: bold;">Selected: ${track.trackName}</p>`;
                 console.log("Selected music track:", selectedMusicTrack);
             };
             resultsDiv.appendChild(trackDiv);
@@ -786,20 +780,17 @@ async function saveMemoryFromAddModal() {
     const year = parseInt(yearInput.value, 10);
     const type = document.getElementById('add-mem-type').value;
 
-    // Improved validation
     if (!diaId) { statusDiv.textContent = 'Please select a day.'; statusDiv.className = 'error'; return; }
-    if (!year || year < 1800 || year > new Date().getFullYear() + 1) { // Adjusted year range
+    if (!year || year < 1800 || year > new Date().getFullYear() + 1) {
         statusDiv.textContent = 'Please enter a valid year.'; statusDiv.className = 'error'; yearInput.focus(); return;
     }
     const month = parseInt(diaId.substring(0, 2), 10); const day = parseInt(diaId.substring(3), 10);
-    if (day < 1 || day > daysInMonth[month - 1]) { // Basic month/day validation
+    if (day < 1 || day > daysInMonth[month - 1]) {
          statusDiv.textContent = 'Invalid day selected for this month.'; statusDiv.className = 'error'; return;
     }
 
-    // Construct Date carefully using UTC to avoid timezone issues during conversion
-    // Note: User inputs year, month, day based on their local interpretation. Store as UTC midnight.
     const dateOfMemory = new Date(Date.UTC(year, month - 1, day));
-    if (isNaN(dateOfMemory.getTime())) { // Check if date construction failed
+    if (isNaN(dateOfMemory.getTime())) {
          statusDiv.textContent = 'Invalid date components.'; statusDiv.className = 'error'; return;
     }
     const fechaOriginalTimestamp = Timestamp.fromDate(dateOfMemory);
@@ -814,30 +805,31 @@ async function saveMemoryFromAddModal() {
             break;
         case 'Lugar':
             memoryData.LugarNombre = document.getElementById('add-mem-place').value.trim();
-            if (!memoryData.LugarNombre) isValid = false; memoryData.LugarData = null; // Placeholder for future structured data
+            if (!memoryData.LugarNombre) isValid = false; memoryData.LugarData = null;
             break;
         case 'Musica':
             if (selectedMusicTrack) {
+                 // Store structured data if a track was selected from results
                  memoryData.CancionData = { trackId: selectedMusicTrack.trackId, artistName: selectedMusicTrack.artistName, trackName: selectedMusicTrack.trackName, artworkUrl60: selectedMusicTrack.artworkUrl60, trackViewUrl: selectedMusicTrack.trackViewUrl };
-                 memoryData.CancionInfo = `${selectedMusicTrack.trackName} - ${selectedMusicTrack.artistName}`;
+                 memoryData.CancionInfo = `${selectedMusicTrack.trackName} - ${selectedMusicTrack.artistName}`; // Also store plain text info
             } else {
+                 // Store only the text from the input if no track was selected
                  memoryData.CancionInfo = document.getElementById('add-mem-music-search').value.trim();
                  memoryData.CancionData = null;
-                 if (!memoryData.CancionInfo) isValid = false;
+                 if (!memoryData.CancionInfo) isValid = false; // Require text if no track selected
             }
             break;
         case 'Imagen':
             memoryData.ImagenURL = document.getElementById('add-mem-image-url').value.trim();
-            memoryData.Descripcion = document.getElementById('add-mem-image-desc').value.trim() || null; // Store null if empty, not empty string
-            // Basic URL validation
-            try { new URL(memoryData.ImagenURL); } catch (_) { isValid = false; }
-            if (!memoryData.ImagenURL) isValid = false; // Also check if empty
+            memoryData.Descripcion = document.getElementById('add-mem-image-desc').value.trim() || null;
+            try { new URL(memoryData.ImagenURL); } catch (_) { isValid = false; } // Basic URL format check
+            if (!memoryData.ImagenURL) isValid = false;
             break;
         default: isValid = false; break;
     }
 
     if (!isValid) {
-        statusDiv.textContent = 'Please fill in the required fields correctly for the selected memory type.'; statusDiv.className = 'error'; return;
+        statusDiv.textContent = 'Please fill required fields correctly for the selected type.'; statusDiv.className = 'error'; return;
     }
 
     try {
@@ -845,7 +837,7 @@ async function saveMemoryFromAddModal() {
         const docRef = await addDoc(memoriasRef, memoryData);
         console.log("New memory saved:", docRef.id, memoryData);
         statusDiv.textContent = 'Memory Saved!'; statusDiv.className = 'success';
-        // Reset form specific fields after saving
+         // Reset form after saving
          document.getElementById('add-mem-desc').value = '';
          document.getElementById('add-mem-place').value = '';
          document.getElementById('add-mem-music-search').value = '';
@@ -853,17 +845,15 @@ async function saveMemoryFromAddModal() {
          document.getElementById('add-mem-image-url').value = '';
          document.getElementById('add-mem-image-desc').value = '';
          selectedMusicTrack = null;
-        setTimeout(() => { cerrarModalAddMemory(); }, 1500); // Close modal after success
+        setTimeout(() => { cerrarModalAddMemory(); }, 1500);
     } catch (e) { console.error("Error saving new advanced memory:", e); statusDiv.textContent = `Error: ${e.message}`; statusDiv.className = 'error'; }
 }
 
 // --- Expose functions needed by dynamically created HTML ---
-// Attach to window explicitly because this is a module
 window.handleMemoryTypeChange = handleMemoryTypeChange;
 window.buscarBSO = buscarBSO;
 window.saveMemoryFromAddModal = saveMemoryFromAddModal;
 window.cerrarModalAddMemory = cerrarModalAddMemory;
-// Expose functions called by generated buttons within modals
 window.startEditMemoria = startEditMemoria;
 window.confirmDeleteMemoria = confirmDeleteMemoria;
 
