@@ -1,7 +1,8 @@
-/* app.js - CÓDIGO FINAL AUTO-REPARADOR (VERSIÓN 4.0) */
+/* app.js - CÓDIGO FINAL AUTO-REPARADOR (VERSIÓN 4.1 - COMPATIBLE) */
 
+// Quitamos getCountFromServer de la importación
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, writeBatch, setDoc, deleteDoc, getCountFromServer } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, writeBatch, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // --- Configuración de Firebase ---
 const firebaseConfig = {
@@ -29,13 +30,16 @@ let currentMonthIndex = new Date().getMonth();
  * Función Principal: Verifica/Repara la BD y luego inicia la app.
  */
 async function checkAndRunApp() {
-    console.log("Iniciando Verificación/Reparación v4.0...");
+    console.log("Iniciando Verificación/Reparación v4.1 (Compatible)...");
     appContent.innerHTML = "<p>Verificando base de datos...</p>";
 
     try {
         const diasRef = collection(db, "Dias");
-        const countSnapshot = await getCountFromServer(diasRef);
-        const currentDocCount = countSnapshot.data().count;
+        // *** MÉTODO DE CONTEO COMPATIBLE ***
+        // Obtenemos todos los documentos (solo IDs si es posible, pero getDocs es seguro)
+        const checkSnapshot = await getDocs(diasRef);
+        const currentDocCount = checkSnapshot.size; // Contamos cuántos vinieron
+        // **********************************
 
         console.log(`Documentos encontrados en 'Dias': ${currentDocCount}`);
 
@@ -59,7 +63,7 @@ async function checkAndRunApp() {
 }
 
 /**
- * BORRA y REGENERA programáticamente los 366 días.
+ * BORRA y REGENERA programáticamente los 366 días. (SIN CAMBIOS)
  */
 async function generateCleanDatabase() {
     console.log("--- Iniciando Regeneración ---");
@@ -148,7 +152,7 @@ async function generateCleanDatabase() {
 
 
 /**
- * Carga los datos de Firebase (asumiendo que son correctos) y dibuja el calendario.
+ * Carga los datos de Firebase (asumiendo que son correctos) y dibuja el calendario. (SIN CAMBIOS)
  */
 async function loadDataAndDrawCalendar() {
     console.log("Cargando datos de Firebase...");
@@ -308,3 +312,4 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
 
 // --- ¡Arranca la App llamando a la función principal! ---
 checkAndRunApp();
+
