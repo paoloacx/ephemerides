@@ -238,4 +238,3 @@ main { padding: 15px; } /* Increased padding */
 .search-result { background: #fff; border: 1px solid #ddd; margin-bottom: 8px; border-radius: 4px; cursor: pointer; transition: background-color 0.1s; }
 .search-result:hover { background-color: #f0f0f0; }
 #search-results-list { padding: 10px; }
-
