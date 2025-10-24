@@ -36,6 +36,11 @@ async function iniciarApp() {
     try {
         // 1. Obtener TODOS los datos de Firebase
         const diasSnapshot = await getDocs(collection(db, "Dias"));
+        if (diasSnapshot.empty) {
+            appContent.innerHTML = "<p>Error: La colección 'Dias' está vacía en Firebase. Asegúrate de haber importado los datos correctamente.</p>";
+            return; // Detener si no hay datos
+        }
+
         diasSnapshot.forEach((doc) => {
             allDaysData.push({ id: doc.id, ...doc.data() });
         });
@@ -51,6 +56,7 @@ async function iniciarApp() {
         
     } catch (e) {
         appContent.innerHTML = `<p>Error fatal al cargar la base de datos: ${e.message}</p>`;
+        console.error("Error al iniciar la app:", e);
     }
 }
 
@@ -72,12 +78,17 @@ function dibujarMesActual() {
     const grid = document.getElementById("grid-dias");
 
     // 5. Dibujar cada día del mes
+    if (diasDelMes.length === 0) {
+        grid.innerHTML = "<p>No hay días para mostrar en este mes.</p>"; // Mensaje si el filtro no encuentra nada
+        return;
+    }
+
     diasDelMes.forEach(dia => {
         const btn = document.createElement("button");
         btn.className = "dia-btn";
         btn.innerHTML = `
-            ${dia.Icono} ${dia.id.substring(3)}/${dia.id.substring(0, 2)}
-            <span class="nombre-especial">${dia.Nombre_Especial === 'Día sin nombre' ? '' : dia.Nombre_Especial}</span>
+            ${dia.Icono || '🗓️'} ${dia.id.substring(3)}/${dia.id.substring(0, 2)}
+            <span class="nombre-especial">${(dia.Nombre_Especial && dia.Nombre_Especial !== 'Día sin nombre') ? dia.Nombre_Especial : ''}</span>
         `;
         btn.dataset.diaId = dia.id;
         btn.addEventListener('click', () => abrirModalEdicion(dia));
@@ -168,8 +179,10 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
         
     } catch (e) {
         status.textContent = `Error al guardar: ${e.message}`;
+        console.error("Error al guardar nombre especial:", e);
     }
 }
 
 // --- ¡Arranca la App! ---
 iniciarApp();
+
