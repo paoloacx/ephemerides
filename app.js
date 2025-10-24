@@ -19,7 +19,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const CSV_URL = './Ephemerides DB - Dias.csv'; // La ruta de tu archivo CSV en GitHub Pages
+// Usamos la URL RAW de GitHub para asegurarnos de que el navegador pueda leer el contenido del archivo.
+const CSV_URL = 'https://raw.githubusercontent.com/paoloacx/ephemerides/main/Ephemerides%20DB%20-%20Dias.csv';
 
 /**
  * Función para cargar y procesar el CSV.
