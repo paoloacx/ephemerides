@@ -1,11 +1,10 @@
-/* app.js */
+/* app.js - SCRIPT DE IMPORTACIÓN DE DATOS */
 
-// Importa las funciones que necesitas de los SDKs de Firebase
-// Usamos las URL completas para que funcione sin necesidad de "npm"
+// Importa las funciones que necesitamos de Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// La configuración de Firebase de TU app web
+// Tu configuración de Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBrd-8qaBfSplBjj74MNuKP8UWYmr8RaJA",
   authDomain: "ephemerides-2005.firebaseapp.com",
@@ -18,36 +17,62 @@ const firebaseConfig = {
 
 // Inicializa Firebase
 const app = initializeApp(firebaseConfig);
-
-// Inicializa Cloud Firestore y obtén una referencia al servicio
 const db = getFirestore(app);
 
-// --- ¡Nuestra primera prueba de conexión! ---
-// Esta función intentará escribir y leer un dato en tu base de datos
-async function probarConexion() {
+const CSV_URL = './Ephemerides DB - Dias.csv'; // La ruta de tu archivo CSV en GitHub Pages
+
+/**
+ * Función para cargar y procesar el CSV.
+ */
+async function cargarDias() {
     try {
-        // 1. Escribir un dato de prueba
-        const docRef = await addDoc(collection(db, "test"), {
-            mensaje: "¡Hola Firebase!",
-            timestamp: new Date()
-        });
-        console.log("Documento escrito con ID: ", docRef.id);
+        document.getElementById("app-content").innerHTML = "<p>Iniciando la carga de los 366 días a Firebase...</p>";
 
-        // 2. Leer los datos de prueba
-        const querySnapshot = await getDocs(collection(db, "test"));
-        console.log("Datos leídos de Firebase:");
-        querySnapshot.forEach((doc) => {
-            console.log(`${doc.id} => ${doc.data().mensaje}`);
-        });
+        // 1. Descargar el archivo CSV desde GitHub Pages
+        const response = await fetch(CSV_URL);
+        const data = await response.text();
 
-        // 3. Actualizar la página para que sepas que funcionó
-        document.getElementById("app-content").innerHTML = "<p>¡Conexión con Firebase exitosa!</p><p>Revisa tu base de datos en Firebase, deberías ver una nueva colección llamada 'test'.</p>";
+        // 2. Procesar las líneas
+        const lineas = data.split('\n').filter(line => line.trim() !== ''); // Divide por líneas y elimina vacías
+        const encabezados = lineas[0].split(',').map(h => h.trim().replace(/\(Texto\)/, '')); // Extrae encabezados: ID_Dia, Nombre_Dia, Icono
+        
+        let documentosCargados = 0;
 
-    } catch (e) {
-        console.error("Error al conectar con Firebase: ", e);
-        document.getElementById("app-content").innerHTML = "<p>Error al conectar con Firebase. ¿Habilitaste la base de datos en 'modo de prueba'?</p>";
+        // 3. Iterar sobre los días (empezamos en la línea 1 para saltar los encabezados)
+        for (let i = 1; i < lineas.length; i++) {
+            const valores = lineas[i].split(',');
+            if (valores.length !== 3) continue; // Ignorar líneas mal formadas
+
+            const ID_Dia = valores[0].trim();
+            const Nombre_Dia = valores[1].trim();
+            const Icono = valores[2].trim() || '🗓️'; // Usar 🗓️ si el campo está vacío
+
+            // 4. Crear el objeto que se guardará en Firestore
+            const diaData = {
+                Nombre_Dia: Nombre_Dia,
+                Icono: Icono,
+                Nombre_Especial: "Día sin nombre" // Valor inicial
+            };
+
+            // 5. Guardar el documento en la colección 'Dias'
+            // Usamos ID_Dia (ej: '01-01') como el ID del documento
+            await setDoc(doc(db, "Dias", ID_Dia), diaData);
+            documentosCargados++;
+
+            document.getElementById("app-content").innerHTML = `<p>Cargando... ${documentosCargados} de ${lineas.length - 1} días.</p>`;
+        }
+
+        document.getElementById("app-content").innerHTML = `
+            <h2>¡Carga de Días Completada!</h2>
+            <p>Se cargaron ${documentosCargados} días en la colección 'Dias' de Firebase.</p>
+            <p><strong>Siguiente paso:</strong> Debes reemplazar el código de app.js con el código para MOSTRAR el calendario.</p>
+        `;
+
+    } catch (error) {
+        console.error("Error en la carga masiva:", error);
+        document.getElementById("app-content").innerHTML = `<p>Error al cargar los días. Revisa la Consola del navegador.</p><p>Detalle del error: ${error.message}</p>`;
     }
 }
 
-// Llama a nuestra función de prueba cuando la página se cargue
-probarConexion();
+// Inicia la carga de datos
+cargarDias();
