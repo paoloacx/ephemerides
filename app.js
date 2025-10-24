@@ -1,7 +1,7 @@
-/* app.js - CÓDIGO FINAL DE LA APP (VERSIÓN 3.0 - FILTRO NUMÉRICO) */
+/* app.js - CÓDIGO FINAL AUTO-REPARADOR (VERSIÓN 4.0) */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, writeBatch, setDoc, deleteDoc, getCountFromServer } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // --- Configuración de Firebase ---
 const firebaseConfig = {
@@ -20,68 +20,183 @@ const db = getFirestore(app);
 const appContent = document.getElementById("app-content");
 const monthNameEl = document.getElementById("month-name");
 const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // Incluye 29 Feb
 
 let allDaysData = [];
 let currentMonthIndex = new Date().getMonth();
 
-async function iniciarApp() {
-    console.log("Iniciando app v3.0 (Filtro Numérico)..."); // Log simple de inicio
-    appContent.innerHTML = "<p>Cargando calendario...</p>";
+/**
+ * Función Principal: Verifica/Repara la BD y luego inicia la app.
+ */
+async function checkAndRunApp() {
+    console.log("Iniciando Verificación/Reparación v4.0...");
+    appContent.innerHTML = "<p>Verificando base de datos...</p>";
 
     try {
-        const diasSnapshot = await getDocs(collection(db, "Dias"));
+        const diasRef = collection(db, "Dias");
+        const countSnapshot = await getCountFromServer(diasRef);
+        const currentDocCount = countSnapshot.data().count;
 
-        if (diasSnapshot.empty) {
-            appContent.innerHTML = "<p>Error: La colección 'Dias' está vacía.</p>";
-            return;
+        console.log(`Documentos encontrados en 'Dias': ${currentDocCount}`);
+
+        // Si la cuenta no es 366, reparamos.
+        if (currentDocCount !== 366) {
+            console.warn(`Se encontraron ${currentDocCount} documentos. Se necesita reparar (esperado 366).`);
+            appContent.innerHTML = "<p>Base de datos incompleta o corrupta. Iniciando reparación automática...</p>";
+            await generateCleanDatabase();
+        } else {
+            console.log("Base de datos verificada (366 días). Cargando calendario...");
+            appContent.innerHTML = "<p>Base de datos correcta. Cargando calendario...</p>";
         }
 
+        // Una vez reparada (o si ya estaba bien), cargamos y mostramos
+        await loadDataAndDrawCalendar();
+
+    } catch (e) {
+        appContent.innerHTML = `<p>Error crítico durante verificación/reparación: ${e.message}</p>`;
+        console.error("Error en checkAndRunApp:", e);
+    }
+}
+
+/**
+ * BORRA y REGENERA programáticamente los 366 días.
+ */
+async function generateCleanDatabase() {
+    console.log("--- Iniciando Regeneración ---");
+    const diasRef = collection(db, "Dias");
+
+    // 1. Borrar todo lo existente (si hay algo)
+    try {
+        console.log("Borrando colección 'Dias' existente...");
+        appContent.innerHTML = "<p>Borrando datos antiguos...</p>";
+        const oldDocsSnapshot = await getDocs(diasRef);
+        if (!oldDocsSnapshot.empty) {
+            let batch = writeBatch(db);
+            let deleteCount = 0;
+            oldDocsSnapshot.forEach(docSnap => {
+                batch.delete(docSnap.ref);
+                deleteCount++;
+                if (deleteCount >= 499) {
+                    batch.commit(); // Commit parcial
+                    batch = writeBatch(db);
+                    deleteCount = 0;
+                }
+            });
+            if (deleteCount > 0) await batch.commit(); // Commit final
+            console.log(`Borrado completado (${oldDocsSnapshot.size} documentos eliminados).`);
+        } else {
+            console.log("La colección 'Dias' ya estaba vacía.");
+        }
+    } catch(e) {
+         console.error("Error durante el borrado:", e);
+         appContent.innerHTML = `<p>Error borrando datos antiguos: ${e.message}. Recarga para reintentar.</p>`;
+         throw e; // Detener si falla el borrado
+    }
+
+
+    // 2. Generar y escribir los 366 días limpios
+    console.log("Generando 366 días limpios...");
+    appContent.innerHTML = "<p>Generando 366 días limpios...</p>";
+    let batch = writeBatch(db);
+    let operationsInBatch = 0;
+    let documentsCreated = 0;
+
+    for (let m = 0; m < 12; m++) { // Meses 0-11
+        const monthNum = m + 1;
+        const monthStr = monthNum.toString().padStart(2, '0');
+        const numDays = daysInMonth[m];
+
+        for (let d = 1; d <= numDays; d++) { // Días 1 hasta numDays
+            const dayStr = d.toString().padStart(2, '0');
+            const diaId = `${monthStr}-${dayStr}`; // Formato MM-DD limpio
+
+            const diaData = {
+                Nombre_Dia: `${d} de ${monthNames[m]}`,
+                Icono: '🗓️',
+                Nombre_Especial: "Día sin nombre"
+            };
+
+            const docRef = doc(db, "Dias", diaId);
+            batch.set(docRef, diaData);
+            operationsInBatch++;
+            documentsCreated++;
+            
+            if(documentsCreated % 50 === 0) {
+                 console.log(`Generando ${diaId}... (${documentsCreated}/366)`);
+                 appContent.innerHTML = `<p>Generando ${documentsCreated} de 366 días...</p>`;
+            }
+
+            // Commit si el lote está lleno
+            if (operationsInBatch >= 499) {
+                console.log(`Ejecutando lote (${operationsInBatch})...`);
+                await batch.commit();
+                batch = writeBatch(db);
+                operationsInBatch = 0;
+            }
+        }
+    }
+
+    // Commit del último lote
+    if (operationsInBatch > 0) {
+        console.log(`Ejecutando último lote (${operationsInBatch})...`);
+        await batch.commit();
+    }
+
+    console.log(`--- Regeneración completada: ${documentsCreated} días creados ---`);
+    appContent.innerHTML = `<p>✅ ¡Base de datos regenerada con ${documentsCreated} días!</p>`;
+}
+
+
+/**
+ * Carga los datos de Firebase (asumiendo que son correctos) y dibuja el calendario.
+ */
+async function loadDataAndDrawCalendar() {
+    console.log("Cargando datos de Firebase...");
+    appContent.innerHTML = "<p>Cargando calendario...</p>";
+    try {
+        const diasSnapshot = await getDocs(collection(db, "Dias"));
         allDaysData = [];
         diasSnapshot.forEach((doc) => {
-            const cleanId = String(doc.id).trim();
-            // Validación estricta del formato MM-DD
-            if (/^\d{2}-\d{2}$/.test(cleanId)) {
-                allDaysData.push({ id: cleanId, ...doc.data() });
-            } else {
-                 console.warn(`ID inválido ignorado: '${doc.id}'`);
-            }
+             // Ya no necesitamos validación extra, confiamos en los datos generados
+            allDaysData.push({ id: doc.id, ...doc.data() });
         });
-        console.log(`Se leyeron ${allDaysData.length} días válidos.`);
 
-        // Ordenar cronológicamente
+        if (allDaysData.length === 0) {
+             throw new Error("La base de datos está vacía después de la carga.");
+        }
+
+        console.log(`Se cargaron ${allDaysData.length} días.`);
+
+        // Ordenar cronológicamente (necesario siempre)
         allDaysData.sort((a, b) => a.id.localeCompare(b.id));
 
         configurarNavegacion();
         dibujarMesActual();
 
     } catch (e) {
-        appContent.innerHTML = `<p>Error fatal al cargar: ${e.message}</p>`;
-        console.error("Error en iniciarApp:", e);
+        appContent.innerHTML = `<p>Error fatal al cargar/dibujar: ${e.message}</p>`;
+        console.error("Error en loadDataAndDrawCalendar:", e);
     }
 }
 
+
+// --- El resto de funciones (dibujarMesActual, configurarNavegacion, etc.) son las mismas que antes, usando el FILTRO NUMÉRICO ---
+
 function dibujarMesActual() {
     monthNameEl.textContent = monthNames[currentMonthIndex];
-    // Convertimos el mes buscado a NÚMERO (1 para Enero, 10 para Octubre)
-    const monthNumberTarget = currentMonthIndex + 1;
+    const monthNumberTarget = currentMonthIndex + 1; // 1-12
     console.log(`Dibujando mes ${monthNumberTarget} (${monthNames[currentMonthIndex]})`);
 
     // *** FILTRO NUMÉRICO ***
     const diasDelMes = allDaysData.filter(dia => {
-        const currentId = dia.id;
+        const currentId = dia.id; // MM-DD
         if (currentId && currentId.length === 5 && currentId.includes('-')) {
             try {
-                // Extraemos la parte del mes y la convertimos a NÚMERO
                 const monthNumPart = parseInt(currentId.substring(0, 2), 10);
-                // Comparamos los NÚMEROS
                 return monthNumPart === monthNumberTarget;
-            } catch (e) {
-                // Si falla la conversión (muy improbable), lo descartamos
-                console.error(`Error parseando ID '${currentId}'`, e);
-                return false;
-            }
+            } catch (e) { return false; }
         }
-        return false; // Descartamos IDs mal formados
+        return false;
     });
     // **********************
 
@@ -92,16 +207,14 @@ function dibujarMesActual() {
 
     if (diasDelMes.length === 0) {
         grid.innerHTML = "<p>No se encontraron días para este mes.</p>";
-        return; // Salimos si no hay días
+        return;
     }
 
-    // Comprobación final (opcional, pero útil)
-    const diasEsperados = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][currentMonthIndex];
+    const diasEsperados = daysInMonth[currentMonthIndex];
     if (diasDelMes.length !== diasEsperados) {
        console.warn(`ALERTA: Se encontraron ${diasDelMes.length} días para ${monthNames[currentMonthIndex]}, pero deberían ser ${diasEsperados}.`);
     }
 
-    // Dibujar botones
     diasDelMes.forEach(dia => {
         const btn = document.createElement("button");
         btn.className = "dia-btn";
@@ -116,7 +229,6 @@ function dibujarMesActual() {
     console.log(`Se dibujaron ${diasDelMes.length} botones.`);
 }
 
-// --- Resto de funciones sin cambios ---
 function configurarNavegacion() {
     document.getElementById("prev-month").onclick = () => {
         currentMonthIndex--;
@@ -194,6 +306,5 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
     }
 }
 
-// --- ¡Arranca la App! ---
-iniciarApp();
-
+// --- ¡Arranca la App llamando a la función principal! ---
+checkAndRunApp();
