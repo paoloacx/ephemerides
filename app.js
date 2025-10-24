@@ -1,4 +1,4 @@
-/* app.js - CÓDIGO FINAL CON DEPURACIÓN AVANZADA (v2.1-debug2) */
+/* app.js - CÓDIGO FINAL CON DEPURACIÓN (v2.1-debug3 - Filtro Manual) */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
@@ -25,8 +25,8 @@ let allDaysData = [];
 let currentMonthIndex = new Date().getMonth(); 
 
 async function iniciarApp() {
-    console.log("DEBUG: Iniciando app...");
-    appContent.innerHTML = "<p>Cargando calendario (modo debug avanzado)...</p>";
+    console.log("DEBUG: Iniciando app (v2.1-debug3)...");
+    appContent.innerHTML = "<p>Cargando calendario (modo debug manual)...</p>";
     
     try {
         console.log("DEBUG: Obteniendo datos de Firebase...");
@@ -39,23 +39,27 @@ async function iniciarApp() {
         }
 
         let count = 0;
+        allDaysData = []; // Limpiar por si acaso
         diasSnapshot.forEach((doc) => {
-            // Asegurémonos de que el ID es una cadena limpia
             const cleanId = String(doc.id).trim(); 
-            allDaysData.push({ id: cleanId, ...doc.data() });
-            count++;
+            // Validar formato MM-DD antes de añadir
+            if (/^\d{2}-\d{2}$/.test(cleanId)) {
+                allDaysData.push({ id: cleanId, ...doc.data() });
+                count++;
+            } else {
+                 console.warn(`DEBUG: ID con formato inválido ignorado: '${doc.id}'`);
+            }
         });
-        console.log(`DEBUG: Se leyeron ${count} documentos de Firebase.`);
+        console.log(`DEBUG: Se leyeron y validaron ${count} documentos de Firebase.`);
 
-        if (count < 366) { 
-             console.warn(`DEBUG: ¡Alerta! Se leyeron solo ${count} documentos. Deberían ser 366.`);
+        if (count !== 366) { 
+             console.warn(`DEBUG: ¡Alerta! Se validaron ${count} documentos. Deberían ser 366.`);
         }
 
         console.log("DEBUG: Ordenando los datos...");
         allDaysData.sort((a, b) => a.id.localeCompare(b.id));
         console.log("DEBUG: Datos ordenados. Primer día:", allDaysData[0]?.id, "Último día:", allDaysData[allDaysData.length - 1]?.id); 
-        // Loguear una muestra de IDs después de ordenar para verificar formato
-        console.log("DEBUG: Muestra de IDs después de ordenar:", allDaysData.slice(270, 285).map(d => d.id)); // Muestra días alrededor de Octubre 1-15
+        console.log("DEBUG: Muestra IDs post-sort:", allDaysData.slice(273, 305).map(d => d.id)); // Muestra Octubre 1-31
 
         configurarNavegacion();
         dibujarMesActual();
@@ -71,38 +75,34 @@ function dibujarMesActual() {
     console.log(`DEBUG: Dibujando mes índice ${currentMonthIndex} (${monthNames[currentMonthIndex]})`);
     monthNameEl.textContent = monthNames[currentMonthIndex];
     const monthString = (currentMonthIndex + 1).toString().padStart(2, '0');
-    console.log(`DEBUG: Filtro a aplicar: dia.id.startsWith('${monthString}-')`); 
+    console.log(`DEBUG: Filtro manual a aplicar: dia.id.split('-')[0] === '${monthString}'`); 
     
-    // *** NUEVO CHIVATO: Ver los IDs ANTES de filtrar ***
-    const idsAntesDeFiltrar = allDaysData.map(dia => dia.id);
-    console.log(`DEBUG: Total IDs en allDaysData ANTES de filtrar para mes ${monthString}: ${idsAntesDeFiltrar.length}`);
-    // console.log("DEBUG: IDs ANTES:", idsAntesDeFiltrar.join(', ')); // Descomentar si es necesario ver TODOS
-
-    // Filtrar
+    // *** CAMBIO EN EL FILTRO: Usar split en lugar de startsWith ***
     const diasDelMes = allDaysData.filter(dia => {
-        const starts = dia.id.startsWith(monthString + '-');
-        // *** NUEVO CHIVATO: Ver qué hace startsWith para cada ID ***
-        // if (dia.id.substring(0, 2) === monthString) { // Solo loguear para el mes actual
-        //     console.log(`   - Verificando ID: '${dia.id}' -> startsWith('${monthString}-')? ${starts}`);
-        // }
-        return starts;
+        // Verificar que el ID tiene el formato MM-DD antes de hacer split
+        if (dia.id && dia.id.includes('-')) {
+            const monthPart = dia.id.split('-')[0];
+            return monthPart === monthString;
+        }
+        return false; // Ignorar IDs mal formados
     });
+    // ***************************************************************
     
-    // *** NUEVO CHIVATO: Ver los IDs DESPUÉS de filtrar ***
     const idsDespuesDeFiltrar = diasDelMes.map(dia => dia.id);
-    console.log(`DEBUG: Se encontraron ${diasDelMes.length} días DESPUÉS de filtrar para el mes ${monthString}.`); 
-    console.log("DEBUG: IDs ENCONTRADOS:", idsDespuesDeFiltrar.join(', ')); // Mostrar los IDs que SÍ pasaron el filtro
+    console.log(`DEBUG: Se encontraron ${diasDelMes.length} días DESPUÉS de filtrar (manual) para el mes ${monthString}.`); 
+    console.log("DEBUG: IDs ENCONTRADOS:", idsDespuesDeFiltrar.join(', ')); 
 
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div>`;
     const grid = document.getElementById("grid-dias");
 
     if (diasDelMes.length === 0) {
         grid.innerHTML = "<p>No se encontraron días para este mes.</p>";
-        console.error(`DEBUG: ERROR GRAVE - El filtro no encontró ningún día para el prefijo '${monthString}-'`);
+        console.error(`DEBUG: ERROR GRAVE - El filtro manual no encontró ningún día para el mes '${monthString}'`);
         return;
     }
-     if (diasDelMes.length > 0 && diasDelMes.length < 28) { // Si encuentra pocos días (como 12)
-        console.warn(`DEBUG: ALERTA - Se encontraron MUY POCOS días (${diasDelMes.length}) para el mes ${monthString}. ¡El filtro está fallando!`);
+     // Ya no debería mostrar 12, pero dejamos la alerta
+     if (diasDelMes.length > 0 && diasDelMes.length < 28) { 
+        console.warn(`DEBUG: ALERTA - Se encontraron MUY POCOS días (${diasDelMes.length}) para el mes ${monthString}. ¡El filtro manual está fallando! IDs:`, idsDespuesDeFiltrar);
      }
 
 
@@ -201,3 +201,4 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
 
 // --- ¡Arranca la App! ---
 iniciarApp();
+
