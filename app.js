@@ -1,9 +1,9 @@
-/* app.js - CÓDIGO FINAL DE LA APP: VISTA DEL CALENDARIO Y EDICIÓN */
+/* app.js - CÓDIGO FINAL DE LA APP (VERSIÓN 2.0 - VISTA MENSUAL) */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// Tu configuración de Firebase
+// --- Configuración de Firebase (Tu llave) ---
 const firebaseConfig = {
   apiKey: "AIzaSyBrd-8qaBfSplBjj74MNuKP8UWYmr8RaJA",
   authDomain: "ephemerides-2005.firebaseapp.com",
@@ -14,104 +14,67 @@ const firebaseConfig = {
   measurementId: "G-BZC9FRYCJW"
 };
 
+// --- Inicialización de Firebase ---
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// --- Variables Globales de la App ---
 const appContent = document.getElementById("app-content");
-const DIAS_POR_SEMANA = 7; // Para la cuadrícula visual
+const monthNameEl = document.getElementById("month-name");
+const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-// --- Funciones de la App ---
+let allDaysData = []; // Almacén para guardar los 366 días
+let currentMonthIndex = new Date().getMonth(); // 0 = Enero, 11 = Diciembre
 
 /**
- * Carga todos los días de la colección 'Dias' y los dibuja.
+ * INICIO DE LA APP: Carga todos los datos de Firebase UNA VEZ.
  */
-async function cargarYDibujarDias() {
-    appContent.innerHTML = "<p>Cargando calendario desde Firebase...</p>";
+async function iniciarApp() {
+    appContent.innerHTML = "<p>Cargando calendario por primera vez...</p>";
     
-    // 1. Obtener los datos de Firebase
-    const diasSnapshot = await getDocs(collection(db, "Dias"));
-    let diasArray = [];
-    diasSnapshot.forEach((doc) => {
-        diasArray.push({ id: doc.id, ...doc.data() });
-    });
-    
-    // 2. Ordenar por ID (01-01, 01-02, ..., 12-31)
-    diasArray.sort((a, b) => a.id.localeCompare(b.id));
+    try {
+        // 1. Obtener TODOS los datos de Firebase
+        const diasSnapshot = await getDocs(collection(db, "Dias"));
+        diasSnapshot.forEach((doc) => {
+            allDaysData.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // 2. Ordenar los datos (¡esto arregla el desorden!)
+        allDaysData.sort((a, b) => a.id.localeCompare(b.id));
 
-    // 3. Comprobar si hay datos
-    if (diasArray.length === 0) {
-        appContent.innerHTML = "<p>Error: No se encontraron datos en la colección 'Dias' de Firebase.</p>";
-        return;
+        // 3. Configurar los botones de navegación
+        configurarNavegacion();
+        
+        // 4. Dibujar el mes actual
+        dibujarMesActual();
+        
+    } catch (e) {
+        appContent.innerHTML = `<p>Error fatal al cargar la base de datos: ${e.message}</p>`;
     }
+}
 
-    // 4. Dibujar el calendario en la vista
+/**
+ * Dibuja en pantalla SÓLO los días del mes actual.
+ */
+function dibujarMesActual() {
+    // 1. Poner el nombre del mes en el header
+    monthNameEl.textContent = monthNames[currentMonthIndex];
+    
+    // 2. Crear el string del mes (ej: "01", "02", "11", "12")
+    const monthString = (currentMonthIndex + 1).toString().padStart(2, '0');
+    
+    // 3. Filtrar nuestro almacén para este mes
+    const diasDelMes = allDaysData.filter(dia => dia.id.startsWith(monthString + '-'));
+
+    // 4. Limpiar el contenido anterior y preparar la cuadrícula
     appContent.innerHTML = `
-        <style>
-            .calendario-grid {
-                display: grid;
-                grid-template-columns: repeat(${DIAS_POR_SEMANA}, 1fr);
-                gap: 5px;
-            }
-            .dia-btn {
-                background-color: #f0f0f0;
-                border: 1px solid #c0c0c0;
-                border-radius: 5px;
-                padding: 10px 5px;
-                text-align: center;
-                cursor: pointer;
-                box-shadow: 0 1px 1px rgba(0,0,0,0.1);
-                transition: background-color 0.1s;
-                font-size: 10px; /* Tamaño más pequeño para caber */
-            }
-            .dia-btn:hover {
-                background-color: #e0e0e0;
-            }
-            .nombre-especial {
-                display: block;
-                font-size: 11px;
-                font-weight: bold;
-                color: #007aff; /* Azul clásico de iOS */
-                margin-top: 3px;
-                text-overflow: ellipsis;
-                overflow: hidden;
-                white-space: nowrap;
-            }
-            /* Estilo para la ventana modal (simple) */
-            .modal {
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background-color: rgba(0,0,0,0.5);
-                display: none; justify-content: center; align-items: center;
-                z-index: 1000;
-            }
-            .modal-content {
-                background-color: white; padding: 20px; border-radius: 10px;
-                width: 90%; max-width: 400px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            }
-            .modal-content input {
-                width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ccc;
-                box-sizing: border-box;
-            }
-        </style>
-
-        <h2>Calendario Ephemerides</h2>
         <div class="calendario-grid" id="grid-dias">
             </div>
-
-        <div id="edit-modal" class="modal">
-            <div class="modal-content">
-                <h3 id="modal-title"></h3>
-                <p>Nombra este día:</p>
-                <input type="text" id="nombre-especial-input" placeholder="Ej: Día de la pizza" maxlength="25">
-                <button id="save-btn">Guardar</button>
-                <button id="close-btn">Cerrar</button>
-                <p id="save-status" style="margin-top: 10px; color: green;"></p>
-            </div>
-        </div>
     `;
-    
     const grid = document.getElementById("grid-dias");
-    diasArray.forEach(dia => {
+
+    // 5. Dibujar cada día del mes
+    diasDelMes.forEach(dia => {
         const btn = document.createElement("button");
         btn.className = "dia-btn";
         btn.innerHTML = `
@@ -122,49 +85,71 @@ async function cargarYDibujarDias() {
         btn.addEventListener('click', () => abrirModalEdicion(dia));
         grid.appendChild(btn);
     });
-    
-    // Configurar la lógica de la ventana modal
-    configurarModal();
 }
 
 /**
- * Muestra el modal de edición y carga los datos del día.
- * @param {object} dia - El objeto del día de Firebase.
+ * Configura los botones "<" y ">"
+ */
+function configurarNavegacion() {
+    document.getElementById("prev-month").onclick = () => {
+        currentMonthIndex--;
+        if (currentMonthIndex < 0) {
+            currentMonthIndex = 11; // Da la vuelta de Enero a Diciembre
+        }
+        dibujarMesActual();
+    };
+    
+    document.getElementById("next-month").onclick = () => {
+        currentMonthIndex++;
+        if (currentMonthIndex > 11) {
+            currentMonthIndex = 0; // Da la vuelta de Diciembre a Enero
+        }
+        dibujarMesActual();
+    };
+}
+
+/**
+ * Muestra el modal de edición (SIN CAMBIOS)
  */
 function abrirModalEdicion(dia) {
-    const modal = document.getElementById('edit-modal');
-    const title = document.getElementById('modal-title');
-    const input = document.getElementById('nombre-especial-input');
+    // Crear el modal si no existe (lo haremos dinámicamente)
+    let modal = document.getElementById('edit-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'edit-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h3 id="modal-title"></h3>
+                <p>Nombra este día:</p>
+                <input type="text" id="nombre-especial-input" placeholder="Ej: Día de la pizza" maxlength="25">
+                <button id="save-btn">Guardar</button>
+                <button id="close-btn">Cerrar</button>
+                <p id="save-status" style="margin-top: 10px; color: green;"></p>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Configurar botones de cerrar del modal
+        document.getElementById('close-btn').onclick = () => modal.style.display = 'none';
+        modal.onclick = (e) => {
+            if (e.target.id === 'edit-modal') modal.style.display = 'none';
+        };
+    }
     
-    title.textContent = `Editando: ${dia.Nombre_Dia} (${dia.id})`;
+    // Rellenar el modal con los datos del día
+    document.getElementById('modal-title').textContent = `Editando: ${dia.Nombre_Dia} (${dia.id})`;
+    const input = document.getElementById('nombre-especial-input');
     input.value = dia.Nombre_Especial === 'Día sin nombre' ? '' : dia.Nombre_Especial;
+    document.getElementById('save-status').textContent = '';
     
     modal.style.display = 'flex';
     document.getElementById('save-btn').onclick = () => guardarNombreEspecial(dia.id, input.value.trim());
 }
 
 /**
- * Configura los botones de cerrar del modal.
- */
-function configurarModal() {
-    const modal = document.getElementById('edit-modal');
-    document.getElementById('close-btn').onclick = () => {
-        modal.style.display = 'none';
-        document.getElementById('save-status').textContent = ''; // Limpiar estado
-    };
-    modal.onclick = (e) => {
-        if (e.target.id === 'edit-modal') {
-            modal.style.display = 'none';
-            document.getElementById('save-status').textContent = '';
-        }
-    };
-}
-
-
-/**
  * Guarda el nuevo Nombre_Especial en Firebase y actualiza la vista.
- * @param {string} diaId - ID del documento (ej: '01-01').
- * @param {string} nuevoNombre - El nuevo nombre dado por el usuario.
+ * ¡VERSIÓN MEJORADA! Ahora actualiza el almacén local, sin recargar todo.
  */
 async function guardarNombreEspecial(diaId, nuevoNombre) {
     const status = document.getElementById('save-status');
@@ -173,30 +158,33 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
     try {
         status.textContent = "Guardando...";
         
-        // 1. Referencia al documento en Firebase
         const diaRef = doc(db, "Dias", diaId);
+        const valorFinal = nuevoNombre || "Día sin nombre";
         
-        // 2. Determinar el valor a guardar
-        const valorFinal = nuevoNombre || "Día sin nombre"; // Si lo deja vacío, usamos el valor por defecto
-        
-        // 3. Actualizar el documento
+        // 1. Guardar en Firebase
         await updateDoc(diaRef, {
             Nombre_Especial: valorFinal
         });
         
-        status.textContent = "¡Guardado con éxito! Recargando...";
+        // 2. ACTUALIZAR EL ALMACÉN LOCAL (allDaysData)
+        // Esto es mucho más rápido que volver a descargar todo
+        const diaIndex = allDaysData.findIndex(d => d.id === diaId);
+        if (diaIndex !== -1) {
+            allDaysData[diaIndex].Nombre_Especial = valorFinal;
+        }
+
+        status.textContent = "¡Guardado!";
         
-        // 4. Actualizar la vista después de un breve retraso
+        // 3. Cerrar el modal y redibujar el mes
         setTimeout(() => {
             modal.style.display = 'none';
-            cargarYDibujarDias(); // Recarga toda la vista para ver el cambio
+            dibujarMesActual(); // Redibuja el mes actual con los datos nuevos
         }, 800);
         
     } catch (e) {
         status.textContent = `Error al guardar: ${e.message}`;
-        console.error("Error al actualizar el documento: ", e);
     }
 }
 
-// Inicia la aplicación al cargar la página
-cargarYDibujarDias();
+// --- ¡Arranca la App! ---
+iniciarApp();
