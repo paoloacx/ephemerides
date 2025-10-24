@@ -1,4 +1,4 @@
-/* app.js - SCRIPT FINAL DE IMPORTACIÓN DE DATOS */
+/* app.js - SCRIPT DE IMPORTACIÓN FINAL Y ROBUSTO */
 
 // Importa las funciones que necesitamos de Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -19,7 +19,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ¡LA URL CORREGIDA Y DEFINITIVA!
+// ¡LA URL CORREGIDA Y DEFINITIVA! (Asumiendo 'main' y 'dias.csv')
 const CSV_URL = 'https://raw.githubusercontent.com/paoloacx/ephemerides/main/dias.csv'; 
 
 /**
@@ -34,12 +34,12 @@ async function cargarDias() {
         const response = await fetch(CSV_URL);
         
         if (!response.ok) {
-            contentDiv.innerHTML = `<p>Error HTTP: ${response.status}. Por favor, verifica la URL <a href="${CSV_URL}">aquí</a>.</p>`;
+            contentDiv.innerHTML = `<p>Error HTTP: ${response.status}. La URL no funciona.</p>`;
             throw new Error(`Error HTTP: ${response.status} - No se pudo acceder al archivo CSV.`);
         }
         
         const data = await response.text();
-        // Nota: El uso de 'match' ayuda a manejar diferentes formatos de salto de línea (CRLF o LF)
+        // Uso de regex para manejar saltos de línea (CRLF y LF) y trim() para eliminar cualquier espacio/línea vacía al final
         const lineas = data.trim().split(/\r?\n/).filter(line => line.trim() !== '');
 
         // 2. Probar si el archivo tiene al menos los encabezados y un día
@@ -58,6 +58,13 @@ async function cargarDias() {
             if (valores.length < 3) continue; 
 
             const ID_Dia = valores[0].trim();
+            
+            // *** CORRECCIÓN CRÍTICA: SI EL ID ESTÁ VACÍO, SALTAMOS LA LÍNEA ***
+            if (!ID_Dia) {
+                continue; 
+            }
+            // ******************************************************************
+
             const Nombre_Dia = valores[1].trim();
             const Icono = valores[2].trim() || '🗓️';
 
@@ -67,7 +74,7 @@ async function cargarDias() {
                 Nombre_Especial: "Día sin nombre" 
             };
 
-            // 4. Guardar el documento en la colección 'Dias'
+            // 4. Guardar el documento en la colección 'Dias'. Aquí es donde se crea el 'Dias/ID'
             await setDoc(doc(db, "Dias", ID_Dia), diaData);
             documentosCargados++;
 
@@ -78,8 +85,8 @@ async function cargarDias() {
             <h2>¡Carga de Días Completada!</h2>
             <p>Se cargaron ${documentosCargados} días en la colección 'Dias' de Firebase.</p>
             <hr>
-            <h3>✅ La base de datos está lista.</h3>
-            <p><strong>Siguiente paso:</strong> Debes reemplazar este código de importación por el código de la app (el calendario).</p>
+            <h3>✅ ¡La base de datos está lista!</h3>
+            <p><strong>Siguiente paso:</strong> Debes reemplazar este código de importación con el código para **MOSTRAR** el calendario.</p>
         `;
 
     } catch (error) {
