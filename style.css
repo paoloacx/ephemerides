@@ -207,3 +207,97 @@ main {
     min-height: 1.2em; /* Espacio para el mensaje */
 }
 
+/* --- NUEVO: Estilos para la Sección de Memorias en el Modal --- */
+.memorias-section {
+    margin: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #ccc; /* Separador */
+    text-align: left; /* Alinear texto a la izquierda */
+}
+
+.memorias-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+#memorias-list {
+    max-height: 150px; /* Altura máxima con scroll */
+    overflow-y: auto;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    background-color: #fff; /* Fondo blanco para la lista */
+    padding: 5px;
+    border-radius: 5px;
+}
+
+.memoria-item {
+    font-size: 12px;
+    padding: 5px;
+    border-bottom: 1px dotted #eee;
+}
+.memoria-item:last-child {
+    border-bottom: none;
+}
+.memoria-item small {
+    display: block;
+    color: #777;
+    margin-bottom: 3px;
+}
+
+/* Formulario para nueva memoria */
+#add-memoria-form label {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 3px;
+    color: #444;
+}
+
+#add-memoria-form input[type="date"],
+#add-memoria-form textarea {
+    width: 100%;
+    padding: 6px 8px;
+    margin-bottom: 10px;
+    border: 1px solid #aaa;
+    border-radius: 5px;
+    box-sizing: border-box;
+    font-size: 13px;
+    background-color: #fff;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; /* Heredar fuente */
+}
+#add-memoria-form textarea {
+    height: 60px; /* Altura para descripción */
+    resize: vertical; /* Permitir redimensionar verticalmente */
+}
+
+#add-memoria-btn {
+    /* Usar estilo similar a botones de navegación */
+    background: linear-gradient(to bottom, #fefefe 0%, #e6e6e6 100%);
+    border: 1px solid #aaa;
+    border-radius: 5px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #444;
+    cursor: pointer;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5);
+    text-shadow: 0 1px 0 #fff;
+    display: block; /* Ocupar ancho completo */
+    width: 100%;
+    margin-top: 5px;
+}
+#add-memoria-btn:active {
+    background: linear-gradient(to bottom, #dcdcdc 0%, #f0f0f0 100%);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+}
+
+#memoria-status {
+    font-size: 12px;
+    margin-top: 10px;
+    color: green;
+    min-height: 1.2em; /* Espacio para el mensaje */
+}
+
