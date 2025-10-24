@@ -1,17 +1,19 @@
-/* app.js - v7.5 - Corrected Batch Deletion Logic */
+/* app.js - v8.0 - Place Search, Image Input, Music Artwork, Visual Polish */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
     getFirestore, collection, getDocs, doc, updateDoc,
     writeBatch, setDoc, deleteDoc, Timestamp, query, orderBy, addDoc
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+// ** Importante: Añadir Storage si vamos a implementar subida real **
+// import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
 // --- Firebase Config ---
 const firebaseConfig = {
   apiKey: "AIzaSyBrd-8qaBfSplBjj74MNuKP8UWYmr8RaJA",
   authDomain: "ephemerides-2005.firebaseapp.com",
   projectId: "ephemerides-2005",
-  storageBucket: "ephemerides-2005.firebasestorage.app",
+  storageBucket: "ephemerides-2005.firebasestorage.app", // Asegúrate que es el correcto
   messagingSenderId: "360961314777",
   appId: "1:360961314777:web:809d9e66535acb292d13c8",
   measurementId: "G-BZC9FRYCJW"
@@ -19,6 +21,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+// ** Inicializar Storage (Necesario para subida de archivos) **
+// const storage = getStorage(app); // Descomentar cuando implementemos subida
 
 const appContent = document.getElementById("app-content");
 const monthNameDisplayEl = document.getElementById("month-name-display");
@@ -31,6 +35,7 @@ let currentMemories = [];
 let editingMemoryId = null;
 let currentlyOpenDay = null;
 let selectedMusicTrack = null;
+let selectedPlace = null; // Para guardar datos del lugar seleccionado
 
 // --- SVG Icons ---
 const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/></svg>`;
@@ -38,9 +43,9 @@ const deleteIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height
 const pencilIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-pencil-fill" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/></svg>`;
 
 
-// --- Check/Repair DB ---
+// --- Check/Repair DB (No changes needed) ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v7.5..."); // Version updated
+    console.log("Starting Check/Repair v8.0...");
     appContent.innerHTML = "<p>Verifying database...</p>";
     try {
         const diasRef = collection(db, "Dias");
@@ -50,17 +55,20 @@ async function checkAndRunApp() {
         if (currentDocCount < 366) {
             console.warn(`Repairing... Found ${currentDocCount} docs, expected 366.`);
             await generateCleanDatabase();
-        } else if (currentDocCount > 366) {
-             console.warn(`Found ${currentDocCount} docs, expected 366. Check for duplicates?`);
-             console.log("DB verified (>= 366 days).");
         } else {
-            console.log("DB verified (366 days).");
+            console.log("DB verified (>= 366 days).");
         }
         await loadDataAndDrawCalendar();
+        // Add listener for the refresh button
+        const refreshBtn = document.getElementById('refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.onclick = () => window.location.reload();
+        } else {
+            console.warn("Refresh button not found.");
+        }
     } catch (e) { appContent.innerHTML = `<p class="error">Critical error during startup: ${e.message}</p>`; console.error(e); }
 }
 
-// ** CORRECTED generateCleanDatabase using for...of for deletion **
 async function generateCleanDatabase() {
      console.log("--- Starting Regeneration ---");
     const diasRef = collection(db, "Dias");
@@ -68,27 +76,15 @@ async function generateCleanDatabase() {
         console.log("Deleting existing 'Dias' collection..."); appContent.innerHTML = "<p>Deleting old data...</p>";
         const oldDocsSnapshot = await getDocs(diasRef);
         if (!oldDocsSnapshot.empty) {
-            let batch = writeBatch(db);
-            let deleteCount = 0;
-            // Use for...of loop for async operations
-            for (const docSnap of oldDocsSnapshot.docs) {
-                batch.delete(docSnap.ref);
-                deleteCount++;
-                if (deleteCount >= 400) {
-                   console.log(`Committing delete batch (${deleteCount})...`);
-                   await batch.commit(); // Await is needed here
-                   batch = writeBatch(db); // Reinitialize batch
-                   deleteCount = 0;
-                }
+            let batch = writeBatch(db); let deleteCount = 0;
+            for (const docSnap of oldDocsSnapshot.docs) { // Use for...of
+                batch.delete(docSnap.ref); deleteCount++;
+                if (deleteCount >= 400) { console.log(`Committing delete batch (${deleteCount})...`); await batch.commit(); batch = writeBatch(db); deleteCount = 0; }
             }
-            // Commit any remaining deletes
-            if (deleteCount > 0) {
-                console.log(`Committing final delete batch (${deleteCount})...`);
-                await batch.commit(); // Await is needed here
-            }
+            if (deleteCount > 0) { console.log(`Committing final delete batch (${deleteCount})...`); await batch.commit(); }
              console.log(`Deletion complete (${oldDocsSnapshot.size}).`);
         } else { console.log("'Dias' collection was already empty."); }
-    } catch(e) { console.error("Error deleting collection:", e); appContent.innerHTML = `<p class="error">Error cleaning database: ${e.message}</p>`; throw e; }
+    } catch(e) { console.error("Error deleting collection:", e); throw e; }
 
     console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>";
     let batch = writeBatch(db); let ops = 0, created = 0;
@@ -101,20 +97,13 @@ async function generateCleanDatabase() {
                 const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day" };
                 const docRef = doc(db, "Dias", diaId); batch.set(docRef, diaData); ops++; created++;
                 if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`;
-                if (ops >= 400) {
-                    console.log(`Committing generate batch (${ops})...`);
-                    await batch.commit(); // Await is needed here
-                    batch = writeBatch(db); ops = 0;
-                }
+                if (ops >= 400) { console.log(`Committing generate batch (${ops})...`); await batch.commit(); batch = writeBatch(db); ops = 0; }
             }
         }
-        if (ops > 0) {
-            console.log(`Committing final generate batch (${ops})...`);
-            await batch.commit(); // Await is needed here
-        }
+        if (ops > 0) { console.log(`Committing final generate batch (${ops})...`); await batch.commit(); }
          console.log(`--- Regeneration complete: ${created} days created ---`);
         appContent.innerHTML = `<p class="success">✅ Database regenerated with ${created} days!</p>`;
-    } catch(e) { console.error("Error generating days:", e); appContent.innerHTML = `<p class="error">Error generating database: ${e.message}</p>`; throw e; }
+    } catch(e) { console.error("Error generating days:", e); throw e; }
 }
 
 async function loadDataAndDrawCalendar() {
@@ -132,20 +121,17 @@ async function loadDataAndDrawCalendar() {
     } catch (e) { appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`; console.error(e); }
 }
 
-function configurarNavegacion() {
+function configurarNavegacion() { /* No changes */
      document.getElementById("prev-month").onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); };
     document.getElementById("next-month").onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); };
 }
 
-// --- Draw Current Month ---
-function dibujarMesActual() {
+// --- Draw Current Month (No changes needed) ---
+function dibujarMesActual() { /* ... unchanged ... */
     monthNameDisplayEl.textContent = monthNames[currentMonthIndex];
     const monthNumberTarget = currentMonthIndex + 1;
     console.log(`Drawing month ${monthNumberTarget} (${monthNames[currentMonthIndex]})`);
-    const diasDelMes = allDaysData.filter(dia => {
-        try { return parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget; }
-        catch (e) { console.error(`Error parsing ID '${dia.id}' during filter`, e); return false; }
-    });
+    const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget );
     console.log(`Found ${diasDelMes.length} days for month ${monthNumberTarget}.`);
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div>`;
     const grid = document.getElementById("grid-dias");
@@ -165,18 +151,33 @@ function dibujarMesActual() {
 }
 
 // --- Footer Actions ---
-function configurarFooter() {
+function configurarFooter() { // Updated Today logic slightly
     document.getElementById('btn-hoy').onclick = () => {
         const today = new Date();
-        const todayMonth = (today.getMonth() + 1).toString().padStart(2, '0');
-        const todayDay = today.getDate().toString().padStart(2, '0');
-        const todayId = `${todayMonth}-${todayDay}`;
+        const todayMonth = today.getMonth(); // 0-11
+        const todayDay = today.getDate(); // 1-31
+        const todayId = `${(todayMonth + 1).toString().padStart(2, '0')}-${todayDay.toString().padStart(2, '0')}`;
         console.log("Today button clicked, searching for ID:", todayId);
+
+        // Find the data object for today
         const todayDia = allDaysData.find(d => d.id === todayId);
+
         if (todayDia) {
-             currentMonthIndex = today.getMonth(); dibujarMesActual();
-             setTimeout(() => abrirModalPreview(todayDia), 50); window.scrollTo(0, 0);
-        } else { console.error("Could not find today's data:", todayId); alert("Error: Could not find data for today."); }
+             // If not already on today's month, navigate and then open preview
+             if (currentMonthIndex !== todayMonth) {
+                 currentMonthIndex = todayMonth;
+                 dibujarMesActual(); // Redraw grid first
+                 // Wait a tiny bit for redraw before opening modal
+                 setTimeout(() => abrirModalPreview(todayDia), 50);
+             } else {
+                 // Already on the correct month, just open preview
+                 abrirModalPreview(todayDia);
+             }
+             window.scrollTo(0, 0); // Scroll to top
+        } else {
+            console.error("Could not find today's data:", todayId);
+            alert("Error: Could not find data for today.");
+        }
     };
     document.getElementById('btn-buscar').onclick = () => {
         const searchTerm = prompt("Search memories by text (case-insensitive):");
@@ -187,15 +188,22 @@ function configurarFooter() {
             const randomIndex = Math.floor(Math.random() * allDaysData.length);
             const randomDia = allDaysData[randomIndex];
             console.log("Shuffle button clicked, opening random day:", randomDia.id);
-             currentMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1; dibujarMesActual();
-             setTimeout(() => abrirModalPreview(randomDia), 50); window.scrollTo(0, 0);
+            const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1;
+            if (currentMonthIndex !== randomMonthIndex) {
+                 currentMonthIndex = randomMonthIndex;
+                 dibujarMesActual();
+                 setTimeout(() => abrirModalPreview(randomDia), 50);
+            } else {
+                abrirModalPreview(randomDia);
+            }
+             window.scrollTo(0, 0);
         }
     };
     document.getElementById('btn-add-memory').onclick = () => { abrirModalAddMemory(); };
 }
 
-// --- Search Memories ---
-async function buscarMemorias(term) {
+// --- Search Memories (No changes needed) ---
+async function buscarMemorias(term) { /* ... unchanged ... */
     console.log("Searching memories containing:", term);
     appContent.innerHTML = `<p>Searching memories containing "${term}"...</p>`;
     let results = []; let daysSearched = 0;
@@ -209,7 +217,6 @@ async function buscarMemorias(term) {
                 let searchableText = memoria.Descripcion || '';
                 if(memoria.LugarNombre) searchableText += ' ' + memoria.LugarNombre;
                 if(memoria.CancionInfo) searchableText += ' ' + memoria.CancionInfo;
-
                 if (searchableText.toLowerCase().includes(term)) { results.push(memoria); }
             });
         }
@@ -226,7 +233,6 @@ async function buscarMemorias(term) {
                      try { fechaStr = mem.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); }
                      catch(e) { fechaStr = mem.Fecha_Original.toDate().toISOString().split('T')[0]; }
                  } else if (mem.Fecha_Original) { fechaStr = mem.Fecha_Original.toString(); }
-
                  let contentHTML = `<small><b>${mem.diaNombre} (${mem.diaId})</b> - ${fechaStr}</small>`;
                  switch (mem.Tipo) {
                      case 'Lugar': contentHTML += `📍 Visited: ${mem.LugarNombre || 'Unknown Place'}`; break;
@@ -241,7 +247,6 @@ async function buscarMemorias(term) {
                          break;
                      case 'Texto': default: contentHTML += mem.Descripcion || ''; break;
                  }
-
                 itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>`;
                  itemDiv.style.cursor = 'pointer';
                  itemDiv.onclick = () => {
@@ -260,8 +265,8 @@ async function buscarMemorias(term) {
 }
 
 
-// --- Preview Modal ---
-async function abrirModalPreview(dia) {
+// --- Preview Modal (No changes needed) ---
+async function abrirModalPreview(dia) { /* ... unchanged ... */
     console.log("Opening preview for:", dia.id);
     currentlyOpenDay = dia;
     let modal = document.getElementById('preview-modal');
@@ -292,14 +297,14 @@ async function abrirModalPreview(dia) {
     modal.style.display = 'flex'; setTimeout(() => modal.classList.add('visible'), 10);
     await cargarYMostrarMemorias(dia.id, 'preview-memorias-list');
 }
-function cerrarModalPreview() {
+function cerrarModalPreview() { /* ... unchanged ... */
     const modal = document.getElementById('preview-modal');
     if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); }
     currentlyOpenDay = null;
 }
 
-// --- Edit Modal ---
-async function abrirModalEdicion(dia) {
+// --- Edit Modal (No changes needed) ---
+async function abrirModalEdicion(dia) { /* ... unchanged ... */
     console.log("Opening EDIT modal for:", dia.id);
     currentlyOpenDay = dia;
     let modal = document.getElementById('edit-modal');
@@ -351,11 +356,8 @@ async function abrirModalEdicion(dia) {
     document.getElementById('memoria-status').textContent = '';
     const confirmDialog = document.getElementById('confirm-delete-dialog');
     if(confirmDialog) confirmDialog.style.display = 'none';
-
     document.getElementById('save-name-btn').onclick = () => guardarNombreEspecial(dia.id, inputNombreEspecial.value.trim());
-
     const addMemoriaForm = document.getElementById('add-memoria-form');
-    // Ensure only one submit listener is attached
     addMemoriaForm.onsubmit = null;
     addMemoriaForm.onsubmit = async (e) => {
         e.preventDefault();
@@ -364,17 +366,16 @@ async function abrirModalEdicion(dia) {
         if (editingMemoryId) { await updateMemoria(dia.id, editingMemoryId, fechaInput, descInput.trim()); }
         else { await guardarNuevaMemoria(dia.id, fechaInput, descInput.trim()); }
     };
-
     modal.style.display = 'flex'; setTimeout(() => modal.classList.add('visible'), 10);
     await cargarYMostrarMemorias(dia.id, 'edit-memorias-list');
 }
-function cerrarModalEdicion() {
+function cerrarModalEdicion() { /* ... unchanged ... */
     const modal = document.getElementById('edit-modal');
     if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; resetMemoryForm(); }, 200); }
     currentlyOpenDay = null;
 }
 
-// --- Load/Display Memories ---
+// --- Load/Display Memories (Add Artwork for Music) ---
 async function cargarYMostrarMemorias(diaId, targetDivId) {
     const memoriasListDiv = document.getElementById(targetDivId);
     if (!memoriasListDiv) { console.error("Target div missing:", targetDivId); return; }
@@ -387,7 +388,7 @@ async function cargarYMostrarMemorias(diaId, targetDivId) {
         memoriasListDiv.innerHTML = '';
         querySnapshot.forEach((docSnap) => {
             const memoria = { id: docSnap.id, ...docSnap.data() };
-            currentMemories.push(memoria); // Add to local cache for edit/delete
+            currentMemories.push(memoria);
 
             const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item';
             let fechaStr = 'Unknown date';
@@ -397,27 +398,41 @@ async function cargarYMostrarMemorias(diaId, targetDivId) {
             } else if (memoria.Fecha_Original) { fechaStr = memoria.Fecha_Original.toString(); }
 
             let contentHTML = `<small>${fechaStr}</small>`;
+            let artworkHTML = ''; // Variable to hold potential artwork
+
             switch (memoria.Tipo) {
                 case 'Lugar': contentHTML += `📍 Visited: ${memoria.LugarNombre || 'Unknown Place'}`; break;
                 case 'Musica':
-                     if (memoria.CancionData?.trackName) contentHTML += `🎵 Listened to: <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`;
-                     else contentHTML += `🎵 Listened to: ${memoria.CancionInfo || 'Unknown Song'}`;
+                     if (memoria.CancionData?.trackName) {
+                         contentHTML += `🎵 Listened to: <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`;
+                         // Add artwork if available
+                         if(memoria.CancionData.artworkUrl60) {
+                             artworkHTML = `<img src="${memoria.CancionData.artworkUrl60}" alt="Artwork" class="memoria-artwork">`;
+                         }
+                     } else {
+                         contentHTML += `🎵 Listened to: ${memoria.CancionInfo || 'Unknown Song'}`;
+                     }
                      break;
                 case 'Imagen':
                     contentHTML += `🖼️ Added Image`;
-                    if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank" style="font-size: 10px;">View</a>)`;
+                    if (memoria.ImagenURL) {
+                        contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank" style="font-size: 10px;">View</a>)`;
+                        // Optionally add thumbnail preview
+                        // artworkHTML = `<img src="${memoria.ImagenURL}" alt="Memory Image" class="memoria-artwork">`; // Be careful with large images
+                    }
                     if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`;
                     break;
                 case 'Texto': default: contentHTML += memoria.Descripcion || 'No description'; break;
             }
 
-            // Only add edit/delete buttons in the edit modal
             const actionsHTML = (targetDivId === 'edit-memorias-list') ? `
                 <div class="memoria-actions">
                     <button class="edit-btn" title="Edit">${editIconSVG}</button>
                     <button class="delete-btn" title="Delete">${deleteIconSVG}</button>
                 </div>` : '';
-            itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>${actionsHTML}`;
+
+            // Combine artwork and content
+            itemDiv.innerHTML = `${artworkHTML}<div class="memoria-item-content">${contentHTML}</div>${actionsHTML}`;
 
             if (targetDivId === 'edit-memorias-list') {
                 itemDiv.querySelector('.edit-btn').onclick = () => startEditMemoria(memoria);
@@ -430,170 +445,82 @@ async function cargarYMostrarMemorias(diaId, targetDivId) {
     } catch (e) { console.error(`Error loading memories ${diaId}:`, e); memoriasListDiv.innerHTML = '<p class="error">Error loading memories.</p>'; }
 }
 
-
-// --- CRUD Functions ---
-function startEditMemoria(memoria) {
+// --- CRUD Functions (No major logic changes needed) ---
+function startEditMemoria(memoria) { /* ... unchanged ... */
     editingMemoryId = memoria.id;
-    const fechaInput = document.getElementById('memoria-fecha');
-    const descInput = document.getElementById('memoria-desc');
+    const fechaInput = document.getElementById('memoria-fecha'); const descInput = document.getElementById('memoria-desc');
     const addButton = document.getElementById('add-memoria-btn');
-
-    if (memoria.Fecha_Original?.toDate) {
-        try { fechaInput.value = memoria.Fecha_Original.toDate().toISOString().split('T')[0]; } catch(e) { fechaInput.value = ''; }
-    } else { fechaInput.value = ''; }
-
-    let contentToEdit = '';
-    let placeholderText = "Edit content..."; // Default placeholder
+    if (memoria.Fecha_Original?.toDate) { try { fechaInput.value = memoria.Fecha_Original.toDate().toISOString().split('T')[0]; } catch(e) { fechaInput.value = ''; } } else { fechaInput.value = ''; }
+    let contentToEdit = '', placeholderText = "Edit content...";
     switch (memoria.Tipo) {
         case 'Lugar': contentToEdit = memoria.LugarNombre || ''; placeholderText = "Edit Place Name..."; break;
         case 'Musica': contentToEdit = memoria.CancionInfo || ''; placeholderText = "Edit Music Info (Text)..."; break;
-        case 'Imagen':
-             contentToEdit = memoria.Descripcion || memoria.ImagenURL || ''; // Prefer description
-             placeholderText = "Edit Image Description or URL...";
-             break;
+        case 'Imagen': contentToEdit = memoria.Descripcion || memoria.ImagenURL || ''; placeholderText = "Edit Image Description or URL..."; break;
         case 'Texto': default: contentToEdit = memoria.Descripcion || ''; placeholderText = "Edit description..."; break;
     }
-    descInput.value = contentToEdit;
-    descInput.placeholder = placeholderText;
-
-    addButton.textContent = 'Update Memory';
-    addButton.classList.add('update-mode');
-    descInput.focus();
+    descInput.value = contentToEdit; descInput.placeholder = placeholderText;
+    addButton.textContent = 'Update Memory'; addButton.classList.add('update-mode'); descInput.focus();
 }
-
-async function updateMemoria(diaId, memoriaId, fechaStr, contentValue) {
+async function updateMemoria(diaId, memoriaId, fechaStr, contentValue) { /* ... unchanged ... */
     const memoriaStatus = document.getElementById('memoria-status');
-    if (!fechaStr || !contentValue) {
-        memoriaStatus.textContent = 'Date and content required.'; memoriaStatus.className = 'error';
-        setTimeout(() => memoriaStatus.textContent = '', 3000); return;
-    }
+    if (!fechaStr || !contentValue) { memoriaStatus.textContent = 'Date and content required.'; memoriaStatus.className = 'error'; setTimeout(() => memoriaStatus.textContent = '', 3000); return; }
     memoriaStatus.textContent = 'Updating...'; memoriaStatus.className = '';
     try {
-        const dateParts = fechaStr.split('-');
-        const localDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-        // Add basic date validation
+        const dateParts = fechaStr.split('-'); const localDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
         if (isNaN(localDate.getTime())) throw new Error("Invalid date format.");
-        const fechaOriginalTimestamp = Timestamp.fromDate(localDate);
-        const memoriaRef = doc(db, "Dias", diaId, "Memorias", memoriaId);
-
-        const originalMemoria = currentMemories.find(m => m.id === memoriaId);
-        let updateData = { Fecha_Original: fechaOriginalTimestamp };
-
-        // Update correct field based on original type
+        const fechaOriginalTimestamp = Timestamp.fromDate(localDate); const memoriaRef = doc(db, "Dias", diaId, "Memorias", memoriaId);
+        const originalMemoria = currentMemories.find(m => m.id === memoriaId); let updateData = { Fecha_Original: fechaOriginalTimestamp };
         switch (originalMemoria?.Tipo) {
              case 'Lugar': updateData.LugarNombre = contentValue; break;
-             case 'Musica': updateData.CancionInfo = contentValue; break; // Still updating raw text
-             case 'Imagen':
-                 // Assume textarea edits the Description for images
-                 updateData.Descripcion = contentValue;
-                 // We don't update the URL here, assume it's fixed or managed elsewhere
-                 break;
+             case 'Musica': updateData.CancionInfo = contentValue; break;
+             case 'Imagen': updateData.Descripcion = contentValue; break;
              case 'Texto': default: updateData.Descripcion = contentValue; break;
         }
-
-        await updateDoc(memoriaRef, updateData);
-        memoriaStatus.textContent = 'Memory Updated!'; memoriaStatus.className = 'success';
-        resetMemoryForm();
-        await cargarYMostrarMemorias(diaId, 'edit-memorias-list');
-        setTimeout(() => memoriaStatus.textContent = '', 2000);
+        await updateDoc(memoriaRef, updateData); memoriaStatus.textContent = 'Memory Updated!'; memoriaStatus.className = 'success'; resetMemoryForm();
+        await cargarYMostrarMemorias(diaId, 'edit-memorias-list'); setTimeout(() => memoriaStatus.textContent = '', 2000);
     } catch (e) { console.error("Error updating:", e); memoriaStatus.textContent = `Error: ${e.message}`; memoriaStatus.className = 'error'; }
 }
-
-function confirmDeleteMemoria(diaId, memoriaId, displayInfo) {
-    const dialog = document.getElementById('confirm-delete-dialog');
-    const yesButton = document.getElementById('confirm-delete-yes');
-    const textElement = document.getElementById('confirm-delete-text');
-    const descPreview = displayInfo ? (displayInfo.length > 50 ? displayInfo.substring(0, 47) + '...' : displayInfo) : 'this memory';
-    textElement.textContent = `Delete "${descPreview}"?`;
-    dialog.style.display = 'block';
-
-    // Ensure dialog is within the modal content for proper display/styling
-    const editModalContent = document.querySelector('#edit-modal .modal-content');
-    if (editModalContent) {
-         // Check if dialog is already a child, append if not
-         if (!editModalContent.contains(dialog)) {
-              editModalContent.appendChild(dialog);
-         }
-    } else {
-        console.warn("Could not find edit modal content to append confirm dialog.");
-    }
-
-
-    yesButton.onclick = null; // Remove previous listener
-    yesButton.onclick = async () => {
-        dialog.style.display = 'none';
-        await deleteMemoria(diaId, memoriaId);
-    };
+function confirmDeleteMemoria(diaId, memoriaId, displayInfo) { /* ... unchanged ... */
+    const dialog = document.getElementById('confirm-delete-dialog'); const yesButton = document.getElementById('confirm-delete-yes');
+    const textElement = document.getElementById('confirm-delete-text'); const descPreview = displayInfo ? (displayInfo.length > 50 ? displayInfo.substring(0, 47) + '...' : displayInfo) : 'this memory';
+    textElement.textContent = `Delete "${descPreview}"?`; dialog.style.display = 'block';
+    const editModalContent = document.querySelector('#edit-modal .modal-content'); if (editModalContent && !editModalContent.contains(dialog)) { editModalContent.appendChild(dialog); }
+    yesButton.onclick = null; yesButton.onclick = async () => { dialog.style.display = 'none'; await deleteMemoria(diaId, memoriaId); };
 }
-
-async function deleteMemoria(diaId, memoriaId) {
-    const memoriaStatus = document.getElementById('memoria-status');
-    memoriaStatus.textContent = 'Deleting...'; memoriaStatus.className = '';
+async function deleteMemoria(diaId, memoriaId) { /* ... unchanged ... */
+    const memoriaStatus = document.getElementById('memoria-status'); memoriaStatus.textContent = 'Deleting...'; memoriaStatus.className = '';
     console.log(`Attempting to delete: Dias/${diaId}/Memorias/${memoriaId}`);
     try {
-        const memoriaRef = doc(db, "Dias", diaId, "Memorias", memoriaId);
-        await deleteDoc(memoriaRef);
-        console.log("Successfully deleted:", memoriaId);
-        memoriaStatus.textContent = 'Memory Deleted!'; memoriaStatus.className = 'success';
-        currentMemories = currentMemories.filter(m => m.id !== memoriaId); // Update local cache
-        await cargarYMostrarMemorias(diaId, 'edit-memorias-list');
-        setTimeout(() => memoriaStatus.textContent = '', 2000);
+        const memoriaRef = doc(db, "Dias", diaId, "Memorias", memoriaId); await deleteDoc(memoriaRef); console.log("Successfully deleted:", memoriaId);
+        memoriaStatus.textContent = 'Memory Deleted!'; memoriaStatus.className = 'success'; currentMemories = currentMemories.filter(m => m.id !== memoriaId);
+        await cargarYMostrarMemorias(diaId, 'edit-memorias-list'); setTimeout(() => memoriaStatus.textContent = '', 2000);
     } catch (e) { console.error("Error deleting memory:", e); memoriaStatus.textContent = `Error: ${e.message}`; memoriaStatus.className = 'error'; }
 }
-
-// Simplified version for the Edit modal form (only adds Texto type)
-async function guardarNuevaMemoria(diaId, fechaStr, descripcion) {
+async function guardarNuevaMemoria(diaId, fechaStr, descripcion) { /* ... unchanged ... */
      const memoriaStatus = document.getElementById('memoria-status');
      if (!fechaStr || !descripcion) { memoriaStatus.textContent = 'Date and description required.'; memoriaStatus.className = 'error'; setTimeout(() => memoriaStatus.textContent = '', 3000); return; }
      memoriaStatus.textContent = 'Saving...'; memoriaStatus.className = '';
      try {
-         const dateParts = fechaStr.split('-');
-         const localDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+         const dateParts = fechaStr.split('-'); const localDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
          if (isNaN(localDate.getTime())) throw new Error("Invalid date format.");
-         const fechaOriginalTimestamp = Timestamp.fromDate(localDate);
-         const memoriasRef = collection(db, "Dias", diaId, "Memorias");
-         await addDoc(memoriasRef, {
-              Tipo: 'Texto',
-              Fecha_Original: fechaOriginalTimestamp,
-              Descripcion: descripcion,
-              Creado_En: Timestamp.now()
-          });
-         memoriaStatus.textContent = 'Memory Saved!'; memoriaStatus.className = 'success';
-         resetMemoryForm();
-         await cargarYMostrarMemorias(diaId, 'edit-memorias-list');
-         setTimeout(() => memoriaStatus.textContent = '', 2000);
+         const fechaOriginalTimestamp = Timestamp.fromDate(localDate); const memoriasRef = collection(db, "Dias", diaId, "Memorias");
+         await addDoc(memoriasRef, { Tipo: 'Texto', Fecha_Original: fechaOriginalTimestamp, Descripcion: descripcion, Creado_En: Timestamp.now() });
+         memoriaStatus.textContent = 'Memory Saved!'; memoriaStatus.className = 'success'; resetMemoryForm();
+         await cargarYMostrarMemorias(diaId, 'edit-memorias-list'); setTimeout(() => memoriaStatus.textContent = '', 2000);
      } catch (e) { console.error("Error saving new memory:", e); memoriaStatus.textContent = `Error: ${e.message}`; memoriaStatus.className = 'error'; }
- }
-
-function resetMemoryForm() {
-    editingMemoryId = null;
-    const form = document.getElementById('add-memoria-form'); // Assumes this ID is unique to the edit modal form
-    if(form) {
-        form.reset();
-        const addButton = document.getElementById('add-memoria-btn'); // Assumes this ID is unique
-        if (addButton) {
-            addButton.textContent = 'Add Memory';
-            addButton.classList.remove('update-mode');
-        }
-        const statusEl = document.getElementById('memoria-status'); // Assumes this ID is unique
-        if(statusEl) statusEl.textContent = '';
-        const descInput = document.getElementById('memoria-desc'); // Assumes this ID is unique
-        if (descInput) descInput.placeholder = "Write your memory...";
-    }
 }
-
-async function guardarNombreEspecial(diaId, nuevoNombre) {
+function resetMemoryForm() { /* ... unchanged ... */
+    editingMemoryId = null; const form = document.getElementById('add-memoria-form'); if(form) { form.reset(); const addButton = document.getElementById('add-memoria-btn'); if (addButton) { addButton.textContent = 'Add Memory'; addButton.classList.remove('update-mode'); } const statusEl = document.getElementById('memoria-status'); if(statusEl) statusEl.textContent = ''; const descInput = document.getElementById('memoria-desc'); if (descInput) descInput.placeholder = "Write your memory..."; }
+}
+async function guardarNombreEspecial(diaId, nuevoNombre) { /* ... unchanged ... */
     const status = document.getElementById('save-status');
     try {
         status.textContent = "Saving..."; status.className = ''; const diaRef = doc(db, "Dias", diaId); const valorFinal = nuevoNombre || "Unnamed Day";
         await updateDoc(diaRef, { Nombre_Especial: valorFinal }); const diaIndex = allDaysData.findIndex(d => d.id === diaId);
-        if (diaIndex !== -1) allDaysData[diaIndex].Nombre_Especial = valorFinal;
-        status.textContent = "Name Saved!"; status.className = 'success';
+        if (diaIndex !== -1) allDaysData[diaIndex].Nombre_Especial = valorFinal; status.textContent = "Name Saved!"; status.className = 'success';
          if(currentlyOpenDay && currentlyOpenDay.id === diaId) { currentlyOpenDay.Nombre_Especial = valorFinal; }
-         setTimeout(() => { status.textContent = ''; dibujarMesActual(); }, 1200); // Redraw month on success
-         // Update preview title immediately if it's open
-         const previewTitle = document.getElementById('preview-title');
-         const previewModal = document.getElementById('preview-modal');
+         setTimeout(() => { status.textContent = ''; dibujarMesActual(); }, 1200);
+         const previewTitle = document.getElementById('preview-title'); const previewModal = document.getElementById('preview-modal');
          if(previewTitle && currentlyOpenDay && currentlyOpenDay.id === diaId && previewModal?.style.display === 'flex') {
              previewTitle.textContent = `${currentlyOpenDay.Nombre_Dia} ${valorFinal !== 'Unnamed Day' ? '('+valorFinal+')' : ''}`;
          }
@@ -601,23 +528,23 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
 }
 
 
-// --- Add Memory Modal ---
+// --- Add Memory Modal (Updated HTML Structure & Functions) ---
 function abrirModalAddMemory() {
     console.log("Opening Add Memory modal...");
-    selectedMusicTrack = null;
+    selectedMusicTrack = null; selectedPlace = null; // Reset selections
     let modal = document.getElementById('add-memory-modal');
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'add-memory-modal';
-        modal.className = 'modal-add-memory'; // Use specific class for styling
+        modal.className = 'modal-add-memory';
         modal.innerHTML = `
-             <div class="modal-add-memory-content"> {/* Use specific class */}
+             <div class="modal-add-memory-content">
                 <h3>Add New Memory</h3>
                 <div class="add-memory-form-section">
                     <label for="add-mem-day">Select Day (MM-DD):</label>
                     <select id="add-mem-day"></select>
                     <label for="add-mem-year">Year of Memory:</label>
-                    <input type="number" id="add-mem-year" placeholder="YYYY" min="1800" max="${new Date().getFullYear() + 1}" required> {/* Adjusted year range */}
+                    <input type="number" id="add-mem-year" placeholder="YYYY" min="1800" max="${new Date().getFullYear() + 1}" required>
                 </div>
                 <div class="add-memory-form-section">
                     <label for="add-mem-type">Type of Memory:</label>
@@ -629,11 +556,33 @@ function abrirModalAddMemory() {
                     </select>
                     {/* Inputs */}
                     <div id="input-type-Texto"><label for="add-mem-desc">Description:</label><textarea id="add-mem-desc" placeholder="Write your memory..."></textarea></div>
-                    <div id="input-type-Lugar" style="display: none;"><label for="add-mem-place">Place Name:</label><input type="text" id="add-mem-place" placeholder="Enter place name..."><button type="button" class="placeholder-button" onclick="alert('Place search coming soon!')">Search Place (Future)</button></div>
-                    <div id="input-type-Musica" style="display: none;"><label for="add-mem-music-search">Search iTunes:</label><input type="text" id="add-mem-music-search" placeholder="Enter song or album title..."><button type="button" class="aqua-button" id="btn-search-itunes">Search Music</button><div id="itunes-results"></div></div> {/* Removed extra classes */}
-                    <div id="input-type-Imagen" style="display: none;"><label for="add-mem-image-url">Image URL:</label><input type="url" id="add-mem-image-url" placeholder="http://..."><label for="add-mem-image-desc">Image Description (Optional):</label><input type="text" id="add-mem-image-desc" placeholder="Describe the image..."><button type="button" class="placeholder-button" onclick="alert('Image upload coming soon!')">Upload Image (Future)</button></div>
+                    {/* Place Search */}
+                    <div id="input-type-Lugar" style="display: none;">
+                        <label for="add-mem-place-search">Search Place:</label>
+                        <input type="text" id="add-mem-place-search" placeholder="Enter place name...">
+                        <button type="button" class="aqua-button" id="btn-search-place">Search Place</button>
+                        <div id="place-results"></div> {/* Results Area */}
+                        <input type="hidden" id="add-mem-place-name"> {/* Store selected name */}
+                    </div>
+                    {/* Music Search */}
+                    <div id="input-type-Musica" style="display: none;">
+                        <label for="add-mem-music-search">Search iTunes:</label>
+                        <input type="text" id="add-mem-music-search" placeholder="Enter song or album title...">
+                        <button type="button" class="aqua-button" id="btn-search-itunes">Search Music</button>
+                        <div id="itunes-results"></div>
+                        <input type="hidden" id="add-mem-music-info"> {/* Store selected info */}
+                    </div>
+                    {/* Image Upload */}
+                    <div id="input-type-Imagen" style="display: none;">
+                        <label for="add-mem-image-upload">Upload Image:</label>
+                        <input type="file" id="add-mem-image-upload" accept="image/*"> {/* File Input */}
+                        <label for="add-mem-image-desc">Image Description (Optional):</label>
+                        <input type="text" id="add-mem-image-desc" placeholder="Describe the image...">
+                        {/* Placeholder for upload status/preview */}
+                        <div id="image-upload-status" style="font-size: 11px; color: #555; margin-top: 5px;"></div>
+                    </div>
                 </div>
-                <div class="button-group"> {/* Standardized button group */}
+                <div class="button-group">
                     <button type="button" id="close-add-mem-btn" class="aqua-button">Cancel</button>
                     <button type="button" id="save-add-mem-btn" class="aqua-button">Save Memory</button>
                 </div>
@@ -658,17 +607,35 @@ function abrirModalAddMemory() {
         document.getElementById('close-add-mem-btn').onclick = () => cerrarModalAddMemory();
         document.getElementById('save-add-mem-btn').onclick = () => saveMemoryFromAddModal();
         modal.onclick = (e) => { if (e.target.id === 'add-memory-modal') cerrarModalAddMemory(); };
-        document.getElementById('btn-search-itunes').onclick = buscarBSO; // Attach search listener
+        document.getElementById('btn-search-itunes').onclick = buscarBSO;
+        document.getElementById('btn-search-place').onclick = buscarLugar; // Attach place search
+         // Listener for file input change
+        const fileInput = document.getElementById('add-mem-image-upload');
+        const imageStatus = document.getElementById('image-upload-status');
+        if (fileInput && imageStatus) {
+            fileInput.onchange = (event) => {
+                 if (event.target.files && event.target.files[0]) {
+                     imageStatus.textContent = `Selected: ${event.target.files[0].name}`;
+                     imageStatus.className = '';
+                 } else {
+                     imageStatus.textContent = '';
+                 }
+             };
+        }
+
     }
 
     // Reset fields and show
     document.getElementById('add-memory-status').textContent = '';
-    selectedMusicTrack = null;
+    selectedMusicTrack = null; selectedPlace = null;
     document.getElementById('itunes-results').innerHTML = '';
+    document.getElementById('place-results').innerHTML = '';
     document.getElementById('add-mem-music-search').value = '';
+    document.getElementById('add-mem-place-search').value = '';
     document.getElementById('add-mem-desc').value = '';
-    document.getElementById('add-mem-place').value = '';
-    document.getElementById('add-mem-image-url').value = '';
+    document.getElementById('add-mem-place-name').value = '';
+    document.getElementById('add-mem-image-upload').value = null; // Clear file input
+    document.getElementById('image-upload-status').textContent = '';
     document.getElementById('add-mem-image-desc').value = '';
     document.getElementById('add-mem-type').value = 'Texto';
 
@@ -679,7 +646,7 @@ function abrirModalAddMemory() {
      if (daySelect.querySelector(`option[value="${todayId}"]`)) daySelect.value = todayId;
      document.getElementById('add-mem-year').value = today.getFullYear();
 
-    handleMemoryTypeChange(); // Show correct initial fields
+    handleMemoryTypeChange();
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('visible'), 10);
 }
@@ -692,10 +659,20 @@ function handleMemoryTypeChange() {
     });
     const divToShow = document.getElementById(`input-type-${selectedType}`);
     if (divToShow) { divToShow.style.display = 'block'; }
+    // Clear results/selections if switching away from Place or Music
     if (selectedType !== 'Musica') {
         const resultsDiv = document.getElementById('itunes-results'); if (resultsDiv) resultsDiv.innerHTML = '';
         selectedMusicTrack = null;
     }
+    if (selectedType !== 'Lugar') {
+        const resultsDiv = document.getElementById('place-results'); if (resultsDiv) resultsDiv.innerHTML = '';
+        selectedPlace = null;
+        document.getElementById('add-mem-place-name').value = ''; // Clear hidden input
+    }
+     if (selectedType !== 'Imagen') {
+        const fileInput = document.getElementById('add-mem-image-upload'); if (fileInput) fileInput.value = null;
+        const imageStatus = document.getElementById('image-upload-status'); if (imageStatus) imageStatus.textContent = '';
+     }
 }
 
 function cerrarModalAddMemory() {
@@ -703,7 +680,7 @@ function cerrarModalAddMemory() {
     if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); }
 }
 
-// --- iTunes Search Function ---
+// --- iTunes Search Function (Add Artwork) ---
 async function buscarBSO() {
     const queryInput = document.getElementById('add-mem-music-search');
     const resultsDiv = document.getElementById('itunes-results');
@@ -714,67 +691,95 @@ async function buscarBSO() {
     resultsDiv.innerHTML = '<p style="padding: 5px;">Searching iTunes...</p>';
     statusDiv.textContent = ''; selectedMusicTrack = null;
 
-    // Using a reliable CORS proxy
     const proxyUrl = 'https://corsproxy.io/?';
-    const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=5`;
-    const url = proxyUrl + encodeURIComponent(itunesUrl); // Encode the target URL
+    const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=5`; // Explicitly media=music
+    const url = proxyUrl + encodeURIComponent(itunesUrl);
     console.log("Fetching iTunes URL via proxy:", url);
 
     try {
         const response = await fetch(url);
-        if (!response.ok) {
-             let errorText = await response.text();
-             console.error("iTunes fetch failed:", response.status, errorText);
-             throw new Error(`HTTP error ${response.status}: ${errorText.substring(0, 100)}`);
-         }
-        const data = await response.json();
-        const actualData = data; // Assuming direct JSON response from this proxy
+        if (!response.ok) { let errorText = await response.text(); console.error("iTunes fetch failed:", response.status, errorText); throw new Error(`HTTP error ${response.status}`); }
+        const data = await response.json(); const actualData = data;
 
-        if (!actualData.results || actualData.resultCount === 0) {
-            resultsDiv.innerHTML = '<p style="padding: 5px;">No results found.</p>';
-            return;
-        }
+        if (!actualData.results || actualData.resultCount === 0) { resultsDiv.innerHTML = '<p style="padding: 5px;">No results found.</p>'; return; }
 
-        resultsDiv.innerHTML = ''; // Clear results before adding new ones
+        resultsDiv.innerHTML = '';
         actualData.results.forEach(track => {
-            const trackDiv = document.createElement('div');
-            trackDiv.className = 'itunes-track';
+            const trackDiv = document.createElement('div'); trackDiv.className = 'itunes-track';
+            // ** Get slightly larger artwork, fallback **
             const artworkUrl = track.artworkUrl100 || track.artworkUrl60 || '';
             trackDiv.innerHTML = `
-                <img src="${artworkUrl}" alt="Artwork" style="${artworkUrl ? '' : 'display:none;'}" onerror="this.style.display='none'">
+                <img src="${artworkUrl}" alt="Artwork" class="itunes-artwork" style="${artworkUrl ? '' : 'display:none;'}" onerror="this.style.display='none'; this.parentElement.classList.add('no-artwork');"> {/* Added class if no image */}
                 <div class="itunes-track-info">
                     <div class="itunes-track-name">${track.trackName || 'Unknown Track'}</div>
                     <div class="itunes-track-artist">${track.artistName || 'Unknown Artist'}</div>
                 </div>
                 <div class="itunes-track-select">➔</div>
             `;
-            // Add click listener to select the track
             trackDiv.onclick = () => {
-                selectedMusicTrack = track; // Store the selected track data
-                // Update the input field to show selection (optional)
+                selectedMusicTrack = track;
                 queryInput.value = `${track.trackName} - ${track.artistName}`;
-                // Visually indicate selection and clear other results
-                resultsDiv.innerHTML = `<p style="padding: 5px; color: green; font-weight: bold;">Selected: ${track.trackName}</p>`;
+                resultsDiv.innerHTML = `<div class="itunes-track selected"><img src="${artworkUrl}" alt="Artwork" class="itunes-artwork" style="${artworkUrl ? '' : 'display:none;'}"><div class="itunes-track-info"><div class="itunes-track-name">${track.trackName}</div><div class="itunes-track-artist">${track.artistName}</div></div><span style="color:green; margin-left: auto; font-weight: bold;">✓</span></div>`;
                 console.log("Selected music track:", selectedMusicTrack);
             };
             resultsDiv.appendChild(trackDiv);
         });
 
-    } catch (error) {
-        console.error('Error fetching/processing iTunes data:', error);
-        resultsDiv.innerHTML = `<p class="error" style="padding: 5px;">Error searching music. Check console.</p>`;
-         if (error instanceof TypeError && error.message.includes('fetch')) {
-             resultsDiv.innerHTML += `<br><small>Network error or CORS issue.</small>`;
-         } else if (error instanceof SyntaxError) {
-             resultsDiv.innerHTML += `<br><small>Invalid response from server/proxy.</small>`;
-         } else {
-             resultsDiv.innerHTML += `<br><small>${error.message}</small>`;
-         }
-    }
+    } catch (error) { console.error('Error fetching/processing iTunes data:', error); resultsDiv.innerHTML = `<p class="error" style="padding: 5px;">Error searching music: ${error.message}</p>`; }
+}
+
+// --- Place Search Function (Nominatim) ---
+async function buscarLugar() {
+    const queryInput = document.getElementById('add-mem-place-search');
+    const resultsDiv = document.getElementById('place-results');
+    const statusDiv = document.getElementById('add-memory-status');
+    const query = queryInput.value.trim();
+    if (!query) { resultsDiv.innerHTML = '<p class="error" style="padding: 5px;">Please enter a place name.</p>'; return; }
+
+    resultsDiv.innerHTML = '<p style="padding: 5px;">Searching places...</p>';
+    statusDiv.textContent = ''; selectedPlace = null; // Clear previous selection
+
+    // Nominatim API endpoint
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
+    console.log("Fetching Nominatim URL:", nominatimUrl);
+
+    try {
+        const response = await fetch(nominatimUrl, {
+             headers: { 'Accept': 'application/json' } // Required by Nominatim
+         });
+        if (!response.ok) { let errorText = await response.text(); console.error("Nominatim fetch failed:", response.status, errorText); throw new Error(`HTTP error ${response.status}`); }
+        const data = await response.json();
+
+        if (!data || data.length === 0) { resultsDiv.innerHTML = '<p style="padding: 5px;">No places found.</p>'; return; }
+
+        resultsDiv.innerHTML = '';
+        data.forEach(place => {
+            const placeDiv = document.createElement('div');
+            placeDiv.className = 'place-result';
+            placeDiv.innerHTML = `${place.display_name}`; // Show the full display name
+            placeDiv.onclick = () => {
+                 // Store relevant data (e.g., name, lat, lon)
+                 selectedPlace = {
+                     name: place.display_name,
+                     lat: place.lat,
+                     lon: place.lon,
+                     osm_id: place.osm_id,
+                     osm_type: place.osm_type
+                 };
+                // Update the input field to show selection (optional)
+                queryInput.value = place.display_name;
+                // Visually indicate selection and clear other results
+                resultsDiv.innerHTML = `<p style="padding: 5px; color: green; font-weight: bold;">Selected: ${place.display_name}</p>`;
+                console.log("Selected place:", selectedPlace);
+            };
+            resultsDiv.appendChild(placeDiv);
+        });
+
+    } catch (error) { console.error('Error fetching/processing Nominatim data:', error); resultsDiv.innerHTML = `<p class="error" style="padding: 5px;">Error searching places: ${error.message}</p>`; }
 }
 
 
-// --- Save Memory from Add Modal ---
+// --- Save Memory from Add Modal (Updated for Place, Image File) ---
 async function saveMemoryFromAddModal() {
     const statusDiv = document.getElementById('add-memory-status');
     statusDiv.className = ''; statusDiv.textContent = 'Saving...';
@@ -784,23 +789,20 @@ async function saveMemoryFromAddModal() {
     const year = parseInt(yearInput.value, 10);
     const type = document.getElementById('add-mem-type').value;
 
-    if (!diaId) { statusDiv.textContent = 'Please select a day.'; statusDiv.className = 'error'; return; }
-    if (!year || year < 1800 || year > new Date().getFullYear() + 1) {
-        statusDiv.textContent = 'Please enter a valid year.'; statusDiv.className = 'error'; yearInput.focus(); return;
+    if (!diaId || !year || isNaN(year) || year < 1800 || year > new Date().getFullYear() + 1) {
+        statusDiv.textContent = 'Please select a valid day and year.'; statusDiv.className = 'error'; return;
     }
     const month = parseInt(diaId.substring(0, 2), 10); const day = parseInt(diaId.substring(3), 10);
-    if (day < 1 || day > daysInMonth[month - 1]) {
-         statusDiv.textContent = 'Invalid day selected for this month.'; statusDiv.className = 'error'; return;
+    if (isNaN(month) || isNaN(day) || day < 1 || day > daysInMonth[month - 1]) {
+         statusDiv.textContent = 'Invalid day selected.'; statusDiv.className = 'error'; return;
     }
-
     const dateOfMemory = new Date(Date.UTC(year, month - 1, day));
-    if (isNaN(dateOfMemory.getTime())) {
-         statusDiv.textContent = 'Invalid date components.'; statusDiv.className = 'error'; return;
-    }
+    if (isNaN(dateOfMemory.getTime())) { statusDiv.textContent = 'Invalid date.'; statusDiv.className = 'error'; return; }
     const fechaOriginalTimestamp = Timestamp.fromDate(dateOfMemory);
 
     let memoryData = { Fecha_Original: fechaOriginalTimestamp, Tipo: type, Creado_En: Timestamp.now() };
     let isValid = true;
+    let imageFileToUpload = null; // Variable to hold the file if type is Image
 
     switch (type) {
         case 'Texto':
@@ -808,60 +810,110 @@ async function saveMemoryFromAddModal() {
             if (!memoryData.Descripcion) isValid = false;
             break;
         case 'Lugar':
-            memoryData.LugarNombre = document.getElementById('add-mem-place').value.trim();
-            if (!memoryData.LugarNombre) isValid = false; memoryData.LugarData = null;
+            if (selectedPlace) {
+                memoryData.LugarNombre = selectedPlace.name; // Save the selected name
+                memoryData.LugarData = { lat: selectedPlace.lat, lon: selectedPlace.lon, osm_id: selectedPlace.osm_id, osm_type: selectedPlace.osm_type }; // Save structured data
+            } else {
+                 memoryData.LugarNombre = document.getElementById('add-mem-place-search').value.trim(); // Save text if nothing selected
+                 if (!memoryData.LugarNombre) isValid = false;
+                 memoryData.LugarData = null;
+            }
             break;
         case 'Musica':
             if (selectedMusicTrack) {
-                 // Store structured data if a track was selected from results
-                 memoryData.CancionData = { trackId: selectedMusicTrack.trackId, artistName: selectedMusicTrack.artistName, trackName: selectedMusicTrack.trackName, artworkUrl60: selectedMusicTrack.artworkUrl60, trackViewUrl: selectedMusicTrack.trackViewUrl };
-                 memoryData.CancionInfo = `${selectedMusicTrack.trackName} - ${selectedMusicTrack.artistName}`; // Also store plain text info
+                 memoryData.CancionData = { /* ... structure ... */ trackId: selectedMusicTrack.trackId, artistName: selectedMusicTrack.artistName, trackName: selectedMusicTrack.trackName, artworkUrl60: selectedMusicTrack.artworkUrl60, trackViewUrl: selectedMusicTrack.trackViewUrl };
+                 memoryData.CancionInfo = `${selectedMusicTrack.trackName} - ${selectedMusicTrack.artistName}`;
             } else {
-                 // Store only the text from the input if no track was selected
                  memoryData.CancionInfo = document.getElementById('add-mem-music-search').value.trim();
                  memoryData.CancionData = null;
-                 if (!memoryData.CancionInfo) isValid = false; // Require text if no track selected
+                 if (!memoryData.CancionInfo) isValid = false;
             }
             break;
         case 'Imagen':
-            memoryData.ImagenURL = document.getElementById('add-mem-image-url').value.trim();
+            const fileInput = document.getElementById('add-mem-image-upload');
             memoryData.Descripcion = document.getElementById('add-mem-image-desc').value.trim() || null;
-            try { new URL(memoryData.ImagenURL); } catch (_) { isValid = false; } // Basic URL format check
-            if (!memoryData.ImagenURL) isValid = false;
+            if (fileInput.files && fileInput.files[0]) {
+                imageFileToUpload = fileInput.files[0];
+                // ** Lógica de subida irá aquí más adelante **
+                // Por ahora, solo guardamos descripción si hay, y marcamos como válido si hay archivo
+                memoryData.ImagenURL = "placeholder_uploading"; // Placeholder URL
+                isValid = true; // Valid if a file is selected
+                 document.getElementById('image-upload-status').textContent = `Ready to upload: ${imageFileToUpload.name}`;
+            } else {
+                isValid = false; // Require a file for Image type
+            }
             break;
         default: isValid = false; break;
     }
 
     if (!isValid) {
-        statusDiv.textContent = 'Please fill required fields correctly for the selected type.'; statusDiv.className = 'error'; return;
+        statusDiv.textContent = 'Please fill required fields or select a file for the selected type.'; statusDiv.className = 'error'; return;
     }
 
+    // --- Save Logic ---
     try {
-        const memoriasRef = collection(db, "Dias", diaId, "Memorias");
-        const docRef = await addDoc(memoriasRef, memoryData);
-        console.log("New memory saved:", docRef.id, memoryData);
-        statusDiv.textContent = 'Memory Saved!'; statusDiv.className = 'success';
-         // Reset form after saving
-         document.getElementById('add-mem-desc').value = '';
-         document.getElementById('add-mem-place').value = '';
-         document.getElementById('add-mem-music-search').value = '';
-         document.getElementById('itunes-results').innerHTML = '';
-         document.getElementById('add-mem-image-url').value = '';
-         document.getElementById('add-mem-image-desc').value = '';
-         selectedMusicTrack = null;
-        setTimeout(() => { cerrarModalAddMemory(); }, 1500);
-    } catch (e) { console.error("Error saving new advanced memory:", e); statusDiv.textContent = `Error: ${e.message}`; statusDiv.className = 'error'; }
+        // ** Placeholder for Image Upload **
+        if (type === 'Imagen' && imageFileToUpload) {
+            statusDiv.textContent = 'Image upload not implemented yet. Saving description only...';
+            // Here you would call upload function: uploadImageAndSaveMemory(diaId, memoryData, imageFileToUpload);
+            // For now, just save without the URL or indicate it's pending
+            memoryData.ImagenURL = null; // Don't save placeholder to DB yet
+            alert("Image upload functionality is not yet implemented. Only the description (if provided) will be saved.");
+            // To proceed saving *without* image URL:
+            // await saveMemoryData(diaId, memoryData); // Call the actual save function
+            // To prevent saving until upload works:
+            statusDiv.textContent = 'Save cancelled: Image upload pending.'; statusDiv.className = 'error'; return;
+
+        } else {
+             // Save directly for other types
+             await saveMemoryData(diaId, memoryData);
+        }
+
+    } catch (e) { console.error("Error in saveMemoryFromAddModal:", e); statusDiv.textContent = `Error: ${e.message}`; statusDiv.className = 'error'; }
 }
 
-// --- Expose functions needed by dynamically created HTML ---
+// Separate function to handle the actual Firestore save
+async function saveMemoryData(diaId, memoryData) {
+    const statusDiv = document.getElementById('add-memory-status'); // Assume it exists
+    const memoriasRef = collection(db, "Dias", diaId, "Memorias");
+    const docRef = await addDoc(memoriasRef, memoryData);
+    console.log("New memory saved:", docRef.id, memoryData);
+    statusDiv.textContent = 'Memory Saved!'; statusDiv.className = 'success';
+    // Reset form after saving
+    resetAddMemoryFormFields();
+    setTimeout(() => { cerrarModalAddMemory(); }, 1500);
+}
+
+// Function to reset fields in Add Memory Modal
+function resetAddMemoryFormFields() {
+    document.getElementById('add-mem-desc').value = '';
+    document.getElementById('add-mem-place-search').value = '';
+    document.getElementById('place-results').innerHTML = '';
+    document.getElementById('add-mem-place-name').value = '';
+    document.getElementById('add-mem-music-search').value = '';
+    document.getElementById('itunes-results').innerHTML = '';
+    document.getElementById('add-mem-image-upload').value = null; // Clear file
+    document.getElementById('image-upload-status').textContent = '';
+    document.getElementById('add-mem-image-desc').value = '';
+    selectedMusicTrack = null;
+    selectedPlace = null;
+    // Don't reset day/year/type, maybe user wants to add another for same day
+}
+
+
+// --- Expose functions needed by dynamically created/static HTML ---
 window.handleMemoryTypeChange = handleMemoryTypeChange;
 window.buscarBSO = buscarBSO;
+window.buscarLugar = buscarLugar; // Expose new place search
 window.saveMemoryFromAddModal = saveMemoryFromAddModal;
 window.cerrarModalAddMemory = cerrarModalAddMemory;
 window.startEditMemoria = startEditMemoria;
 window.confirmDeleteMemoria = confirmDeleteMemoria;
-
+window.cerrarModalPreview = cerrarModalPreview; // Expose preview close
+window.abrirModalEdicion = abrirModalEdicion; // Allow edit from preview
+window.cerrarModalEdicion = cerrarModalEdicion; // Expose edit close
 
 // --- Start App ---
 checkAndRunApp();
+
 
