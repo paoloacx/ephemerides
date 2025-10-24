@@ -1,6 +1,5 @@
-/* app.js - SCRIPT DE IMPORTACIÓN FINAL Y ROBUSTO */
+/* app.js - SCRIPT DE DEBUGGING (PARA VER QUÉ LEE) */
 
-// Importa las funciones que necesitamos de Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
@@ -15,85 +14,87 @@ const firebaseConfig = {
   measurementId: "G-BZC9FRYCJW"
 };
 
-// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ¡LA URL CORREGIDA Y DEFINITIVA! (Asumiendo 'main' y 'dias.csv')
+// La URL RAW correcta
 const CSV_URL = 'https://raw.githubusercontent.com/paoloacx/ephemerides/main/dias.csv'; 
 
-/**
- * Función para cargar y procesar el CSV.
- */
 async function cargarDias() {
     try {
         const contentDiv = document.getElementById("app-content");
-        contentDiv.innerHTML = "<p>Iniciando la carga de los 366 días a Firebase...</p>";
+        contentDiv.innerHTML = "<p>DEBUG: Iniciando la carga de datos. Revisa la Consola (F12).</p>";
 
         // 1. Descargar el archivo CSV
+        console.log("DEBUG: Intentando descargar el CSV desde:", CSV_URL);
         const response = await fetch(CSV_URL);
         
         if (!response.ok) {
-            contentDiv.innerHTML = `<p>Error HTTP: ${response.status}. La URL no funciona.</p>`;
             throw new Error(`Error HTTP: ${response.status} - No se pudo acceder al archivo CSV.`);
         }
         
         const data = await response.text();
-        // Uso de regex para manejar saltos de línea (CRLF y LF) y trim() para eliminar cualquier espacio/línea vacía al final
-        const lineas = data.trim().split(/\r?\n/).filter(line => line.trim() !== '');
+        console.log("DEBUG: Contenido RAW del archivo (primeras 500 letras):", data.substring(0, 500));
 
-        // 2. Probar si el archivo tiene al menos los encabezados y un día
+        // 2. Procesar las líneas
+        const lineas = data.trim().split(/\r?\n/).filter(line => line.trim() !== '');
+        
+        console.log("DEBUG: Número total de líneas detectadas (debería ser 367):", lineas.length);
         if (lineas.length <= 1) {
-             contentDiv.innerHTML = "<p>Error de lectura. El archivo está vacío o no tiene datos de días.</p>";
+             contentDiv.innerHTML = "<p>Error de Parsing. El archivo no se está dividiendo correctamente (Líneas <= 1). Revisa la Consola.</p>";
              return;
         }
 
-        let documentosCargados = 0;
+        const encabezados = lineas[0].split(',').map(h => h.trim());
+        console.log("DEBUG: Encabezados detectados:", encabezados);
         
+        let documentosCargados = 0;
+
         // 3. Iterar sobre los días (empezamos en la línea 1 para saltar los encabezados)
         for (let i = 1; i < lineas.length; i++) {
             const valores = lineas[i].split(',');
             
-            // Verificación de formato para asegurar 3 valores (ID, Nombre, Icono)
-            if (valores.length < 3) continue; 
+            if (valores.length < 3) {
+                 console.warn(`WARN: Línea ${i+1} saltada. Valores (${valores.length}) no son 3:`, lineas[i]);
+                 continue; 
+            } 
 
             const ID_Dia = valores[0].trim();
             
-            // *** CORRECCIÓN CRÍTICA: SI EL ID ESTÁ VACÍO, SALTAMOS LA LÍNEA ***
             if (!ID_Dia) {
-                continue; 
+                console.warn(`WARN: Línea ${i+1} saltada. El ID_Dia está VACÍO.`);
+                continue;
             }
-            // ******************************************************************
 
             const Nombre_Dia = valores[1].trim();
             const Icono = valores[2].trim() || '🗓️';
+            
+            if (i === 1) { // Log de la primera línea de datos
+                console.log(`DEBUG: Primera línea a cargar - ID_Dia: [${ID_Dia}], Nombre_Dia: [${Nombre_Dia}], Icono: [${Icono}]`);
+            }
 
             const diaData = {
                 Nombre_Dia: Nombre_Dia,
                 Icono: Icono,
-                Nombre_Especial: "Día sin nombre" 
+                Nombre_Especial: "Día sin nombre"
             };
 
-            // 4. Guardar el documento en la colección 'Dias'. Aquí es donde se crea el 'Dias/ID'
             await setDoc(doc(db, "Dias", ID_Dia), diaData);
             documentosCargados++;
 
-            contentDiv.innerHTML = `<p>Cargando... ${documentosCargados} de ${lineas.length - 1} días.</p>`;
+            contentDiv.innerHTML = `<p>DEBUG: Cargando... ${documentosCargados} de ${lineas.length - 1} días.</p>`;
         }
-
+        
+        // Mensaje de éxito final
         contentDiv.innerHTML = `
             <h2>¡Carga de Días Completada!</h2>
             <p>Se cargaron ${documentosCargados} días en la colección 'Dias' de Firebase.</p>
-            <hr>
-            <h3>✅ ¡La base de datos está lista!</h3>
-            <p><strong>Siguiente paso:</strong> Debes reemplazar este código de importación con el código para **MOSTRAR** el calendario.</p>
         `;
 
     } catch (error) {
-        console.error("Error en la carga masiva:", error);
-        document.getElementById("app-content").innerHTML = `<p>Error al cargar. ${error.message}</p>`;
+        console.error("Error FATAL:", error);
+        contentDiv.innerHTML = `<p>Error FATAL. Revisa la Consola del navegador (F12) y pega el output aquí.</p><p>Detalle del error: ${error.message}</p>`;
     }
 }
 
-// Inicia la carga de datos
 cargarDias();
