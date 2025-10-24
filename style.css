@@ -1,9 +1,10 @@
-/* style.css - v3.0 - iOS 3/Aqua Enhancements & CRUD */
+/* style.css - v4.0 - Preview Modal, Footer Dock, Hoja Calendario, Aqua Buttons */
 
 body {
     margin: 0;
-    padding: 0;
-    background-image: url('plain-linen.jpeg'); /* Textura activada */
+    /* Dejar espacio para el footer fijo */
+    padding: 0 0 60px 0; /* Ajustar padding-bottom si altura del footer cambia */
+    background-image: url('plain-linen.jpeg'); /* Asegúrate que el archivo esté en el repo */
     background-color: #E1E1E1; /* Fallback */
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     color: #333;
@@ -12,248 +13,246 @@ body {
 header {
     background: linear-gradient(to bottom, #bcc6d1 0%, #a4b0bd 50%, #909dad 51%, #a4b0bd 100%);
     border-bottom: 1px solid #6d6d6d;
-    padding: 10px 0;
-    text-align: center;
+    padding: 10px 0; text-align: center;
     box-shadow: 0 1px 2px rgba(0,0,0,0.3);
     position: sticky; top: 0; z-index: 10;
 }
-
-header h1 {
+header h1 { /* Título App Fijo */
     margin: 0; font-size: 20px; color: #ffffff;
     font-weight: bold; text-shadow: 0 -1px 0 rgba(0,0,0,0.5);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; /* Asegurar Helvetica */
 }
 
 .month-nav {
-    display: flex; justify-content: space-between;
+    display: flex; justify-content: space-between; align-items: center; /* Centrar verticalmente */
     padding: 8px 15px; background-color: #f0f0f0;
     border-bottom: 1px solid #bbb;
-    position: sticky; top: 45px; /* Altura aprox header */ z-index: 9;
+    position: sticky; top: 45px; z-index: 9; /* Altura aprox header */
 }
-
-/* Estilo Aqua/iOS3 para botones de navegación y modales */
-.aqua-button {
-    background: linear-gradient(to bottom, #fefefe 0%, #e6e6e6 100%);
-    border: 1px solid #777; /* Borde más oscuro */
+/* Span para el nombre del mes */
+#month-name-display {
+    font-size: 16px;
+    font-weight: bold;
+    color: #000000; /* Texto negro */
+    text-align: center;
+    flex-grow: 1; /* Ocupa espacio central */
+}
+/* Botones de navegación (estilo Aqua) */
+.month-nav button.aqua-button, /* Aplicar estilo Aqua aquí también */
+.aqua-button { /* Estilo base Aqua reutilizable */
+    background: linear-gradient(to bottom, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%); /* Tonos azules */
+    border: 1px solid #3c82b1;
     border-radius: 15px; /* Más redondeado */
     padding: 6px 12px;
-    font-size: 13px; font-weight: bold; color: #333; /* Texto más oscuro */
+    font-size: 13px;
+    font-weight: bold;
+    color: #fff; /* Texto blanco */
     cursor: pointer;
-    box-shadow: 0 2px 3px rgba(0,0,0,0.2), /* Sombra más pronunciada */
-                inset 0 1px 0 rgba(255,255,255,0.6), /* Brillo interior superior */
+    box-shadow: 0 2px 3px rgba(0,0,0,0.2), /* Sombra inferior */
+                inset 0 1px 0 rgba(255,255,255,0.4), /* Brillo superior */
                 inset 0 -1px 0 rgba(0,0,0,0.1); /* Sombra interior inferior */
-    text-shadow: 0 1px 0 rgba(255,255,255,0.7); /* Sombra blanca */
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.3); /* Sombra texto */
+    min-width: 40px; /* Ancho mínimo */
     transition: all 0.1s ease-in-out;
 }
+.month-nav button.aqua-button:hover,
 .aqua-button:hover {
-    background: linear-gradient(to bottom, #ffffff 0%, #f0f0f0 100%);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3),
-                inset 0 1px 0 rgba(255,255,255,0.7),
-                inset 0 -1px 0 rgba(0,0,0,0.1);
+    background: linear-gradient(to bottom, #b8dcf4 0%, #8cc8ec 50%, #6fbde4 51%, #5fb9e2 100%); /* Hover más claro */
 }
+.month-nav button.aqua-button:active,
 .aqua-button:active {
-    background: linear-gradient(to top, #fefefe 0%, #e6e6e6 100%); /* Invertido al pulsar */
-    box-shadow: inset 0 2px 3px rgba(0,0,0,0.2); /* Sombra interior */
-    transform: translateY(1px); /* Efecto pulsado */
+    background: linear-gradient(to top, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%); /* Invertido al pulsar */
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.3); /* Sombra interior más pronunciada */
+    transform: translateY(1px); /* Efecto hundido */
 }
-
-/* Aplicar estilo Aqua a botones de navegación */
-.month-nav button {
-    background: linear-gradient(to bottom, #fefefe 0%, #e6e6e6 100%);
-    border: 1px solid #aaa; border-radius: 5px; padding: 6px 10px;
-    font-size: 13px; font-weight: bold; color: #444; cursor: pointer;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5);
-    text-shadow: 0 1px 0 #fff;
-}
-.month-nav button:hover { background: linear-gradient(to bottom, #f0f0f0 0%, #dcdcdc 100%); }
-.month-nav button:active { background: linear-gradient(to bottom, #dcdcdc 0%, #f0f0f0 100%); box-shadow: inset 0 1px 2px rgba(0,0,0,0.2); }
 
 
 main { padding: 10px; }
 
 .calendario-grid {
     display: grid; grid-template-columns: repeat(7, 1fr);
-    gap: 6px; /* Un poco más de espacio */ padding-bottom: 20px;
+    gap: 6px; padding-bottom: 20px;
 }
 
-/* Botones de día estilo Hoja de Calendario Skeuomorfista */
+/* Botones de día estilo Hoja - SIN Nombre Especial */
 .dia-btn {
-    background-color: #fdfdfd; /* Blanco papel */
-    border: 1px solid #ccc;
-    border-radius: 3px; /* Esquinas menos redondeadas */
-    padding: 0; /* Sin padding interno */
-    text-align: center; cursor: pointer;
-    box-shadow: 1px 1px 3px rgba(0,0,0,0.2), /* Sombra hoja */
-                inset 0 0 5px rgba(0,0,0,0.05); /* Sombra interior sutil */
-    color: #333;
-    min-height: 60px; /* Más altura */
-    display: flex; flex-direction: column;
-    justify-content: space-between; /* Día arriba, nombre abajo */
-    align-items: center;
-    position: relative; /* Para pseudo-elementos */
-    overflow: hidden;
+    background-color: #fdfdfd; border: 1px solid #ccc; border-radius: 3px;
+    padding: 10px 0; text-align: center; cursor: pointer;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.2), inset 0 0 5px rgba(0,0,0,0.05);
+    color: #333; min-height: 50px;
+    display: flex; flex-direction: column; justify-content: center;
+    align-items: center; position: relative; overflow: hidden;
+    transition: background-color 0.1s, transform 0.1s; /* Añadir transición */
 }
-.dia-btn:active {
-     background-color: #eee;
-     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-     transform: translateY(1px);
-}
-/* Número del día grande */
+.dia-btn:active { background-color: #eee; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); transform: translateY(1px); }
 .dia-numero {
-    font-size: 24px; /* Mucho más grande */
-    font-weight: bold;
-    color: #444;
-    margin-top: 5px; /* Espacio superior */
-    line-height: 1;
+    font-size: 24px; font-weight: bold; color: #444; line-height: 1;
 }
-/* Nombre especial (más pequeño y abajo) */
-.nombre-especial {
-    font-size: 9px; color: #007aff;
-    margin-bottom: 3px; /* Pegado abajo */
-    text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
-    width: 90%;
-    font-weight: normal;
-}
-/* Simular borde superior rojo de hoja arrancada (opcional) */
-.dia-btn::before {
+.dia-btn::before { /* Borde rojo superior */
     content: ''; position: absolute; top: 0; left: 0; right: 0;
-    height: 3px; background-color: #e57373; /* Rojo claro */
-    /* box-shadow: 0 1px 1px rgba(0,0,0,0.1); */
+    height: 3px; background-color: #e57373;
 }
+/* Quitamos el nombre especial de la vista principal */
+.dia-btn .nombre-especial { display: none; }
 
 
-/* --- Ventana Modal estilo iOS 3 (Revisado) --- */
-.modal {
+/* --- Ventana Modal PREVIEW --- */
+.modal-preview {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background-color: rgba(0,0,0,0.4);
     display: none; justify-content: center; align-items: center;
     z-index: 1000; padding: 20px; box-sizing: border-box;
-    /* Animación */
     opacity: 0; transform: scale(0.9);
     transition: opacity 0.2s ease-out, transform 0.2s ease-out;
 }
-.modal.visible { /* Clase para mostrar con animación */
-    display: flex; opacity: 1; transform: scale(1);
+.modal-preview.visible { display: flex; opacity: 1; transform: scale(1); }
+.modal-preview-content {
+    background: #f7f7f7; padding: 15px; border-radius: 10px;
+    width: 100%; max-width: 320px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #888;
+    max-height: 80vh; /* Límite de altura */
+    display: flex; flex-direction: column;
 }
-.modal-content {
+.modal-preview-header {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 10px;
+}
+.modal-preview-header h3 { /* Nombre del día y especial */
+    margin: 0; font-size: 16px; font-weight: bold; color: #333;
+    text-align: left; flex-grow: 1;
+}
+/* Botón Editar Lápiz */
+#edit-from-preview-btn {
+    background: none; border: none; padding: 5px; cursor: pointer;
+    color: #007aff; line-height: 0;
+}
+#edit-from-preview-btn:hover { color: #0056b3; }
+#edit-from-preview-btn svg { width: 20px; height: 20px; }
+
+.modal-preview-memorias {
+    flex-grow: 1; overflow-y: auto; text-align: left;
+}
+.modal-preview-memorias h4 { margin: 0 0 10px 0; font-size: 14px; color: #555; }
+/* Reutilizar estilos de .memoria-item */
+
+
+/* --- Ventana Modal EDICIÓN (como antes, pero con clase distinta) --- */
+.modal-edit {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.4);
+    display: none; justify-content: center; align-items: center;
+    z-index: 1001; padding: 20px; box-sizing: border-box;
+    opacity: 0; transform: scale(0.9);
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+.modal-edit.visible { display: flex; opacity: 1; transform: scale(1); }
+/* Reutilizar .modal-content y sus estilos internos */
+.modal-edit .modal-content {
     background: #f7f7f7; padding: 0; border-radius: 10px;
-    width: 100%; max-width: 320px; /* Un poco más ancho */
+    width: 100%; max-width: 320px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #888;
     overflow: hidden; text-align: center;
-    display: flex; flex-direction: column; /* Para ordenar secciones */
+    display: flex; flex-direction: column;
 }
 
-/* Contenido general del modal */
-.modal-section {
-    padding: 15px;
-    border-bottom: 1px solid #ccc;
-}
-.modal-section:last-child {
-    border-bottom: none;
-}
+/* Reutilizar estilos internos .modal-section, h3, p, label, input, textarea, etc */
+.modal-section { padding: 15px; border-bottom: 1px solid #ccc; }
+.modal-section:last-child { border-bottom: none; }
+.modal-edit .modal-content h3 { font-size: 16px; font-weight: bold; margin: 0 0 5px 0; }
+.modal-edit .modal-content p { font-size: 13px; margin: 0 0 10px 0; }
+.modal-edit .modal-content label { display: block; font-size: 13px; font-weight: bold; margin-top: 10px; margin-bottom: 3px; color: #444; text-align: left;}
+.modal-edit .modal-content input[type="text"],
+.modal-edit .modal-content input[type="date"],
+.modal-edit .modal-content textarea { width: 100%; padding: 8px 10px; margin-bottom: 10px; border: 1px solid #aaa; border-radius: 5px; box-sizing: border-box; font-size: 14px; background-color: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); font-family: inherit; }
+.modal-edit .modal-content textarea { height: 60px; resize: vertical; }
 
-.modal-content h3 { font-size: 16px; font-weight: bold; margin: 0 0 5px 0; }
-.modal-content p { font-size: 13px; margin: 0 0 10px 0; }
-.modal-content label { display: block; font-size: 13px; font-weight: bold; margin-top: 10px; margin-bottom: 3px; color: #444; text-align: left;}
-
-.modal-content input[type="text"],
-.modal-content input[type="date"],
-.modal-content textarea {
-    width: 100%; padding: 8px 10px; margin-bottom: 10px;
-    border: 1px solid #aaa; border-radius: 5px; box-sizing: border-box;
-    font-size: 14px; background-color: #fff;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-    font-family: inherit;
-}
-.modal-content textarea { height: 60px; resize: vertical; }
-
-/* Botones Principales (Guardar Nombre, Cerrar) - AHORA ABAJO */
+/* Botones Principales ABAJO (redefinido para claridad) */
 .modal-main-buttons {
-    display: flex; border-top: 1px solid #ababab; margin-top: auto; /* Empuja al fondo */
+    display: flex;
+    border-top: 1px solid #ababab; /* Línea divisoria */
+    margin-top: auto; /* Empuja al fondo si hay espacio */
+    background-color: #f0f0f0; /* Fondo gris claro */
 }
 .modal-main-buttons button {
-    flex: 1; background: transparent; border: none;
-    border-left: 1px solid #ababab; padding: 12px 10px; font-size: 16px;
-    color: #007aff; cursor: pointer; margin: 0; border-radius: 0;
-    box-shadow: none; text-shadow: none; font-weight: bold;
+    flex: 1; /* Ocupan el mismo espacio */
+    background: transparent; border: none;
+    border-left: 1px solid #ababab; /* Separador vertical */
+    padding: 12px 10px; font-size: 16px; color: #007aff; /* Azul */
+    cursor: pointer; margin: 0; border-radius: 0; box-shadow: none; text-shadow: none;
+    font-weight: bold;
 }
 .modal-main-buttons button:first-child { border-left: none; }
 .modal-main-buttons button:active { background-color: #d9d9d9; }
-.modal-main-buttons #close-btn { color: #555; font-weight: normal; }
+.modal-main-buttons #close-btn { /* 'Cerrar' */
+    color: #555; font-weight: normal;
+}
 .modal-main-buttons #close-btn:active { color: #007aff; }
+/* 'Guardar Nombre' ya tiene estilo por defecto */
 
-#save-status, #memoria-status {
-    font-size: 12px; margin-top: 5px; /* Menos margen */
-    min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px;
-}
+#save-status, #memoria-status { font-size: 12px; margin-top: 5px; min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px; }
 .success { color: green; } .error { color: red; }
-
-
-/* --- Estilos Sección Memorias (Revisado) --- */
-.memorias-section {
-    text-align: left;
-}
+.memorias-section { text-align: left; }
 .memorias-section h4 { margin: 0 0 10px 0; font-size: 14px; color: #555; }
-
-#memorias-list {
-    max-height: 120px; /* Un poco menos alto */ overflow-y: auto;
-    margin-bottom: 15px; border: 1px solid #ccc;
-    background-color: #fff; padding: 5px; border-radius: 5px;
+#edit-memorias-list, /* Aplicar a ambos divs de lista */
+#preview-memorias-list {
+    max-height: 120px; overflow-y: auto; margin-bottom: 15px;
+    border: 1px solid #ccc; background-color: #fff; padding: 5px; border-radius: 5px;
 }
-
-.memoria-item {
-    font-size: 12px; padding: 5px; border-bottom: 1px dotted #eee;
-    display: flex; /* Para alinear botones */
-    justify-content: space-between;
-    align-items: center;
-}
+.memoria-item { font-size: 12px; padding: 5px; border-bottom: 1px dotted #eee; display: flex; justify-content: space-between; align-items: center; }
 .memoria-item:last-child { border-bottom: none; }
-.memoria-item-content { flex-grow: 1; margin-right: 5px;} /* Ocupa espacio disponible */
+.memoria-item-content { flex-grow: 1; margin-right: 5px;}
 .memoria-item small { display: block; color: #777; margin-bottom: 3px; }
-
-/* Botones Editar/Borrar Memoria */
-.memoria-actions button {
-    background: none; border: none; padding: 2px 4px; margin-left: 3px;
-    cursor: pointer; font-size: 14px; color: #007aff;
-}
+.memoria-actions button { background: none; border: none; padding: 2px 4px; margin-left: 3px; cursor: pointer; font-size: 14px; color: #007aff; line-height: 0; /* Alineación SVG */ }
+.memoria-actions button svg { width: 14px; height: 14px; }
 .memoria-actions button:hover { color: #0056b3; }
-.delete-btn { color: #ff3b30; } /* Rojo iOS */
-.delete-btn:hover { color: #c00; }
-
-#add-memoria-form { margin-top: 10px; } /* Espacio antes del form */
-
-/* Botón Añadir Memoria */
-#add-memoria-btn {
-    /* Estilo Aqua */
-    background: linear-gradient(to bottom, #ABD14B 0%, #7C9F2F 100%); /* Verde */
-    border: 1px solid #637F1D; color: #fff; text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
-    border-radius: 15px; padding: 8px 12px; font-size: 13px; font-weight: bold;
-    cursor: pointer; box-shadow: 0 2px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);
-    display: block; width: 100%; margin-top: 10px; /* Más margen arriba */
-    transition: all 0.1s ease-in-out;
+.delete-btn { color: #ff3b30; } .delete-btn:hover { color: #c00; }
+#add-memoria-form { margin-top: 10px; }
+/* Botón Añadir/Actualizar Memoria (Estilo Aqua Verde/Azul) */
+#add-memoria-btn { /* Verde por defecto */
+    background: linear-gradient(to bottom, #ABD14B 0%, #7C9F2F 100%); border: 1px solid #637F1D; color: #fff; text-shadow: 0 -1px 0 rgba(0,0,0,0.3); border-radius: 15px; padding: 8px 12px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4); display: block; width: 100%; margin-top: 10px; transition: all 0.1s ease-in-out;
 }
 #add-memoria-btn:hover { background: linear-gradient(to bottom, #BCE45D 0%, #8CAF3F 100%); }
 #add-memoria-btn:active { background: linear-gradient(to top, #ABD14B 0%, #7C9F2F 100%); box-shadow: inset 0 2px 3px rgba(0,0,0,0.3); transform: translateY(1px); }
-
-/* Estilo para botón cuando está en modo "Actualizar" */
-#add-memoria-btn.update-mode {
-     background: linear-gradient(to bottom, #87CEFA 0%, #4682B4 100%); /* Azul */
-     border-color: #36668e;
+#add-memoria-btn.update-mode { /* Azul en modo actualizar */
+    background: linear-gradient(to bottom, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%); border-color: #3c82b1;
 }
-#add-memoria-btn.update-mode:hover { background: linear-gradient(to bottom, #ADD8E6 0%, #5A9BD6 100%);}
-#add-memoria-btn.update-mode:active { background: linear-gradient(to top, #87CEFA 0%, #4682B4 100%);}
+#add-memoria-btn.update-mode:hover { background: linear-gradient(to bottom, #b8dcf4 0%, #8cc8ec 50%, #6fbde4 51%, #5fb9e2 100%);}
+#add-memoria-btn.update-mode:active { background: linear-gradient(to top, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%);}
 
-/* Simple confirmación de borrado */
-#confirm-delete-dialog {
-    display: none; /* Oculto por defecto */
-    position: absolute; /* Superpuesto dentro del modal */
-    background-color: rgba(247, 247, 247, 0.9); /* Fondo semi-transparente */
-    border: 1px solid #888; border-radius: 8px; padding: 15px;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1001; /* Encima del contenido del modal */
-    text-align: center; max-width: 80%;
-    /* Centrarlo (requiere JS para posicionar bien, lo haremos simple) */
-    top: 30%; left: 50%; transform: translateX(-50%);
-}
+/* Confirmación de Borrado */
+#confirm-delete-dialog { position: absolute; background-color: rgba(247, 247, 247, 0.95); border: 1px solid #888; border-radius: 8px; padding: 15px; box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1002; /* Encima del modal edit */ text-align: center; max-width: 80%; top: 30%; left: 50%; transform: translateX(-50%); display: none; }
 #confirm-delete-dialog p { margin-bottom: 15px; font-size: 13px; }
-#confirm-delete-dialog button { margin: 0 5px; padding: 5px 10px; }
-#confirm-delete-yes { background-color: #ff3b30; color: white; border: 1px solid #c00;}
+#confirm-delete-dialog button { margin: 0 5px; /* Reutilizar .aqua-button */ }
+#confirm-delete-yes { /* Rojo */
+     background: linear-gradient(to bottom, #ff8a80 0%, #ff5252 100%); border: 1px solid #c62828; color: white; text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+}
+#confirm-delete-yes:hover { background: linear-gradient(to bottom, #ff9e9e 0%, #ff6b6b 100%);}
+#confirm-delete-yes:active { background: linear-gradient(to top, #ff8a80 0%, #ff5252 100%);}
+
+
+/* --- Footer Dock Estilo iOS 3 --- */
+.footer-dock {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 50px; /* Altura fija */
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(50,50,50,0.85) 100%); /* Negro translúcido */
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); /* Efecto cristal */
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 0 10px;
+    z-index: 20;
+}
+.dock-button {
+    background: none; border: none;
+    color: #fff; text-align: center;
+    cursor: pointer; padding: 0;
+    display: flex; flex-direction: column; align-items: center;
+    opacity: 0.8; transition: opacity 0.2s;
+}
+.dock-button:hover, .dock-button:active { opacity: 1; transform: scale(1.1); }
+.dock-button svg { margin-bottom: 2px; }
+.dock-button span { font-size: 10px; text-shadow: 0 1px 1px rgba(0,0,0,0.5); }
+
+/* Estilos específicos para mensajes de estado */
+.error { color: #D8000C; background-color: #FFD2D2; padding: 3px 5px; border-radius: 3px; font-size: 11px; margin-top: 5px; display: inline-block; }
+.success { color: #4F8A10; background-color: #DFF2BF; padding: 3px 5px; border-radius: 3px; font-size: 11px; margin-top: 5px; display: inline-block;}
 
