@@ -1,4 +1,4 @@
-/* app.js - SCRIPT FINAL DE IMPORTACIÓN DE DATOS (PARA EJECUTAR SÓLO UNA VEZ) */
+/* app.js - SCRIPT FINAL DE IMPORTACIÓN DE DATOS */
 
 // Importa las funciones que necesitamos de Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -19,8 +19,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ¡LA URL CORREGIDA! Apuntando al archivo Dias.csv
-const CSV_URL = 'https://raw.githubusercontent.com/paoloacx/ephemerides/main/Ephemerides%20DB%20-%20Dias.csv'; 
+// ¡LA URL CORREGIDA Y DEFINITIVA!
+const CSV_URL = 'https://raw.githubusercontent.com/paoloacx/ephemerides/main/dias.csv'; 
 
 /**
  * Función para cargar y procesar el CSV.
@@ -34,22 +34,22 @@ async function cargarDias() {
         const response = await fetch(CSV_URL);
         
         if (!response.ok) {
-             // Si falla de nuevo, mostrar el error 
-            contentDiv.innerHTML = `<p>Error HTTP: ${response.status}. La URL no funciona: ${CSV_URL}</p>`;
+            contentDiv.innerHTML = `<p>Error HTTP: ${response.status}. Por favor, verifica la URL <a href="${CSV_URL}">aquí</a>.</p>`;
             throw new Error(`Error HTTP: ${response.status} - No se pudo acceder al archivo CSV.`);
         }
         
         const data = await response.text();
-        const lineas = data.split('\n').filter(line => line.trim() !== '');
-        
-        // Saltamos la primera línea (encabezados)
+        // Nota: El uso de 'match' ayuda a manejar diferentes formatos de salto de línea (CRLF o LF)
+        const lineas = data.trim().split(/\r?\n/).filter(line => line.trim() !== '');
+
+        // 2. Probar si el archivo tiene al menos los encabezados y un día
         if (lineas.length <= 1) {
-             contentDiv.innerHTML = "<p>Error de lectura. El archivo está vacío o mal formado.</p>";
+             contentDiv.innerHTML = "<p>Error de lectura. El archivo está vacío o no tiene datos de días.</p>";
              return;
         }
 
         let documentosCargados = 0;
-
+        
         // 3. Iterar sobre los días (empezamos en la línea 1 para saltar los encabezados)
         for (let i = 1; i < lineas.length; i++) {
             const valores = lineas[i].split(',');
@@ -78,8 +78,8 @@ async function cargarDias() {
             <h2>¡Carga de Días Completada!</h2>
             <p>Se cargaron ${documentosCargados} días en la colección 'Dias' de Firebase.</p>
             <hr>
-            <h3>✅ ¡La base de datos está lista!</h3>
-            <p><strong>Siguiente paso:</strong> Debes reemplazar este código de importación con el código para **MOSTRAR** el calendario.</p>
+            <h3>✅ La base de datos está lista.</h3>
+            <p><strong>Siguiente paso:</strong> Debes reemplazar este código de importación por el código de la app (el calendario).</p>
         `;
 
     } catch (error) {
