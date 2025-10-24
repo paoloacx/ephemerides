@@ -1,9 +1,9 @@
-/* app.js - CÓDIGO FINAL DE LA APP (VERSIÓN 2.1 - VISTA MENSUAL) */
+/* app.js - CÓDIGO FINAL CON DEPURACIÓN (v2.1-debug) */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// --- Configuración de Firebase (Tu llave) ---
+// --- Configuración de Firebase ---
 const firebaseConfig = {
   apiKey: "AIzaSyBrd-8qaBfSplBjj74MNuKP8UWYmr8RaJA",
   authDomain: "ephemerides-2005.firebaseapp.com",
@@ -14,72 +14,71 @@ const firebaseConfig = {
   measurementId: "G-BZC9FRYCJW"
 };
 
-// --- Inicialización de Firebase ---
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// --- Variables Globales de la App ---
 const appContent = document.getElementById("app-content");
 const monthNameEl = document.getElementById("month-name");
 const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-let allDaysData = []; // Almacén para guardar los 366 días
-// Inicia en el mes actual
+let allDaysData = []; 
 let currentMonthIndex = new Date().getMonth(); 
 
-/**
- * INICIO DE LA APP: Carga todos los datos de Firebase UNA VEZ.
- */
 async function iniciarApp() {
-    appContent.innerHTML = "<p>Cargando calendario...</p>";
+    console.log("DEBUG: Iniciando app...");
+    appContent.innerHTML = "<p>Cargando calendario (modo debug)...</p>";
     
     try {
-        // 1. Obtener TODOS los datos de Firebase
+        console.log("DEBUG: Obteniendo datos de Firebase...");
         const diasSnapshot = await getDocs(collection(db, "Dias"));
+        
         if (diasSnapshot.empty) {
-            appContent.innerHTML = "<p>Error: La colección 'Dias' está vacía en Firebase. Asegúrate de haber importado los datos correctamente.</p>";
-            return; // Detener si no hay datos
+            appContent.innerHTML = "<p>Error: La colección 'Dias' está vacía. Importa los datos.</p>";
+            console.error("DEBUG: La colección 'Dias' está vacía.");
+            return; 
         }
 
+        let count = 0;
         diasSnapshot.forEach((doc) => {
             allDaysData.push({ id: doc.id, ...doc.data() });
+            count++;
         });
-        
-        // 2. Ordenar los datos (¡esto arregla el desorden!)
-        allDaysData.sort((a, b) => a.id.localeCompare(b.id));
+        console.log(`DEBUG: Se leyeron ${count} documentos de Firebase.`); // CHIVATO 1
 
-        // 3. Configurar los botones de navegación
+        if (count < 300) { // Sospechoso si lee menos de 300
+             console.warn("DEBUG: ¡Alerta! Se leyeron muy pocos documentos de Firebase.");
+        }
+
+        // Ordenar los datos
+        console.log("DEBUG: Ordenando los datos...");
+        allDaysData.sort((a, b) => a.id.localeCompare(b.id));
+        console.log("DEBUG: Datos ordenados. Primer día:", allDaysData[0]?.id, "Último día:", allDaysData[allDaysData.length - 1]?.id); // CHIVATO 2
+
         configurarNavegacion();
-        
-        // 4. Dibujar el mes actual
         dibujarMesActual();
         
     } catch (e) {
-        appContent.innerHTML = `<p>Error fatal al cargar la base de datos: ${e.message}</p>`;
-        console.error("Error al iniciar la app:", e);
+        appContent.innerHTML = `<p>Error fatal al cargar: ${e.message}</p>`;
+        console.error("Error fatal en iniciarApp:", e);
     }
 }
 
-/**
- * Dibuja en pantalla SÓLO los días del mes actual.
- */
 function dibujarMesActual() {
-    // 1. Poner el nombre del mes en el header
+    console.log(`DEBUG: Dibujando mes índice ${currentMonthIndex} (${monthNames[currentMonthIndex]})`);
     monthNameEl.textContent = monthNames[currentMonthIndex];
-    
-    // 2. Crear el string del mes (ej: "01", "10", "12")
     const monthString = (currentMonthIndex + 1).toString().padStart(2, '0');
+    console.log(`DEBUG: Filtrando por prefijo '${monthString}-'`); // CHIVATO 3
     
-    // 3. Filtrar nuestro almacén para este mes
+    // Filtrar
     const diasDelMes = allDaysData.filter(dia => dia.id.startsWith(monthString + '-'));
+    console.log(`DEBUG: Se encontraron ${diasDelMes.length} días para este mes.`); // CHIVATO 4
 
-    // 4. Limpiar el contenido anterior y preparar la cuadrícula
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div>`;
     const grid = document.getElementById("grid-dias");
 
-    // 5. Dibujar cada día del mes
     if (diasDelMes.length === 0) {
-        grid.innerHTML = "<p>No hay días para mostrar en este mes.</p>"; // Mensaje si el filtro no encuentra nada
+        grid.innerHTML = "<p>No hay días para mostrar en este mes (¿Error en filtro o datos?).</p>";
+        console.warn("DEBUG: El filtro no encontró días para el prefijo:", monthString);
         return;
     }
 
@@ -94,11 +93,9 @@ function dibujarMesActual() {
         btn.addEventListener('click', () => abrirModalEdicion(dia));
         grid.appendChild(btn);
     });
+    console.log(`DEBUG: Se dibujaron ${diasDelMes.length} botones.`);
 }
 
-/**
- * Configura los botones "<" y ">"
- */
 function configurarNavegacion() {
     document.getElementById("prev-month").onclick = () => {
         currentMonthIndex--;
@@ -113,10 +110,8 @@ function configurarNavegacion() {
     };
 }
 
-/**
- * Muestra el modal de edición
- */
 function abrirModalEdicion(dia) {
+    // ... (El código del modal no cambia) ...
     let modal = document.getElementById('edit-modal');
     if (!modal) {
         modal = document.createElement('div');
@@ -149,10 +144,8 @@ function abrirModalEdicion(dia) {
     document.getElementById('save-btn').onclick = () => guardarNombreEspecial(dia.id, input.value.trim());
 }
 
-/**
- * Guarda el nuevo Nombre_Especial en Firebase y actualiza la vista.
- */
 async function guardarNombreEspecial(diaId, nuevoNombre) {
+    // ... (El código de guardar no cambia) ...
     const status = document.getElementById('save-status');
     const modal = document.getElementById('edit-modal');
     
@@ -164,7 +157,6 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
         
         await updateDoc(diaRef, { Nombre_Especial: valorFinal });
         
-        // Actualizar el almacén local (mucho más rápido)
         const diaIndex = allDaysData.findIndex(d => d.id === diaId);
         if (diaIndex !== -1) {
             allDaysData[diaIndex].Nombre_Especial = valorFinal;
@@ -174,7 +166,7 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
         
         setTimeout(() => {
             modal.style.display = 'none';
-            dibujarMesActual(); // Redibuja el mes actual
+            dibujarMesActual(); 
         }, 800);
         
     } catch (e) {
