@@ -8,19 +8,22 @@
 }
 
 .month-nav button {
-    background-color: #fff;
-    border: 1px solid #aaa;
+    /* Imitamos el estilo iOS 3.0 de la cabecera */
+    background: linear-gradient(to bottom, #bcc6d1 0%, #a4b0bd 50%, #909dad 51%, #a4b0bd 100%);
+    border: 1px solid #6d6d6d;
     border-radius: 5px;
     padding: 8px 12px;
     font-size: 14px;
     font-weight: bold;
-    color: #007aff;
+    color: #ffffff; /* Texto blanco */
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.5); /* Sombra de texto clásica */
     cursor: pointer;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 1px rgba(0,0,0,0.2);
 }
 
 .month-nav button:hover {
-    background-color: #e8e8e8;
+    /* Un hover más sutil */
+    background: linear-gradient(to bottom, #d1d8e0 0%, #b8c1cb 50%, #a0abb7 51%, #b8c1cb 100%);
 }
 
 /* Ajustes a la cuadrícula de días */
