@@ -1,4 +1,4 @@
-/* app.js - CÓDIGO FINAL CON DEPURACIÓN (v2.1-debug) */
+/* app.js - CÓDIGO FINAL CON DEPURACIÓN AVANZADA (v2.1-debug2) */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
@@ -26,33 +26,36 @@ let currentMonthIndex = new Date().getMonth();
 
 async function iniciarApp() {
     console.log("DEBUG: Iniciando app...");
-    appContent.innerHTML = "<p>Cargando calendario (modo debug)...</p>";
+    appContent.innerHTML = "<p>Cargando calendario (modo debug avanzado)...</p>";
     
     try {
         console.log("DEBUG: Obteniendo datos de Firebase...");
         const diasSnapshot = await getDocs(collection(db, "Dias"));
         
         if (diasSnapshot.empty) {
-            appContent.innerHTML = "<p>Error: La colección 'Dias' está vacía. Importa los datos.</p>";
+            appContent.innerHTML = "<p>Error: La colección 'Dias' está vacía.</p>";
             console.error("DEBUG: La colección 'Dias' está vacía.");
             return; 
         }
 
         let count = 0;
         diasSnapshot.forEach((doc) => {
-            allDaysData.push({ id: doc.id, ...doc.data() });
+            // Asegurémonos de que el ID es una cadena limpia
+            const cleanId = String(doc.id).trim(); 
+            allDaysData.push({ id: cleanId, ...doc.data() });
             count++;
         });
-        console.log(`DEBUG: Se leyeron ${count} documentos de Firebase.`); // CHIVATO 1
+        console.log(`DEBUG: Se leyeron ${count} documentos de Firebase.`);
 
-        if (count < 300) { // Sospechoso si lee menos de 300
-             console.warn("DEBUG: ¡Alerta! Se leyeron muy pocos documentos de Firebase.");
+        if (count < 366) { 
+             console.warn(`DEBUG: ¡Alerta! Se leyeron solo ${count} documentos. Deberían ser 366.`);
         }
 
-        // Ordenar los datos
         console.log("DEBUG: Ordenando los datos...");
         allDaysData.sort((a, b) => a.id.localeCompare(b.id));
-        console.log("DEBUG: Datos ordenados. Primer día:", allDaysData[0]?.id, "Último día:", allDaysData[allDaysData.length - 1]?.id); // CHIVATO 2
+        console.log("DEBUG: Datos ordenados. Primer día:", allDaysData[0]?.id, "Último día:", allDaysData[allDaysData.length - 1]?.id); 
+        // Loguear una muestra de IDs después de ordenar para verificar formato
+        console.log("DEBUG: Muestra de IDs después de ordenar:", allDaysData.slice(270, 285).map(d => d.id)); // Muestra días alrededor de Octubre 1-15
 
         configurarNavegacion();
         dibujarMesActual();
@@ -64,23 +67,44 @@ async function iniciarApp() {
 }
 
 function dibujarMesActual() {
+    console.log(`-----------------------------------------------------`);
     console.log(`DEBUG: Dibujando mes índice ${currentMonthIndex} (${monthNames[currentMonthIndex]})`);
     monthNameEl.textContent = monthNames[currentMonthIndex];
     const monthString = (currentMonthIndex + 1).toString().padStart(2, '0');
-    console.log(`DEBUG: Filtrando por prefijo '${monthString}-'`); // CHIVATO 3
+    console.log(`DEBUG: Filtro a aplicar: dia.id.startsWith('${monthString}-')`); 
     
+    // *** NUEVO CHIVATO: Ver los IDs ANTES de filtrar ***
+    const idsAntesDeFiltrar = allDaysData.map(dia => dia.id);
+    console.log(`DEBUG: Total IDs en allDaysData ANTES de filtrar para mes ${monthString}: ${idsAntesDeFiltrar.length}`);
+    // console.log("DEBUG: IDs ANTES:", idsAntesDeFiltrar.join(', ')); // Descomentar si es necesario ver TODOS
+
     // Filtrar
-    const diasDelMes = allDaysData.filter(dia => dia.id.startsWith(monthString + '-'));
-    console.log(`DEBUG: Se encontraron ${diasDelMes.length} días para este mes.`); // CHIVATO 4
+    const diasDelMes = allDaysData.filter(dia => {
+        const starts = dia.id.startsWith(monthString + '-');
+        // *** NUEVO CHIVATO: Ver qué hace startsWith para cada ID ***
+        // if (dia.id.substring(0, 2) === monthString) { // Solo loguear para el mes actual
+        //     console.log(`   - Verificando ID: '${dia.id}' -> startsWith('${monthString}-')? ${starts}`);
+        // }
+        return starts;
+    });
+    
+    // *** NUEVO CHIVATO: Ver los IDs DESPUÉS de filtrar ***
+    const idsDespuesDeFiltrar = diasDelMes.map(dia => dia.id);
+    console.log(`DEBUG: Se encontraron ${diasDelMes.length} días DESPUÉS de filtrar para el mes ${monthString}.`); 
+    console.log("DEBUG: IDs ENCONTRADOS:", idsDespuesDeFiltrar.join(', ')); // Mostrar los IDs que SÍ pasaron el filtro
 
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div>`;
     const grid = document.getElementById("grid-dias");
 
     if (diasDelMes.length === 0) {
-        grid.innerHTML = "<p>No hay días para mostrar en este mes (¿Error en filtro o datos?).</p>";
-        console.warn("DEBUG: El filtro no encontró días para el prefijo:", monthString);
+        grid.innerHTML = "<p>No se encontraron días para este mes.</p>";
+        console.error(`DEBUG: ERROR GRAVE - El filtro no encontró ningún día para el prefijo '${monthString}-'`);
         return;
     }
+     if (diasDelMes.length > 0 && diasDelMes.length < 28) { // Si encuentra pocos días (como 12)
+        console.warn(`DEBUG: ALERTA - Se encontraron MUY POCOS días (${diasDelMes.length}) para el mes ${monthString}. ¡El filtro está fallando!`);
+     }
+
 
     diasDelMes.forEach(dia => {
         const btn = document.createElement("button");
@@ -94,8 +118,10 @@ function dibujarMesActual() {
         grid.appendChild(btn);
     });
     console.log(`DEBUG: Se dibujaron ${diasDelMes.length} botones.`);
+    console.log(`-----------------------------------------------------`);
 }
 
+// --- El resto de funciones (configurarNavegacion, abrirModalEdicion, guardarNombreEspecial) no cambian ---
 function configurarNavegacion() {
     document.getElementById("prev-month").onclick = () => {
         currentMonthIndex--;
@@ -111,7 +137,6 @@ function configurarNavegacion() {
 }
 
 function abrirModalEdicion(dia) {
-    // ... (El código del modal no cambia) ...
     let modal = document.getElementById('edit-modal');
     if (!modal) {
         modal = document.createElement('div');
@@ -145,7 +170,6 @@ function abrirModalEdicion(dia) {
 }
 
 async function guardarNombreEspecial(diaId, nuevoNombre) {
-    // ... (El código de guardar no cambia) ...
     const status = document.getElementById('save-status');
     const modal = document.getElementById('edit-modal');
     
@@ -177,4 +201,3 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
 
 // --- ¡Arranca la App! ---
 iniciarApp();
-
