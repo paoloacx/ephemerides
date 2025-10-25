@@ -1,4 +1,4 @@
-/* app.js - v10.1 - Implement Firebase Storage & Memory Stamps */
+/* app.js - v10.2 - Spotlight & Header/Month Text Size */
 
 // Importaciones
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -44,7 +44,7 @@ let selectedPlace = null;
 let currentUser = null;
 
 // --- SVG Icons ---
-const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/></svg>`;
+const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5.5 0 0 0 1 2.5z"/></svg>`;
 const deleteIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0 -1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m3 0l-.5 8.5a.5.5 0 1 0 .998.06l.5-8.5a.5.5 0 1 0-.998.06m3 .5l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06Z"/></svg>`;
 const pencilIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-pencil-fill" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/></svg>`;
 const loginIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0z"/><path fill-rule="evenodd" d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708z"/></svg>`;
@@ -57,7 +57,7 @@ async function handleLogout() { try { await signOut(auth); } catch (error) { con
 
 // --- Check/Repair DB ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v10.0...");
+    console.log("Starting Check/Repair v10.2...");
     appContent.innerHTML = "<p>Verifying database...</p>";
     try {
         const diasRef = collection(db, "Dias");
@@ -91,8 +91,10 @@ async function loadDataAndDrawCalendar() {
 function configurarNavegacion() {
      document.getElementById("prev-month").onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); }; document.getElementById("next-month").onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); };
 }
-function dibujarMesActual() {
-    monthNameDisplayEl.textContent = monthNames[currentMonthIndex]; const monthNumberTarget = currentMonthIndex + 1; console.log(`Drawing month ${monthNumberTarget}`); const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget ); console.log(`Found ${diasDelMes.length} days.`); appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div>`; const grid = document.getElementById("grid-dias"); if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; } const diasEsperados = daysInMonth[currentMonthIndex]; if (diasDelMes.length !== diasEsperados) console.warn(`ALERT: Found ${diasDelMes.length}/${diasEsperados} for ${monthNames[currentMonthIndex]}.`); 
+async function dibujarMesActual() {
+    monthNameDisplayEl.textContent = monthNames[currentMonthIndex]; const monthNumberTarget = currentMonthIndex + 1; console.log(`Drawing month ${monthNumberTarget}`); const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget ); console.log(`Found ${diasDelMes.length} days.`); 
+    appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div><div id="today-memory-spotlight"></div>`; // Añadido el spotlight
+    const grid = document.getElementById("grid-dias"); if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; } const diasEsperados = daysInMonth[currentMonthIndex]; if (diasDelMes.length !== diasEsperados) console.warn(`ALERT: Found ${diasDelMes.length}/${diasEsperados} for ${monthNames[currentMonthIndex]}.`); 
     diasDelMes.forEach(dia => { 
         const btn = document.createElement("button"); 
         btn.className = "dia-btn"; 
@@ -108,6 +110,54 @@ function dibujarMesActual() {
         grid.appendChild(btn); 
     }); 
     console.log(`Rendered ${diasDelMes.length} buttons.`);
+    await updateTodayMemorySpotlight(); // Actualizar el spotlight
+}
+
+// --- Today Memory Spotlight ---
+async function updateTodayMemorySpotlight() {
+    const spotlightDiv = document.getElementById('today-memory-spotlight');
+    if (!spotlightDiv) return;
+
+    const today = new Date();
+    const todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+    const todayDay = allDaysData.find(d => d.id === todayId);
+
+    if (!todayDay) {
+        spotlightDiv.innerHTML = `<div class="spotlight-content"><p>Could not find today's data.</p></div>`;
+        return;
+    }
+
+    const todayMemoriesRef = collection(db, "Dias", todayDay.id, "Memorias");
+    const q = query(todayMemoriesRef, orderBy("Creado_En", "desc"), orderBy("Fecha_Original", "desc"));
+    const snapshot = await getDocs(q);
+
+    let contentHTML = `<h3>Today, ${todayDay.Nombre_Dia}</h3>`;
+    let memoryToShow = null;
+
+    if (!snapshot.empty) {
+        memoryToShow = snapshot.docs[0].data(); // Get the latest memory
+        let memoryText = memoryToShow.Descripcion || memoryToShow.LugarNombre || memoryToShow.CancionInfo || "A memory...";
+        let artwork = '';
+        if (memoryToShow.Tipo === 'Musica' && memoryToShow.CancionData?.artworkUrl60) {
+            artwork = `<img src="${memoryToShow.CancionData.artworkUrl60}" class="spotlight-artwork" alt="Artwork">`;
+        } else if (memoryToShow.Tipo === 'Imagen' && memoryToShow.ImagenURL) {
+            artwork = `<img src="${memoryToShow.ImagenURL}" class="spotlight-artwork" alt="Memory Image">`;
+        }
+
+        contentHTML += `
+            <div class="spotlight-memory">
+                ${artwork}
+                <p>${memoryText.length > 100 ? memoryText.substring(0, 97) + '...' : memoryText}</p>
+            </div>
+        `;
+        spotlightDiv.classList.add('has-memory'); // Add class if there's a memory
+    } else {
+        contentHTML += `<p class="no-memory-message">Nothing to remember today... yet!</p>`;
+        spotlightDiv.classList.remove('has-memory'); // Remove class if no memory
+    }
+
+    spotlightDiv.innerHTML = `<div class="spotlight-content">${contentHTML}</div>`;
+    spotlightDiv.onclick = () => abrirModalPreview(todayDay); // Click to open today's preview
 }
 
 // --- Footer ---
@@ -161,48 +211,37 @@ async function abrirModalEdicion(dia) { // dia is null if adding via footer
         
         modal.innerHTML = `
             <div class="modal-content">
-                <!-- Franja marrón se añade con CSS -->
-                <div class="modal-content-scrollable"> <!-- Scroll container -->
-                    <!-- Day Selection (Add mode ONLY) -->
-                    <div class="modal-section" id="day-selection-section" style="display: none;"> 
+                <!-- Franja marrón se añade con CSS --><div class="modal-content-scrollable"> <!-- Scroll container --><!-- Day Selection (Add mode ONLY) --><div class="modal-section" id="day-selection-section" style="display: none;"> 
                          <h3>Add Memory To...</h3>
                          <label for="edit-mem-day">Day (MM-DD):</label>
                          <select id="edit-mem-day"></select>
                          <label for="edit-mem-year">Year of Memory:</label>
                          <input type="number" id="edit-mem-year" placeholder="YYYY" min="1800" max="${new Date().getFullYear() + 1}" required>
                     </div>
-                    <!-- Day Name Edit (Edit mode ONLY) -->
-                    <div class="modal-section" id="day-name-section" style="display: none;"> 
+                    <!-- Day Name Edit (Edit mode ONLY) --><div class="modal-section" id="day-name-section" style="display: none;"> 
                         <h3 id="edit-modal-title"></h3>
                         <label for="nombre-especial-input">Name this day:</label>
                         <input type="text" id="nombre-especial-input" placeholder="e.g., Pizza Day" maxlength="25">
                         <button id="save-name-btn" class="aqua-button">Save Day Name</button>
                         <p id="save-status"></p>
                     </div>
-                    <!-- Memories Section (Always Visible) -->
-                    <div class="modal-section memorias-section">
+                    <!-- Memories Section (Always Visible) --><div class="modal-section memorias-section">
                         <h4>Memories</h4>
                         <div id="edit-memorias-list">Loading...</div>
                         <form id="memory-form">
-                             <p class="section-description" id="memory-form-title">Add/Edit Memory</p> <!-- Unified title -->
-                             <label for="memoria-fecha">Original Date:</label>
+                             <p class="section-description" id="memory-form-title">Add/Edit Memory</p> <!-- Unified title --><label for="memoria-fecha">Original Date:</label>
                              <input type="date" id="memoria-fecha" required>
                              <label for="memoria-type">Type:</label>
                              <select id="memoria-type"> <option value="Texto">Description</option> <option value="Lugar">Place</option> <option value="Musica">Music</option> <option value="Imagen">Image</option> </select>
-                             <!-- Dynamic Inputs -->
-                             <div class="add-memory-input-group" id="input-type-Texto"><label for="memoria-desc">Description:</label><textarea id="memoria-desc" placeholder="Write memory..."></textarea></div>
+                             <!-- Dynamic Inputs --><div class="add-memory-input-group" id="input-type-Texto"><label for="memoria-desc">Description:</label><textarea id="memoria-desc" placeholder="Write memory..."></textarea></div>
                              <div class="add-memory-input-group" id="input-type-Lugar"><label for="memoria-place-search">Search:</label><input type="text" id="memoria-place-search"><button type="button" class="aqua-button" id="btn-search-place">Search</button><div id="place-results"></div></div>
                              <div class="add-memory-input-group" id="input-type-Musica"><label for="memoria-music-search">Search:</label><input type="text" id="memoria-music-search"><button type="button" class="aqua-button" id="btn-search-itunes">Search</button><div id="itunes-results"></div></div>
                              <div class="add-memory-input-group" id="input-type-Imagen"><label for="memoria-image-upload">Image:</label><input type="file" id="memoria-image-upload" accept="image/*"><label for="memoria-image-desc">Desc:</label><input type="text" id="memoria-image-desc"><div id="image-upload-status"></div></div>
-                             <button type="submit" id="save-memoria-btn" class="aqua-button">Add Memory</button> <!-- Text changes dynamically -->
-                             <p id="memoria-status"></p>
+                             <button type="submit" id="save-memoria-btn" class="aqua-button">Add Memory</button> <!-- Text changes dynamically --><p id="memoria-status"></p>
                         </form>
                     </div>
-                    <!-- Delete Confirmation -->
-                    <div id="confirm-delete-dialog" style="display: none;"> <p id="confirm-delete-text"></p> <button id="confirm-delete-no" class="aqua-button">Cancel</button> <button id="confirm-delete-yes" class="aqua-button delete-confirm">Delete</button> </div>
-                 </div> <!-- End scrollable -->
-                <!-- Main Buttons -->
-                <div class="modal-main-buttons"> <button id="close-edit-add-btn">Close</button> </div>
+                    <!-- Delete Confirmation --><div id="confirm-delete-dialog" style="display: none;"> <p id="confirm-delete-text"></p> <button id="confirm-delete-no" class="aqua-button">Cancel</button> <button id="confirm-delete-yes" class="aqua-button delete-confirm">Delete</button> </div>
+                 </div> <!-- End scrollable --><!-- Main Buttons --><div class="modal-main-buttons"> <button id="close-edit-add-btn">Close</button> </div>
             </div>`;
 
         document.body.appendChild(modal);
@@ -411,6 +450,7 @@ async function handleMemoryFormSubmit(event) {
         if(previewList && currentlyOpenDay?.id === diaId && previewModal?.style.display === 'flex') { 
             await cargarYMostrarMemorias(diaId, 'preview-memorias-list'); 
         } 
+        updateTodayMemorySpotlight(); // Actualizar el spotlight después de guardar/actualizar
     } catch (e) { 
         console.error("Save/Update Error:", e); 
         statusDiv.textContent = `Error: ${e.message}`; 
@@ -451,6 +491,7 @@ async function deleteMemoriaUnified(diaId, memoriaId) {
         if(pL&&currentlyOpenDay?.id===diaId&&pM?.style.display==='flex'){
             await cargarYMostrarMemorias(diaId,'preview-memorias-list');
         } 
+        updateTodayMemorySpotlight(); // Actualizar el spotlight después de borrar
     } catch(e){
         console.error("Delete Error:",e); 
         s.textContent=`Error: ${e.message}`; 
@@ -496,3 +537,4 @@ window.handleLogout = handleLogout;
 
 // --- Start App ---
 checkAndRunApp();
+
