@@ -1,4 +1,4 @@
-/* app.js - v10.0 - Unified Edit/Add Modal, Final Polish */
+/* app.js - v10.1 - Implement Firebase Storage & Memory Stamps */
 
 // Importaciones
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -9,7 +9,8 @@ import {
 import {
     getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-// import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+// ¡NUEVO! Importar Firebase Storage
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
 // --- Firebase Config ---
 const firebaseConfig = {
@@ -25,7 +26,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-// const storage = getStorage(app);
+const storage = getStorage(app); // ¡NUEVO! Inicializar Storage
 
 // --- Global Variables & Constants ---
 const appContent = document.getElementById("app-content");
@@ -44,7 +45,7 @@ let currentUser = null;
 
 // --- SVG Icons ---
 const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/></svg>`;
-const deleteIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m3 0l-.5 8.5a.5.5 0 1 0 .998.06l.5-8.5a.5.5 0 1 0-.998.06m3 .5l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06Z"/></svg>`;
+const deleteIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0 -1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m3 0l-.5 8.5a.5.5 0 1 0 .998.06l.5-8.5a.5.5 0 1 0-.998.06m3 .5l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06Z"/></svg>`;
 const pencilIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-pencil-fill" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/></svg>`;
 const loginIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0z"/><path fill-rule="evenodd" d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708z"/></svg>`;
 
@@ -79,7 +80,8 @@ async function checkAndRunApp() {
 async function generateCleanDatabase() {
     console.log("--- Starting Regeneration ---"); const diasRef = collection(db, "Dias"); try { console.log("Deleting 'Dias'..."); appContent.innerHTML = "<p>Deleting old data...</p>"; const oldDocsSnapshot = await getDocs(diasRef); if (!oldDocsSnapshot.empty) { let batch = writeBatch(db); let deleteCount = 0; for (const docSnap of oldDocsSnapshot.docs) { // Use for...of for async safety
  batch.delete(docSnap.ref); deleteCount++; if (deleteCount >= 400) { console.log(`Committing delete batch (${deleteCount})...`); await batch.commit(); batch = writeBatch(db); deleteCount = 0; } } if (deleteCount > 0) { console.log(`Committing final delete batch (${deleteCount})...`); await batch.commit(); } console.log(`Deletion complete (${oldDocsSnapshot.size}).`); } else { console.log("'Dias' collection was already empty."); } } catch(e) { console.error("Error deleting collection:", e); throw e; }
-    console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>"; let genBatch = writeBatch(db); let ops = 0, created = 0; try { for (let m = 0; m < 12; m++) { const monthNum = m + 1, monthStr = monthNum.toString().padStart(2, '0'); const numDays = daysInMonth[m]; for (let d = 1; d <= numDays; d++) { const dayStr = d.toString().padStart(2, '0'); const diaId = `${monthStr}-${dayStr}`; const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day" }; const docRef = doc(db, "Dias", diaId); genBatch.set(docRef, diaData); ops++; created++; if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`; if (ops >= 400) { console.log(`Committing generate batch (${ops})...`); await genBatch.commit(); genBatch = writeBatch(db); ops = 0; } } } if (ops > 0) { console.log(`Committing final generate batch (${ops})...`); await genBatch.commit(); } console.log(`--- Regeneration complete: ${created} days created ---`); appContent.innerHTML = `<p class="success">✅ DB regenerated: ${created} days!</p>`; } catch(e) { console.error("Error generating days:", e); throw e; }
+    console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>"; let genBatch = writeBatch(db); let ops = 0, created = 0; try { for (let m = 0; m < 12; m++) { const monthNum = m + 1, monthStr = monthNum.toString().padStart(2, '0'); const numDays = daysInMonth[m]; for (let d = 1; d <= numDays; d++) { const dayStr = d.toString().padStart(2, '0'); const diaId = `${monthStr}-${dayStr}`; const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day", hasMemories: false }; // Añadido hasMemories
+ const docRef = doc(db, "Dias", diaId); genBatch.set(docRef, diaData); ops++; created++; if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`; if (ops >= 400) { console.log(`Committing generate batch (${ops})...`); await genBatch.commit(); genBatch = writeBatch(db); ops = 0; } } } if (ops > 0) { console.log(`Committing final generate batch (${ops})...`); await genBatch.commit(); } console.log(`--- Regeneration complete: ${created} days created ---`); appContent.innerHTML = `<p class="success">✅ DB regenerated: ${created} days!</p>`; } catch(e) { console.error("Error generating days:", e); throw e; }
 }
 
 // --- Load/Draw Calendar ---
@@ -90,7 +92,22 @@ function configurarNavegacion() {
      document.getElementById("prev-month").onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); }; document.getElementById("next-month").onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); };
 }
 function dibujarMesActual() {
-    monthNameDisplayEl.textContent = monthNames[currentMonthIndex]; const monthNumberTarget = currentMonthIndex + 1; console.log(`Drawing month ${monthNumberTarget}`); const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget ); console.log(`Found ${diasDelMes.length} days.`); appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div>`; const grid = document.getElementById("grid-dias"); if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; } const diasEsperados = daysInMonth[currentMonthIndex]; if (diasDelMes.length !== diasEsperados) console.warn(`ALERT: Found ${diasDelMes.length}/${diasEsperados} for ${monthNames[currentMonthIndex]}.`); diasDelMes.forEach(dia => { const btn = document.createElement("button"); btn.className = "dia-btn"; btn.innerHTML = `<span class="dia-numero">${dia.id.substring(3)}</span>`; btn.dataset.diaId = dia.id; btn.addEventListener('click', () => abrirModalPreview(dia)); grid.appendChild(btn); }); console.log(`Rendered ${diasDelMes.length} buttons.`);
+    monthNameDisplayEl.textContent = monthNames[currentMonthIndex]; const monthNumberTarget = currentMonthIndex + 1; console.log(`Drawing month ${monthNumberTarget}`); const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget ); console.log(`Found ${diasDelMes.length} days.`); appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div>`; const grid = document.getElementById("grid-dias"); if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; } const diasEsperados = daysInMonth[currentMonthIndex]; if (diasDelMes.length !== diasEsperados) console.warn(`ALERT: Found ${diasDelMes.length}/${diasEsperados} for ${monthNames[currentMonthIndex]}.`); 
+    diasDelMes.forEach(dia => { 
+        const btn = document.createElement("button"); 
+        btn.className = "dia-btn"; 
+        btn.innerHTML = `<span class="dia-numero">${dia.id.substring(3)}</span>`; 
+        btn.dataset.diaId = dia.id; 
+        btn.addEventListener('click', () => abrirModalPreview(dia)); 
+        
+        // ¡NUEVO! Añadir clase para el sello
+        if (dia.hasMemories) {
+            btn.classList.add('tiene-memorias');
+        }
+        
+        grid.appendChild(btn); 
+    }); 
+    console.log(`Rendered ${diasDelMes.length} buttons.`);
 }
 
 // --- Footer ---
@@ -101,7 +118,7 @@ function configurarFooter() {
     document.getElementById('btn-add-memory').onclick = () => { abrirModalEdicion(null); }; // Open unified modal in "Add" mode
 }
 async function buscarMemorias(term) {
-    console.log("Searching:", term); appContent.innerHTML = `<p>Searching for "${term}"...</p>`; let results = []; try { for (const dia of allDaysData) { const memSnapshot = await getDocs(collection(db, "Dias", dia.id, "Memorias")); memSnapshot.forEach(memDoc => { const memoria = { diaId: dia.id, diaNombre: dia.Nombre_Dia, id: memDoc.id, ...memDoc.data() }; let searchableText = memoria.Descripcion || ''; if(memoria.LugarNombre) searchableText += ' ' + memoria.LugarNombre; if(memoria.CancionInfo) searchableText += ' ' + memoria.CancionInfo; if (searchableText.toLowerCase().includes(term)) { results.push(memoria); } }); } if (results.length === 0) { appContent.innerHTML = `<p>No results for "${term}".</p>`; } else { console.log(`Found ${results.length}.`); results.sort((a, b) => (b.Fecha_Original?.toDate() ?? 0) - (a.Fecha_Original?.toDate() ?? 0)); appContent.innerHTML = `<h3>Results for "${term}" (${results.length}):</h3>`; const resultsList = document.createElement('div'); resultsList.id = 'search-results-list'; results.forEach(mem => { const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item search-result'; let fechaStr = 'Unknown date'; if (mem.Fecha_Original?.toDate) { try { fechaStr = mem.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) { /* fallback */ } } let contentHTML = `<small><b>${mem.diaNombre} (${mem.diaId})</b> - ${fechaStr}</small>`; switch (mem.Tipo) { case 'Lugar': contentHTML += `📍 ${mem.LugarNombre || 'Place'}`; break; case 'Musica': if (mem.CancionData?.trackName) contentHTML += `🎵 <strong>${mem.CancionData.trackName}</strong> by ${mem.CancionData.artistName}`; else contentHTML += `🎵 ${mem.CancionInfo || 'Music'}`; break; case 'Imagen': contentHTML += `🖼️ Image`; if (mem.ImagenURL) contentHTML += ` (<a href="${mem.ImagenURL}" target="_blank">View</a>)`; if (mem.Descripcion) contentHTML += `<br>${mem.Descripcion}`; break; default: contentHTML += mem.Descripcion || ''; break; } itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>`; itemDiv.style.cursor = 'pointer'; itemDiv.onclick = () => { const monthIndex = parseInt(mem.diaId.substring(0, 2), 10) - 1; if (monthIndex >= 0) { currentMonthIndex = monthIndex; dibujarMesActual(); const targetDia = allDaysData.find(d => d.id === mem.diaId); if(targetDia) setTimeout(() => abrirModalPreview(targetDia), 50); window.scrollTo(0, 0); } }; resultsList.appendChild(itemDiv); }); appContent.appendChild(resultsList); } } catch (e) { appContent.innerHTML = `<p class="error">Search error: ${e.message}</p>`; console.error(e); }
+    console.log("Searching:", term); appContent.innerHTML = `<p>Searching for "${term}"...</p>`; let results = []; try { for (const dia of allDaysData) { const memSnapshot = await getDocs(collection(db, "Dias", dia.id, "Memorias")); memSnapshot.forEach(memDoc => { const memoria = { diaId: dia.id, diaNombre: dia.Nombre_Dia, id: memDoc.id, ...memDoc.data() }; let searchableText = memoria.Descripcion || ''; if(memoria.LugarNombre) searchableText += ' ' + memoria.LugarNombre; if(memoria.CancionInfo) searchableText += ' ' + memoria.CancionInfo; if (searchableText.toLowerCase().includes(term)) { results.push(memoria); } }); } if (results.length === 0) { appContent.innerHTML = `<p>No results for "${term}".</p>`; } else { console.log(`Found ${results.length}.`); results.sort((a, b) => (b.Fecha_Original?.toDate() ?? 0) - (a.Fecha_Original?.toDate() ?? 0)); appContent.innerHTML = `<h3>Results for "${term}" (${results.length}):</h3>`; const resultsList = document.createElement('div'); resultsList.id = 'search-results-list'; results.forEach(mem => { const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item search-result'; let fechaStr = 'Unknown date'; if (mem.Fecha_Original?.toDate) { try { fechaStr = mem.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) { /* fallback */ } } let contentHTML = `<small><b>${mem.diaNombre} (${mem.diaId})</b> - ${fechaStr}</small>`; switch (mem.Tipo) { case 'Lugar': contentHTML += `📍 ${mem.LugarNombre || 'Place'}`; break; case 'Musica': if (memoria.CancionData?.trackName) contentHTML += `🎵 <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`; else contentHTML += `🎵 ${memoria.CancionInfo || 'Music'}`; break; case 'Imagen': contentHTML += `🖼️ Image`; if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank">View</a>)`; if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`; break; default: contentHTML += mem.Descripcion || ''; break; } itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>`; itemDiv.style.cursor = 'pointer'; itemDiv.onclick = () => { const monthIndex = parseInt(mem.diaId.substring(0, 2), 10) - 1; if (monthIndex >= 0) { currentMonthIndex = monthIndex; dibujarMesActual(); const targetDia = allDaysData.find(d => d.id === mem.diaId); if(targetDia) setTimeout(() => abrirModalPreview(targetDia), 50); window.scrollTo(0, 0); } }; resultsList.appendChild(itemDiv); }); appContent.appendChild(resultsList); } } catch (e) { appContent.innerHTML = `<p class="error">Search error: ${e.message}</p>`; console.error(e); }
 }
 
 // --- Preview Modal ---
@@ -142,16 +159,19 @@ async function abrirModalEdicion(dia) { // dia is null if adding via footer
     if (!modal) {
         modal = document.createElement('div'); modal.id = 'edit-add-modal'; modal.className = 'modal-edit';
         
-        // --- INICIO DE CORRECCIÓN DE COMENTARIOS ---
         modal.innerHTML = `
             <div class="modal-content">
-                <div class="modal-content-scrollable"> <div class="modal-section" id="day-selection-section" style="display: none;"> 
+                <!-- Franja marrón se añade con CSS -->
+                <div class="modal-content-scrollable"> <!-- Scroll container -->
+                    <!-- Day Selection (Add mode ONLY) -->
+                    <div class="modal-section" id="day-selection-section" style="display: none;"> 
                          <h3>Add Memory To...</h3>
                          <label for="edit-mem-day">Day (MM-DD):</label>
                          <select id="edit-mem-day"></select>
                          <label for="edit-mem-year">Year of Memory:</label>
                          <input type="number" id="edit-mem-year" placeholder="YYYY" min="1800" max="${new Date().getFullYear() + 1}" required>
                     </div>
+                    <!-- Day Name Edit (Edit mode ONLY) -->
                     <div class="modal-section" id="day-name-section" style="display: none;"> 
                         <h3 id="edit-modal-title"></h3>
                         <label for="nombre-especial-input">Name this day:</label>
@@ -159,25 +179,31 @@ async function abrirModalEdicion(dia) { // dia is null if adding via footer
                         <button id="save-name-btn" class="aqua-button">Save Day Name</button>
                         <p id="save-status"></p>
                     </div>
+                    <!-- Memories Section (Always Visible) -->
                     <div class="modal-section memorias-section">
                         <h4>Memories</h4>
                         <div id="edit-memorias-list">Loading...</div>
                         <form id="memory-form">
-                             <p class="section-description" id="memory-form-title">Add/Edit Memory</p> <label for="memoria-fecha">Original Date:</label>
+                             <p class="section-description" id="memory-form-title">Add/Edit Memory</p> <!-- Unified title -->
+                             <label for="memoria-fecha">Original Date:</label>
                              <input type="date" id="memoria-fecha" required>
                              <label for="memoria-type">Type:</label>
                              <select id="memoria-type"> <option value="Texto">Description</option> <option value="Lugar">Place</option> <option value="Musica">Music</option> <option value="Imagen">Image</option> </select>
+                             <!-- Dynamic Inputs -->
                              <div class="add-memory-input-group" id="input-type-Texto"><label for="memoria-desc">Description:</label><textarea id="memoria-desc" placeholder="Write memory..."></textarea></div>
                              <div class="add-memory-input-group" id="input-type-Lugar"><label for="memoria-place-search">Search:</label><input type="text" id="memoria-place-search"><button type="button" class="aqua-button" id="btn-search-place">Search</button><div id="place-results"></div></div>
                              <div class="add-memory-input-group" id="input-type-Musica"><label for="memoria-music-search">Search:</label><input type="text" id="memoria-music-search"><button type="button" class="aqua-button" id="btn-search-itunes">Search</button><div id="itunes-results"></div></div>
                              <div class="add-memory-input-group" id="input-type-Imagen"><label for="memoria-image-upload">Image:</label><input type="file" id="memoria-image-upload" accept="image/*"><label for="memoria-image-desc">Desc:</label><input type="text" id="memoria-image-desc"><div id="image-upload-status"></div></div>
-                             <button type="submit" id="save-memoria-btn" class="aqua-button">Add Memory</button> <p id="memoria-status"></p>
+                             <button type="submit" id="save-memoria-btn" class="aqua-button">Add Memory</button> <!-- Text changes dynamically -->
+                             <p id="memoria-status"></p>
                         </form>
                     </div>
+                    <!-- Delete Confirmation -->
                     <div id="confirm-delete-dialog" style="display: none;"> <p id="confirm-delete-text"></p> <button id="confirm-delete-no" class="aqua-button">Cancel</button> <button id="confirm-delete-yes" class="aqua-button delete-confirm">Delete</button> </div>
-                 </div> <div class="modal-main-buttons"> <button id="close-edit-add-btn">Close</button> </div>
+                 </div> <!-- End scrollable -->
+                <!-- Main Buttons -->
+                <div class="modal-main-buttons"> <button id="close-edit-add-btn">Close</button> </div>
             </div>`;
-        // --- FIN DE CORRECCIÓN DE COMENTARIOS ---
 
         document.body.appendChild(modal);
         // Populate day select only once
@@ -299,18 +325,162 @@ function startEditMemoriaUnified(memoria) {
 
 async function handleMemoryFormSubmit(event) {
     event.preventDefault(); const statusDiv = document.getElementById('memoria-status'); statusDiv.className = ''; statusDiv.textContent = editingMemoryId ? 'Updating...' : 'Saving...'; let diaId; const daySelect = document.getElementById('edit-mem-day'); const yearInput = document.getElementById('edit-mem-year'); const daySelectionVisible = document.getElementById('day-selection-section')?.style.display !== 'none'; if (daySelectionVisible && daySelect?.value) { diaId = daySelect.value; } else if (currentlyOpenDay) { diaId = currentlyOpenDay.id; } else { statusDiv.textContent = 'Error: No day selected.'; statusDiv.className = 'error'; return; } const year = parseInt(yearInput.value, 10); const type = document.getElementById('memoria-type').value; const fechaStr = document.getElementById('memoria-fecha').value; if (!diaId || !year || isNaN(year) || year < 1800 || year > new Date().getFullYear() + 1 || !fechaStr) { statusDiv.textContent = 'Day, year, date required.'; statusDiv.className = 'error'; return; } let dateOfMemory; try { const dateParts = fechaStr.split('-'); dateOfMemory = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]))); if (isNaN(dateOfMemory.getTime())) throw new Error(); } catch(e) { statusDiv.textContent = 'Invalid date.'; statusDiv.className = 'error'; return; } const fechaOriginalTimestamp = Timestamp.fromDate(dateOfMemory); let memoryData = { Fecha_Original: fechaOriginalTimestamp, Tipo: type }; let isValid = true; let imageFileToUpload = null;
-    switch (type) { case 'Texto': memoryData.Descripcion = document.getElementById('memoria-desc').value.trim(); if (!memoryData.Descripcion) isValid = false; break; case 'Lugar': if (selectedPlace) { memoryData.LugarNombre = selectedPlace.name; memoryData.LugarData = { lat: selectedPlace.lat, lon: selectedPlace.lon, osm_id: selectedPlace.osm_id, osm_type: selectedPlace.osm_type }; } else { memoryData.LugarNombre = document.getElementById('memoria-place-search').value.trim(); if (!memoryData.LugarNombre) isValid = false; memoryData.LugarData = null; } break; case 'Musica': if (selectedMusicTrack) { memoryData.CancionData = { trackId: selectedMusicTrack.trackId, artistName: selectedMusicTrack.artistName, trackName: selectedMusicTrack.trackName, artworkUrl60: selectedMusicTrack.artworkUrl60, trackViewUrl: selectedMusicTrack.trackViewUrl }; memoryData.CancionInfo = `${selectedMusicTrack.trackName} - ${selectedMusicTrack.artistName}`; } else { memoryData.CancionInfo = document.getElementById('memoria-music-search').value.trim(); if (!memoryData.CancionInfo) isValid = false; memoryData.CancionData = null; } break; case 'Imagen': const fileInput = document.getElementById('memoria-image-upload'); memoryData.Descripcion = document.getElementById('memoria-image-desc').value.trim() || null; if (fileInput.files && fileInput.files[0]) { imageFileToUpload = fileInput.files[0]; memoryData.ImagenURL = "placeholder_uploading"; } else if (!editingMemoryId) { isValid = false; } break; default: isValid = false; break; } if (!isValid) { statusDiv.textContent = 'Fill fields or select file.'; statusDiv.className = 'error'; return; }
-    try { const memoriasRef = collection(db, "Dias", diaId, "Memorias"); if (editingMemoryId) { const memRef = doc(db, "Dias", diaId, "Memorias", editingMemoryId); const existingMem = currentMemories.find(m => m.id === editingMemoryId); if (type === 'Imagen' && !imageFileToUpload && existingMem?.ImagenURL) { memoryData.ImagenURL = existingMem.ImagenURL; } // Keep existing URL if file not changed
- if (type === 'Imagen' && imageFileToUpload) { alert("Image upload not implemented."); statusDiv.textContent = 'Save cancelled: Upload pending.'; statusDiv.className='error'; return; } // Prevent save if upload needed but not implemented
- await updateDoc(memRef, memoryData); statusDiv.textContent = 'Updated!'; statusDiv.className = 'success'; } else { if (type === 'Imagen' && imageFileToUpload) { alert("Image upload not implemented."); statusDiv.textContent = 'Save cancelled: Upload pending.'; statusDiv.className='error'; return; } // Prevent save
- memoryData.Creado_En = Timestamp.now(); await addDoc(memoriasRef, memoryData); statusDiv.textContent = 'Saved!'; statusDiv.className = 'success'; } resetMemoryFormUnified(); await cargarYMostrarMemorias(diaId, 'edit-memorias-list'); setTimeout(() => statusDiv.textContent = '', 2000); // Also update preview if open?
-         const previewList = document.getElementById('preview-memorias-list'); const previewModal = document.getElementById('preview-modal'); if(previewList && currentlyOpenDay?.id === diaId && previewModal?.style.display === 'flex') { await cargarYMostrarMemorias(diaId, 'preview-memorias-list'); } } catch (e) { console.error("Save/Update Error:", e); statusDiv.textContent = `Error: ${e.message}`; statusDiv.className = 'error'; }
+    
+    // --- Lógica de tipo e imagen ---
+    switch (type) { 
+        case 'Texto': 
+            memoryData.Descripcion = document.getElementById('memoria-desc').value.trim(); 
+            if (!memoryData.Descripcion) isValid = false; 
+            break; 
+        case 'Lugar': 
+            if (selectedPlace) { memoryData.LugarNombre = selectedPlace.name; memoryData.LugarData = { lat: selectedPlace.lat, lon: selectedPlace.lon, osm_id: selectedPlace.osm_id, osm_type: selectedPlace.osm_type }; } 
+            else { memoryData.LugarNombre = document.getElementById('memoria-place-search').value.trim(); if (!memoryData.LugarNombre) isValid = false; memoryData.LugarData = null; } 
+            break; 
+        case 'Musica': 
+            if (selectedMusicTrack) { memoryData.CancionData = { trackId: selectedMusicTrack.trackId, artistName: selectedMusicTrack.artistName, trackName: selectedMusicTrack.trackName, artworkUrl60: selectedMusicTrack.artworkUrl60, trackViewUrl: selectedMusicTrack.trackViewUrl }; memoryData.CancionInfo = `${selectedMusicTrack.trackName} - ${selectedMusicTrack.artistName}`; } 
+            else { memoryData.CancionInfo = document.getElementById('memoria-music-search').value.trim(); if (!memoryData.CancionInfo) isValid = false; memoryData.CancionData = null; } 
+            break; 
+        case 'Imagen': 
+            const fileInput = document.getElementById('memoria-image-upload'); 
+            memoryData.Descripcion = document.getElementById('memoria-image-desc').value.trim() || null; 
+            if (fileInput.files && fileInput.files[0]) { 
+                imageFileToUpload = fileInput.files[0]; 
+                // No poner URL placeholder, se añadirá después de subir
+            } else if (editingMemoryId) {
+                // Si editamos y no hay archivo nuevo, conservamos la URL existente
+                const existingMem = currentMemories.find(m => m.id === editingMemoryId);
+                if (existingMem?.ImagenURL) {
+                    memoryData.ImagenURL = existingMem.ImagenURL;
+                }
+            } else {
+                // Si es memoria NUEVA y no hay archivo
+                isValid = false; 
+            }
+            break; 
+        default: 
+            isValid = false; 
+            break; 
+    } 
+    
+    if (!isValid) { statusDiv.textContent = 'Fill fields or select file.'; statusDiv.className = 'error'; return; }
+    
+    // --- Inicio de guardado ---
+    try { 
+        // ¡NUEVO! Subir imagen si existe
+        if (imageFileToUpload) {
+            statusDiv.textContent = 'Uploading image...';
+            const filePath = `images/${diaId}/${Date.now()}-${imageFileToUpload.name}`;
+            const storageRef = ref(storage, filePath);
+            const uploadTask = await uploadBytes(storageRef, imageFileToUpload);
+            const downloadURL = await getDownloadURL(uploadTask.ref);
+            memoryData.ImagenURL = downloadURL; // Añadir la URL al objeto a guardar
+            statusDiv.textContent = 'Image uploaded!';
+        }
+
+        const memoriasRef = collection(db, "Dias", diaId, "Memorias"); 
+        
+        if (editingMemoryId) { 
+            statusDiv.textContent = 'Updating...';
+            const memRef = doc(db, "Dias", diaId, "Memorias", editingMemoryId); 
+            await updateDoc(memRef, memoryData); 
+            statusDiv.textContent = 'Updated!'; 
+            statusDiv.className = 'success'; 
+        } else { 
+            statusDiv.textContent = 'Saving...';
+            memoryData.Creado_En = Timestamp.now(); 
+            await addDoc(memoriasRef, memoryData); 
+            statusDiv.textContent = 'Saved!'; 
+            statusDiv.className = 'success'; 
+        } 
+        
+        // ¡NUEVO! Marcar el día como que tiene memorias
+        const diaRef = doc(db, "Dias", diaId);
+        await updateDoc(diaRef, { hasMemories: true });
+        // Actualizar datos locales para el sello
+        const dayIndex = allDaysData.findIndex(d => d.id === diaId);
+        if (dayIndex !== -1) allDaysData[dayIndex].hasMemories = true;
+        // Refrescar el grid si el modal se abrió desde "Add" (estamos en otro mes)
+        if (daySelectionVisible) dibujarMesActual(); 
+
+        resetMemoryFormUnified(); 
+        await cargarYMostrarMemorias(diaId, 'edit-memorias-list'); 
+        setTimeout(() => statusDiv.textContent = '', 2000); 
+        
+        const previewList = document.getElementById('preview-memorias-list'); 
+        const previewModal = document.getElementById('preview-modal'); 
+        if(previewList && currentlyOpenDay?.id === diaId && previewModal?.style.display === 'flex') { 
+            await cargarYMostrarMemorias(diaId, 'preview-memorias-list'); 
+        } 
+    } catch (e) { 
+        console.error("Save/Update Error:", e); 
+        statusDiv.textContent = `Error: ${e.message}`; 
+        statusDiv.className = 'error'; 
+    }
 }
 
 function confirmDeleteMemoriaUnified(diaId, memoriaId, displayInfo) { const d=document.getElementById('confirm-delete-dialog'),y=document.getElementById('confirm-delete-yes'),t=document.getElementById('confirm-delete-text'),p=displayInfo?(displayInfo.length>50?displayInfo.substring(0,47)+'...':displayInfo):'this memory'; t.textContent=`Delete "${p}"?`; d.style.display='block'; const m=document.querySelector('#edit-add-modal .modal-content'); if(m&&!m.contains(d)) m.appendChild(d); y.onclick=null; y.onclick=async()=>{d.style.display='none';await deleteMemoriaUnified(diaId,memoriaId);}; }
-async function deleteMemoriaUnified(diaId, memoriaId) { const s=document.getElementById('memoria-status'); s.textContent='Deleting...'; s.className=''; try{const r=doc(db,"Dias",diaId,"Memorias",memoriaId); await deleteDoc(r); s.textContent='Deleted!'; s.className='success'; currentMemories=currentMemories.filter(m=>m.id!==memoriaId); await cargarYMostrarMemorias(diaId,'edit-memorias-list'); setTimeout(()=>s.textContent='',2000); const pL=document.getElementById('preview-memorias-list'),pM=document.getElementById('preview-modal'); if(pL&&currentlyOpenDay?.id===diaId&&pM?.style.display==='flex'){await cargarYMostrarMemorias(diaId,'preview-memorias-list');} } catch(e){console.error("Delete Error:",e); s.textContent=`Error: ${e.message}`; s.className='error';} }
+
+async function deleteMemoriaUnified(diaId, memoriaId) { 
+    const s=document.getElementById('memoria-status'); 
+    s.textContent='Deleting...'; 
+    s.className=''; 
+    try{
+        const r=doc(db,"Dias",diaId,"Memorias",memoriaId); 
+        await deleteDoc(r); 
+
+        // ¡NUEVO! Comprobar si quedan memorias
+        const memoriasRef = collection(db, "Dias", diaId, "Memorias");
+        const snapshot = await getDocs(memoriasRef);
+        if (snapshot.empty) {
+            const diaRef = doc(db, "Dias", diaId);
+            await updateDoc(diaRef, { hasMemories: false });
+            // Actualizar datos locales para el sello
+            const dayIndex = allDaysData.findIndex(d => d.id === diaId);
+            if (dayIndex !== -1) allDaysData[dayIndex].hasMemories = false;
+            // Refrescar grid para quitar el sello
+            dibujarMesActual();
+        }
+
+        s.textContent='Deleted!'; 
+        s.className='success'; 
+        currentMemories=currentMemories.filter(m=>m.id!==memoriaId); 
+        await cargarYMostrarMemorias(diaId,'edit-memorias-list'); 
+        setTimeout(()=>s.textContent='',2000); 
+        
+        const pL=document.getElementById('preview-memorias-list'),pM=document.getElementById('preview-modal'); 
+        if(pL&&currentlyOpenDay?.id===diaId&&pM?.style.display==='flex'){
+            await cargarYMostrarMemorias(diaId,'preview-memorias-list');
+        } 
+    } catch(e){
+        console.error("Delete Error:",e); 
+        s.textContent=`Error: ${e.message}`; 
+        s.className='error';
+    } 
+}
 function resetMemoryFormUnified() { editingMemoryId=null; const f=document.getElementById('memory-form'); if(f){f.reset(); const b=document.getElementById('save-memoria-btn'); if(b){b.textContent='Add Memory';b.classList.remove('update-mode');} const s=document.getElementById('memoria-status'); if(s)s.textContent=''; document.getElementById('itunes-results').innerHTML=''; document.getElementById('place-results').innerHTML=''; document.getElementById('image-upload-status').textContent=''; selectedPlace=null; selectedMusicTrack=null; handleMemoryTypeChangeUnified();} }
-async function guardarNombreEspecial(diaId, nuevoNombre) { const s=document.getElementById('save-status'); try{s.textContent="Saving..."; s.className=''; const r=doc(db,"Dias",diaId); const v=nuevoNombre||"Unnamed Day"; await updateDoc(r,{Nombre_Especial:v}); const i=allDaysData.findIndex(d=>d.id===diaId); if(i!==-1)allDaysData[i].Nombre_Especial=v; s.textContent="Name Saved!"; s.className='success'; if(currentlyOpenDay&&currentlyOpenDay.id===diaId)currentlyOpenDay.Nombre_Especial=v; setTimeout(()=>{s.textContent='';dibujarMesActual();},1200); const pT=document.getElementById('preview-title'),pM=document.getElementById('preview-modal'); if(pT&&currentlyOpenDay&&currentlyOpenDay.id===diaId&&pM?.style.display==='flex') pT.textContent=`${currentlyOpenDay.Nombre_Dia} ${v!=='Unnamed Day'?'('+v+')':''}`; } catch(e){s.textContent=`Error: ${e.message}`; s.className='error'; console.error(e);} }
+
+async function guardarNombreEspecial(diaId, nuevoNombre) { 
+    const s=document.getElementById('save-status'); 
+    try{
+        s.textContent="Saving..."; 
+        s.className=''; 
+        const r=doc(db,"Dias",diaId); 
+        const v=nuevoNombre||"Unnamed Day"; 
+        await updateDoc(r,{Nombre_Especial:v}); 
+        const i=allDaysData.findIndex(d=>d.id===diaId); 
+        if(i!==-1)allDaysData[i].Nombre_Especial=v; 
+        s.textContent="Name Saved!"; 
+        s.className='success'; 
+        if(currentlyOpenDay&&currentlyOpenDay.id===diaId)currentlyOpenDay.Nombre_Especial=v; 
+        setTimeout(()=>{s.textContent='';dibujarMesActual();},1200); 
+        const pT=document.getElementById('preview-title'),pM=document.getElementById('preview-modal'); 
+        if(pT&&currentlyOpenDay&&currentlyOpenDay.id===diaId&&pM?.style.display==='flex') pT.textContent=`${currentlyOpenDay.Nombre_Dia} ${v!=='Unnamed Day'?'('+v+')':''}`; 
+    } catch(e){
+        s.textContent=`Error: ${e.message}`; 
+        s.className='error'; 
+        console.error(e);
+    } 
+}
 
 // --- Expose functions needed globally ---
 window.handleMemoryTypeChangeUnified = handleMemoryTypeChangeUnified;
