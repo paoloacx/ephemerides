@@ -141,50 +141,44 @@ async function abrirModalEdicion(dia) { // dia is null if adding via footer
     let modal = document.getElementById('edit-add-modal');
     if (!modal) {
         modal = document.createElement('div'); modal.id = 'edit-add-modal'; modal.className = 'modal-edit';
+        
+        // --- INICIO DE CORRECCIÓN DE COMENTARIOS ---
         modal.innerHTML = `
             <div class="modal-content">
-                <div class="modal-content-scrollable"> {/* Scroll container */}
-                    {/* Day Selection (Add mode ONLY) */}
-                    <div class="modal-section" id="day-selection-section" style="display: none;"> {/* Hidden by default */}
+                <div class="modal-content-scrollable"> <div class="modal-section" id="day-selection-section" style="display: none;"> 
                          <h3>Add Memory To...</h3>
                          <label for="edit-mem-day">Day (MM-DD):</label>
                          <select id="edit-mem-day"></select>
                          <label for="edit-mem-year">Year of Memory:</label>
                          <input type="number" id="edit-mem-year" placeholder="YYYY" min="1800" max="${new Date().getFullYear() + 1}" required>
                     </div>
-                    {/* Day Name Edit (Edit mode ONLY) */}
-                    <div class="modal-section" id="day-name-section" style="display: none;"> {/* Hidden by default */}
+                    <div class="modal-section" id="day-name-section" style="display: none;"> 
                         <h3 id="edit-modal-title"></h3>
                         <label for="nombre-especial-input">Name this day:</label>
                         <input type="text" id="nombre-especial-input" placeholder="e.g., Pizza Day" maxlength="25">
                         <button id="save-name-btn" class="aqua-button">Save Day Name</button>
                         <p id="save-status"></p>
                     </div>
-                    {/* Memories Section (Always Visible) */}
                     <div class="modal-section memorias-section">
                         <h4>Memories</h4>
                         <div id="edit-memorias-list">Loading...</div>
                         <form id="memory-form">
-                             <p class="section-description" id="memory-form-title">Add/Edit Memory</p> {/* Unified title */}
-                             <label for="memoria-fecha">Original Date:</label>
+                             <p class="section-description" id="memory-form-title">Add/Edit Memory</p> <label for="memoria-fecha">Original Date:</label>
                              <input type="date" id="memoria-fecha" required>
                              <label for="memoria-type">Type:</label>
                              <select id="memoria-type"> <option value="Texto">Description</option> <option value="Lugar">Place</option> <option value="Musica">Music</option> <option value="Imagen">Image</option> </select>
-                             {/* Dynamic Inputs */}
                              <div class="add-memory-input-group" id="input-type-Texto"><label for="memoria-desc">Description:</label><textarea id="memoria-desc" placeholder="Write memory..."></textarea></div>
                              <div class="add-memory-input-group" id="input-type-Lugar"><label for="memoria-place-search">Search:</label><input type="text" id="memoria-place-search"><button type="button" class="aqua-button" id="btn-search-place">Search</button><div id="place-results"></div></div>
                              <div class="add-memory-input-group" id="input-type-Musica"><label for="memoria-music-search">Search:</label><input type="text" id="memoria-music-search"><button type="button" class="aqua-button" id="btn-search-itunes">Search</button><div id="itunes-results"></div></div>
                              <div class="add-memory-input-group" id="input-type-Imagen"><label for="memoria-image-upload">Image:</label><input type="file" id="memoria-image-upload" accept="image/*"><label for="memoria-image-desc">Desc:</label><input type="text" id="memoria-image-desc"><div id="image-upload-status"></div></div>
-                             <button type="submit" id="save-memoria-btn" class="aqua-button">Add Memory</button> {/* Text changes dynamically */}
-                             <p id="memoria-status"></p>
+                             <button type="submit" id="save-memoria-btn" class="aqua-button">Add Memory</button> <p id="memoria-status"></p>
                         </form>
                     </div>
-                    {/* Delete Confirmation */}
                     <div id="confirm-delete-dialog" style="display: none;"> <p id="confirm-delete-text"></p> <button id="confirm-delete-no" class="aqua-button">Cancel</button> <button id="confirm-delete-yes" class="aqua-button delete-confirm">Delete</button> </div>
-                 </div> {/* End scrollable */}
-                {/* Main Buttons */}
-                <div class="modal-main-buttons"> <button id="close-edit-add-btn">Close</button> </div>
+                 </div> <div class="modal-main-buttons"> <button id="close-edit-add-btn">Close</button> </div>
             </div>`;
+        // --- FIN DE CORRECCIÓN DE COMENTARIOS ---
+
         document.body.appendChild(modal);
         // Populate day select only once
         const daySelect = document.getElementById('edit-mem-day'); if (daySelect && daySelect.options.length === 0) { allDaysData.forEach(d => { const o=document.createElement('option'); o.value=d.id; o.textContent=d.Nombre_Dia; daySelect.appendChild(o); }); }
@@ -195,7 +189,7 @@ async function abrirModalEdicion(dia) { // dia is null if adding via footer
         document.getElementById('memoria-type').addEventListener('change', handleMemoryTypeChangeUnified);
         document.getElementById('btn-search-itunes').onclick = buscarBSOUnified;
         document.getElementById('btn-search-place').onclick = buscarLugarUnified;
-        const fileInput = document.getElementById('memoria-image-upload'); const imageStatus = document.getElementById('image-upload-status'); if(fileInput && imageStatus) fileInput.onchange = (e) => imageStatus.textContent = e.target.files?.[0] ? `Selected: ${e.target.files[0].name}` : '';
+        const fileInput = document.getElementById('memoria-image-upload'); const imageStatus = document.getElementById('image-upload-status'); if(fileInput && imageStatus) fileInput.onchange = (e) => imageStatus.textContent = e.target.files?.[0] ? `Selected: ${e.target.files[0].name}` : 'No file selected';
         document.getElementById('memory-form').onsubmit = handleMemoryFormSubmit;
         document.getElementById('save-name-btn').onclick = () => { if(currentlyOpenDay) guardarNombreEspecial(currentlyOpenDay.id, document.getElementById('nombre-especial-input').value.trim()); };
     }
@@ -332,4 +326,3 @@ window.handleLogout = handleLogout;
 
 // --- Start App ---
 checkAndRunApp();
-
