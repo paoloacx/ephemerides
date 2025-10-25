@@ -1,4 +1,4 @@
-/* app.js - v10.11 - Refined Timing Fix */
+/* app.js - v10.12 - Timeout Fix for Element Finding */
 
 // Importaciones
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -28,12 +28,11 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 
 // --- Global Variables & Constants ---
-// Volvemos a globales, pero asignadas post-DOM
 let appContent = null;
 let monthNameDisplayEl = null;
 
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // Includes leap year Feb 29
+const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 let allDaysData = [];
 let currentMonthIndex = new Date().getMonth();
@@ -60,9 +59,8 @@ async function handleLogout() { try { await signOut(auth); } catch (error) { con
 
 // --- Check/Repair DB ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v10.11...");
+    console.log("Starting Check/Repair v10.12..."); // Actualizar versión
 
-    // Asignar variables globales AHORA que el DOM está listo
     appContent = document.getElementById("app-content");
     monthNameDisplayEl = document.getElementById("month-name-display");
 
@@ -95,10 +93,10 @@ async function checkAndRunApp() {
 }
 
 async function generateCleanDatabase() {
-    // appContent ya debería estar asignado globalmente
     if (!appContent) { console.error("Cannot show status: appContent is null."); return; }
-
-    console.log("--- Starting Regeneration ---"); const diasRef = collection(db, "Dias"); try { console.log("Deleting 'Dias'..."); appContent.innerHTML = "<p>Deleting old data...</p>"; const oldDocsSnapshot = await getDocs(diasRef); if (!oldDocsSnapshot.empty) { let batch = writeBatch(db); let deleteCount = 0; for (const docSnap of oldDocsSnapshot.docs) {
+    console.log("--- Starting Regeneration ---");
+    // ... (resto de la función sin cambios) ...
+    const diasRef = collection(db, "Dias"); try { console.log("Deleting 'Dias'..."); appContent.innerHTML = "<p>Deleting old data...</p>"; const oldDocsSnapshot = await getDocs(diasRef); if (!oldDocsSnapshot.empty) { let batch = writeBatch(db); let deleteCount = 0; for (const docSnap of oldDocsSnapshot.docs) {
  batch.delete(docSnap.ref); deleteCount++; if (deleteCount >= 400) { console.log(`Committing delete batch (${deleteCount})...`); await batch.commit(); batch = writeBatch(db); deleteCount = 0; } } if (deleteCount > 0) { console.log(`Committing final delete batch (${deleteCount})...`); await batch.commit(); } console.log(`Deletion complete (${oldDocsSnapshot.size}).`); } else { console.log("'Dias' collection was already empty."); } } catch(e) { console.error("Error deleting collection:", e); throw e; }
     console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>"; let genBatch = writeBatch(db); let ops = 0, created = 0; try { for (let m = 0; m < 12; m++) { const monthNum = m + 1, monthStr = monthNum.toString().padStart(2, '0'); const numDays = daysInMonth[m]; for (let d = 1; d <= numDays; d++) { const dayStr = d.toString().padStart(2, '0'); const diaId = `${monthStr}-${dayStr}`; const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day", hasMemories: false };
  const docRef = doc(db, "Dias", diaId); genBatch.set(docRef, diaData); ops++; created++; if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`; if (ops >= 400) { console.log(`Committing generate batch (${ops})...`); await genBatch.commit(); genBatch = writeBatch(db); ops = 0; } } } if (ops > 0) { console.log(`Committing final generate batch (${ops})...`); await batch.commit(); } console.log(`--- Regeneration complete: ${created} days created ---`); appContent.innerHTML = `<p class="success">✅ DB regenerated: ${created} days!</p>`; } catch(e) { console.error("Error generating days:", e); throw e; }
@@ -126,7 +124,7 @@ async function loadDataAndDrawCalendar() {
         console.log("Data sorted.");
 
         console.log("Calling dibujarMesActual...");
-        await dibujarMesActual(); // Esta función ahora llamará a las de configuración
+        await dibujarMesActual();
         console.log("loadDataAndDrawCalendar finished successfully.");
 
     } catch (e) {
@@ -137,10 +135,10 @@ async function loadDataAndDrawCalendar() {
     }
 }
 
-// --- Configuración de Navegación y Footer ---
-// (Estas funciones ahora se llaman desde dibujarMesActual)
+// --- Configuración (llamadas desde dibujarMesActual) ---
 function configurarNavegacion() {
     console.log("Attempting to configure navigation...");
+    // ... (código sin cambios) ...
     try {
         const prevBtn = document.getElementById("prev-month");
         const nextBtn = document.getElementById("next-month");
@@ -165,6 +163,7 @@ function configurarNavegacion() {
 
 function configurarFooter() {
     console.log("Attempting to configure footer...");
+    // ... (código sin cambios) ...
     try {
         const btnHoy = document.getElementById('btn-hoy');
         const btnBuscar = document.getElementById('btn-buscar');
@@ -199,10 +198,9 @@ function configurarFooter() {
 // --- Dibujar Mes Actual ---
 async function dibujarMesActual() {
     console.log("Entering dibujarMesActual...");
-    // monthNameDisplayEl y appContent ya son globales y asignadas
     if (!monthNameDisplayEl || !appContent) {
         console.error("Global elements monthNameDisplayEl or appContent are null in dibujarMesActual!");
-        return; // Salir si los elementos globales no están listos
+        return;
     }
     monthNameDisplayEl.textContent = monthNames[currentMonthIndex];
     const monthNumberTarget = currentMonthIndex + 1;
@@ -210,19 +208,20 @@ async function dibujarMesActual() {
     const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget );
     console.log(`Found ${diasDelMes.length} days for month.`);
 
-    // Establecer el HTML principal
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div><div id="today-memory-spotlight"></div>`;
+
+    // AÑADIDO: Pequeña pausa para que el navegador procese el innerHTML
+    await new Promise(resolve => setTimeout(resolve, 0)); // 0ms timeout yield
 
     const grid = document.getElementById("grid-dias");
     if (!grid) {
-        console.error("#grid-dias element not found after setting innerHTML!");
-        return; // No podemos continuar si el grid no existe
+        console.error("#grid-dias element not found after setting innerHTML and timeout!");
+        return;
     }
     if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; }
     const diasEsperados = daysInMonth[currentMonthIndex];
     if (diasDelMes.length !== diasEsperados) console.warn(`ALERT: Found ${diasDelMes.length}/${diasEsperados} for ${monthNames[currentMonthIndex]}.`);
 
-    // Añadir los botones de día
     diasDelMes.forEach(dia => {
         const btn = document.createElement("button");
         btn.className = "dia-btn";
@@ -237,18 +236,21 @@ async function dibujarMesActual() {
     });
     console.log(`Rendered ${diasDelMes.length} day buttons.`);
 
-    // Actualizar el spotlight
     await updateTodayMemorySpotlight();
 
-    // ¡CAMBIO! Llamar a configurar navegación y footer DESPUÉS de renderizar
-    console.log("Calling configuration functions from dibujarMesActual...");
-    configurarNavegacion();
-    configurarFooter();
-    console.log("Finished dibujarMesActual.");
+    // ¡CAMBIO CLAVE! Usar setTimeout para llamar a la configuración
+    console.log("Scheduling configuration functions after a short delay...");
+    setTimeout(() => {
+        console.log("Executing configuration functions after delay.");
+        configurarNavegacion();
+        configurarFooter();
+    }, 10); // 10ms delay, ajustable si es necesario
+
+    console.log("Finished dibujarMesActual (configuration scheduled).");
 }
 
-
-// --- Spotlight ---
+// --- Resto de funciones (Spotlight, Búsqueda, Modales, CRUD, etc.) ---
+// ... (Copiar el resto de funciones desde v10.11 sin cambios) ...
 async function updateTodayMemorySpotlight() {
     const spotlightDiv = document.getElementById('today-memory-spotlight');
     if (!spotlightDiv) {
@@ -299,7 +301,6 @@ async function updateTodayMemorySpotlight() {
 }
 
 
-// --- Búsqueda ---
 async function buscarMemorias(term) {
     console.log("Searching:", term);
     // appContent ya debería ser global
@@ -308,8 +309,6 @@ async function buscarMemorias(term) {
     appContent.innerHTML = `<p>Searching for "${term}"...</p>`; let results = []; try { for (const dia of allDaysData) { const memSnapshot = await getDocs(collection(db, "Dias", dia.id, "Memorias")); memSnapshot.forEach(memDoc => { const memoria = { diaId: dia.id, diaNombre: dia.Nombre_Dia, id: memDoc.id, ...memDoc.data() }; let searchableText = memoria.Descripcion || ''; if(memoria.LugarNombre) searchableText += ' ' + memoria.LugarNombre; if(memoria.CancionInfo) searchableText += ' ' + memoria.CancionInfo; if (searchableText.toLowerCase().includes(term)) { results.push(memoria); } }); } if (results.length === 0) { appContent.innerHTML = `<p>No results for "${term}".</p>`; } else { console.log(`Found ${results.length}.`); results.sort((a, b) => (b.Fecha_Original?.toDate() ?? 0) - (a.Fecha_Original?.toDate() ?? 0)); appContent.innerHTML = `<h3>Results for "${term}" (${results.length}):</h3>`; const resultsList = document.createElement('div'); resultsList.id = 'search-results-list'; results.forEach(mem => { const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item search-result'; let fechaStr = 'Unknown date'; if (mem.Fecha_Original?.toDate) { try { fechaStr = mem.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) { /* fallback */ } } let contentHTML = `<small><b>${mem.diaNombre} (${mem.diaId})</b> - ${fechaStr}</small>`; switch (mem.Tipo) { case 'Lugar': contentHTML += `📍 ${memoria.LugarNombre || 'Place'}`; break; case 'Musica': if (memoria.CancionData?.trackName) contentHTML += `🎵 <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`; else contentHTML += `🎵 ${memoria.CancionInfo || 'Music'}`; break; case 'Imagen': contentHTML += `🖼️ Image`; if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank">View</a>)`; if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`; break; default: contentHTML += memoria.Descripcion || ''; break; } itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>`; itemDiv.style.cursor = 'pointer'; itemDiv.onclick = () => { const monthIndex = parseInt(mem.diaId.substring(0, 2), 10) - 1; if (monthIndex >= 0) { currentMonthIndex = monthIndex; dibujarMesActual(); const targetDia = allDaysData.find(d => d.id === mem.diaId); if(targetDia) setTimeout(() => abrirModalPreview(targetDia), 50); window.scrollTo(0, 0); } }; resultsList.appendChild(itemDiv); }); appContent.appendChild(resultsList); } } catch (e) { if (appContent) appContent.innerHTML = `<p class="error">Search error: ${e.message}</p>`; console.error(e); }
 }
 
-// --- Modales (Preview y Edición/Añadir) ---
-// (Estas funciones permanecen mayormente igual, solo se aseguran de que los elementos existan antes de usarlos)
 async function abrirModalPreview(dia) {
     console.log("Opening preview for:", dia.id);
     let modal = document.getElementById('preview-modal');
@@ -467,14 +466,15 @@ async function abrirModalEdicion(dia) {
     }
 }
 
-// --- Resto de funciones (cargarYMostrarMemorias, attachMemoryActionListeners, etc.) sin cambios ---
-// ... (Copiar el resto de funciones desde la v10.10) ...
-// ... Incluyendo initMapIfNeeded, handleMemoryTypeChangeUnified, buscarBSOUnified, buscarLugarUnified ...
-// ... startEditMemoriaUnified, handleMemoryFormSubmit, confirmDeleteMemoriaUnified, deleteMemoriaUnified ...
-// ... resetMemoryFormUnified, guardarNombreEspecial ...
+function cerrarModalEdicion() {
+    const modal = document.getElementById('edit-add-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); }
+    currentlyOpenDay = null;
+    editingMemoryId = null;
+    selectedPlace = null;
+    selectedMusicTrack = null;
+    if (mapMarker) { mapMarker.remove(); mapMarker = null; }
+}
 
-
-// --- Load/Display Memories ---
 async function cargarYMostrarMemorias(diaId, targetDivId) {
     const memoriasListDiv = document.getElementById(targetDivId); if (!memoriasListDiv) return;
     memoriasListDiv.innerHTML = 'Loading...'; if (targetDivId === 'edit-memorias-list') currentMemories = [];
