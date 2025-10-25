@@ -1,4 +1,4 @@
-/* app.js - v10.10 - Debug Logging */
+/* app.js - v10.11 - Refined Timing Fix */
 
 // Importaciones
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -28,6 +28,10 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 
 // --- Global Variables & Constants ---
+// Volvemos a globales, pero asignadas post-DOM
+let appContent = null;
+let monthNameDisplayEl = null;
+
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // Includes leap year Feb 29
 
@@ -35,12 +39,12 @@ let allDaysData = [];
 let currentMonthIndex = new Date().getMonth();
 let currentMemories = [];
 let editingMemoryId = null;
-let currentlyOpenDay = null; // Holds the full day object for the currently open modal
+let currentlyOpenDay = null;
 let selectedMusicTrack = null;
 let selectedPlace = null;
 let currentUser = null;
-let map = null; // Para la instancia de Leaflet
-let mapMarker = null; // Para el marcador de Leaflet
+let map = null;
+let mapMarker = null;
 
 // --- SVG Icons ---
 const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/></svg>`;
@@ -56,12 +60,14 @@ async function handleLogout() { try { await signOut(auth); } catch (error) { con
 
 // --- Check/Repair DB ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v10.10..."); // Asegúrate que esta versión coincide
+    console.log("Starting Check/Repair v10.11...");
 
-    const appContent = document.getElementById("app-content");
+    // Asignar variables globales AHORA que el DOM está listo
+    appContent = document.getElementById("app-content");
+    monthNameDisplayEl = document.getElementById("month-name-display");
 
-    if (!appContent) {
-        console.error("Error crítico: No se encontró el elemento #app-content.");
+    if (!appContent || !monthNameDisplayEl) {
+        console.error("Error crítico: No se encontraron #app-content o #month-name-display.");
         document.body.innerHTML = "<p style='color:red; padding:20px;'>Error: HTML elements missing. Cannot start app.</p>";
         return;
     }
@@ -89,33 +95,24 @@ async function checkAndRunApp() {
 }
 
 async function generateCleanDatabase() {
-    const appContent = document.getElementById("app-content");
-    if (!appContent) { console.error("Cannot show status: #app-content missing."); return; }
+    // appContent ya debería estar asignado globalmente
+    if (!appContent) { console.error("Cannot show status: appContent is null."); return; }
 
     console.log("--- Starting Regeneration ---"); const diasRef = collection(db, "Dias"); try { console.log("Deleting 'Dias'..."); appContent.innerHTML = "<p>Deleting old data...</p>"; const oldDocsSnapshot = await getDocs(diasRef); if (!oldDocsSnapshot.empty) { let batch = writeBatch(db); let deleteCount = 0; for (const docSnap of oldDocsSnapshot.docs) {
  batch.delete(docSnap.ref); deleteCount++; if (deleteCount >= 400) { console.log(`Committing delete batch (${deleteCount})...`); await batch.commit(); batch = writeBatch(db); deleteCount = 0; } } if (deleteCount > 0) { console.log(`Committing final delete batch (${deleteCount})...`); await batch.commit(); } console.log(`Deletion complete (${oldDocsSnapshot.size}).`); } else { console.log("'Dias' collection was already empty."); } } catch(e) { console.error("Error deleting collection:", e); throw e; }
     console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>"; let genBatch = writeBatch(db); let ops = 0, created = 0; try { for (let m = 0; m < 12; m++) { const monthNum = m + 1, monthStr = monthNum.toString().padStart(2, '0'); const numDays = daysInMonth[m]; for (let d = 1; d <= numDays; d++) { const dayStr = d.toString().padStart(2, '0'); const diaId = `${monthStr}-${dayStr}`; const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day", hasMemories: false };
- const docRef = doc(db, "Dias", diaId); genBatch.set(docRef, diaData); ops++; created++; if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`; if (ops >= 400) { console.log(`Committing generate batch (${ops})...`); await genBatch.commit(); genBatch = writeBatch(db); ops = 0; } } } if (ops > 0) { console.log(`Committing final generate batch (${ops})...`); await genBatch.commit(); } console.log(`--- Regeneration complete: ${created} days created ---`); appContent.innerHTML = `<p class="success">✅ DB regenerated: ${created} days!</p>`; } catch(e) { console.error("Error generating days:", e); throw e; }
+ const docRef = doc(db, "Dias", diaId); genBatch.set(docRef, diaData); ops++; created++; if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`; if (ops >= 400) { console.log(`Committing generate batch (${ops})...`); await genBatch.commit(); genBatch = writeBatch(db); ops = 0; } } } if (ops > 0) { console.log(`Committing final generate batch (${ops})...`); await batch.commit(); } console.log(`--- Regeneration complete: ${created} days created ---`); appContent.innerHTML = `<p class="success">✅ DB regenerated: ${created} days!</p>`; } catch(e) { console.error("Error generating days:", e); throw e; }
 }
 
 // --- Load/Draw Calendar ---
-// ¡REVERTIDO! Quitar el parámetro diasSnapshot
 async function loadDataAndDrawCalendar() {
-    // Añadido Log 1
-    console.log("Entering loadDataAndDrawCalendar function...");
-    const appContent = document.getElementById("app-content");
-    if (!appContent) {
-        console.error("#app-content not found in loadDataAndDrawCalendar");
-        return;
-    }
+    console.log("Entering loadDataAndDrawCalendar...");
+    if (!appContent) { console.error("#app-content is null in loadDataAndDrawCalendar"); return; }
 
-    appContent.innerHTML = "<p>Loading calendar...</p>"; // <-- Se queda aquí
+    appContent.innerHTML = "<p>Loading calendar...</p>";
     try {
-        // Añadido Log 2
-        console.log("Attempting to fetch 'Dias' collection from Firestore...");
-        // ¡REVERTIDO! Cargar los datos aquí de nuevo
+        console.log("Attempting to fetch 'Dias' collection...");
         const diasSnapshot = await getDocs(collection(db, "Dias"));
-        // Añadido Log 3
         console.log(`Firestore fetch successful. Received ${diasSnapshot.size} documents.`);
 
         allDaysData = [];
@@ -123,50 +120,41 @@ async function loadDataAndDrawCalendar() {
             if (doc.id?.length === 5 && doc.id.includes('-')) allDaysData.push({ id: doc.id, ...doc.data() });
         });
         if (allDaysData.length === 0) throw new Error("Database empty or invalid after loading.");
-        // Añadido Log 4
         console.log(`Processed ${allDaysData.length} valid day documents.`);
 
         allDaysData.sort((a, b) => a.id.localeCompare(b.id));
         console.log("Data sorted.");
 
-        // Añadido Log 5
         console.log("Calling dibujarMesActual...");
-        await dibujarMesActual();
-        // Añadido Log 6
-        console.log("Returned from dibujarMesActual.");
-
-        // Añadido Log 7
-        console.log("Calling configurarNavegacion...");
-        configurarNavegacion();
-         // Añadido Log 8
-        console.log("Calling configurarFooter...");
-        configurarFooter();
-        // Añadido Log 9
+        await dibujarMesActual(); // Esta función ahora llamará a las de configuración
         console.log("loadDataAndDrawCalendar finished successfully.");
 
     } catch (e) {
-        // Añadido Log Error
         console.error("Error occurred within loadDataAndDrawCalendar:", e);
-        if (appContent) { // Asegurarse que appContent existe antes de usarlo
+        if (appContent) {
              appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`;
         }
     }
 }
 
-
+// --- Configuración de Navegación y Footer ---
+// (Estas funciones ahora se llaman desde dibujarMesActual)
 function configurarNavegacion() {
+    console.log("Attempting to configure navigation...");
     try {
         const prevBtn = document.getElementById("prev-month");
         const nextBtn = document.getElementById("next-month");
 
         if (prevBtn) {
             prevBtn.onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); };
+            console.log("Prev month button configured.");
         } else {
             console.error("#prev-month button not found!");
         }
 
         if (nextBtn) {
             nextBtn.onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); };
+            console.log("Next month button configured.");
         } else {
             console.error("#next-month button not found!");
         }
@@ -174,31 +162,67 @@ function configurarNavegacion() {
         console.error("Error configuring navigation:", e);
     }
 }
-async function dibujarMesActual() {
-    const monthNameDisplayEl = document.getElementById("month-name-display");
-    const appContent = document.getElementById("app-content");
 
+function configurarFooter() {
+    console.log("Attempting to configure footer...");
+    try {
+        const btnHoy = document.getElementById('btn-hoy');
+        const btnBuscar = document.getElementById('btn-buscar');
+        const btnShuffle = document.getElementById('btn-shuffle');
+        const btnAddMemory = document.getElementById('btn-add-memory');
+
+        if (btnHoy) {
+            btnHoy.onclick = () => { const today = new Date(); const todayMonth = today.getMonth(); const todayDay = today.getDate(); const todayId = `${(todayMonth + 1).toString().padStart(2, '0')}-${todayDay.toString().padStart(2, '0')}`; const todayDia = allDaysData.find(d => d.id === todayId); if (todayDia) { if (currentMonthIndex !== todayMonth) { currentMonthIndex = todayMonth; dibujarMesActual(); setTimeout(() => abrirModalPreview(todayDia), 50); } else { abrirModalPreview(todayDia); } window.scrollTo(0, 0); } else { alert("Error: Could not find data for today."); } };
+            console.log("Today button configured.");
+        } else { console.error("#btn-hoy not found!"); }
+
+        if (btnBuscar) {
+            btnBuscar.onclick = () => { const searchTerm = prompt("Search memories:"); if (searchTerm?.trim()) { buscarMemorias(searchTerm.trim().toLowerCase()); } };
+             console.log("Search button configured.");
+        } else { console.error("#btn-buscar not found!"); }
+
+        if (btnShuffle) {
+            btnShuffle.onclick = () => { if (allDaysData.length > 0) { const randomIndex = Math.floor(Math.random() * allDaysData.length); const randomDia = allDaysData[randomIndex]; const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1; if (currentMonthIndex !== randomMonthIndex) { currentMonthIndex = randomMonthIndex; dibujarMesActual(); setTimeout(() => abrirModalPreview(randomDia), 50); } else { abrirModalPreview(randomDia); } window.scrollTo(0, 0); } };
+             console.log("Shuffle button configured.");
+        } else { console.error("#btn-shuffle not found!"); }
+
+        if (btnAddMemory) {
+            btnAddMemory.onclick = () => { abrirModalEdicion(null); };
+             console.log("Add Memory button configured.");
+        } else { console.error("#btn-add-memory not found!"); }
+
+    } catch (e) {
+        console.error("Error configuring footer:", e);
+    }
+}
+
+// --- Dibujar Mes Actual ---
+async function dibujarMesActual() {
+    console.log("Entering dibujarMesActual...");
+    // monthNameDisplayEl y appContent ya son globales y asignadas
     if (!monthNameDisplayEl || !appContent) {
-        console.error("#month-name-display or #app-content element not found in dibujarMesActual!");
-        return;
+        console.error("Global elements monthNameDisplayEl or appContent are null in dibujarMesActual!");
+        return; // Salir si los elementos globales no están listos
     }
     monthNameDisplayEl.textContent = monthNames[currentMonthIndex];
     const monthNumberTarget = currentMonthIndex + 1;
     console.log(`Drawing month ${monthNumberTarget}`);
     const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget );
-    console.log(`Found ${diasDelMes.length} days.`);
+    console.log(`Found ${diasDelMes.length} days for month.`);
 
+    // Establecer el HTML principal
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div><div id="today-memory-spotlight"></div>`;
 
     const grid = document.getElementById("grid-dias");
     if (!grid) {
         console.error("#grid-dias element not found after setting innerHTML!");
-        return;
+        return; // No podemos continuar si el grid no existe
     }
     if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; }
     const diasEsperados = daysInMonth[currentMonthIndex];
     if (diasDelMes.length !== diasEsperados) console.warn(`ALERT: Found ${diasDelMes.length}/${diasEsperados} for ${monthNames[currentMonthIndex]}.`);
 
+    // Añadir los botones de día
     diasDelMes.forEach(dia => {
         const btn = document.createElement("button");
         btn.className = "dia-btn";
@@ -209,20 +233,29 @@ async function dibujarMesActual() {
         if (dia.hasMemories) {
             btn.classList.add('tiene-memorias');
         }
-
         grid.appendChild(btn);
     });
-    console.log(`Rendered ${diasDelMes.length} buttons.`);
+    console.log(`Rendered ${diasDelMes.length} day buttons.`);
+
+    // Actualizar el spotlight
     await updateTodayMemorySpotlight();
+
+    // ¡CAMBIO! Llamar a configurar navegación y footer DESPUÉS de renderizar
+    console.log("Calling configuration functions from dibujarMesActual...");
+    configurarNavegacion();
+    configurarFooter();
+    console.log("Finished dibujarMesActual.");
 }
 
+
+// --- Spotlight ---
 async function updateTodayMemorySpotlight() {
     const spotlightDiv = document.getElementById('today-memory-spotlight');
     if (!spotlightDiv) {
         console.log("Spotlight div not found, skipping update.");
         return;
     }
-
+    // ... (resto de la función sin cambios)
     const today = new Date();
     const todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
     const todayDay = allDaysData.find(d => d.id === todayId);
@@ -265,43 +298,20 @@ async function updateTodayMemorySpotlight() {
     spotlightDiv.onclick = () => abrirModalPreview(todayDay);
 }
 
-function configurarFooter() {
-    try {
-        const btnHoy = document.getElementById('btn-hoy');
-        const btnBuscar = document.getElementById('btn-buscar');
-        const btnShuffle = document.getElementById('btn-shuffle');
-        const btnAddMemory = document.getElementById('btn-add-memory');
 
-        if (btnHoy) {
-            btnHoy.onclick = () => { const today = new Date(); const todayMonth = today.getMonth(); const todayDay = today.getDate(); const todayId = `${(todayMonth + 1).toString().padStart(2, '0')}-${todayDay.toString().padStart(2, '0')}`; const todayDia = allDaysData.find(d => d.id === todayId); if (todayDia) { if (currentMonthIndex !== todayMonth) { currentMonthIndex = todayMonth; dibujarMesActual(); setTimeout(() => abrirModalPreview(todayDia), 50); } else { abrirModalPreview(todayDia); } window.scrollTo(0, 0); } else { alert("Error: Could not find data for today."); } };
-        } else { console.error("#btn-hoy not found!"); }
-
-        if (btnBuscar) {
-            btnBuscar.onclick = () => { const searchTerm = prompt("Search memories:"); if (searchTerm?.trim()) { buscarMemorias(searchTerm.trim().toLowerCase()); } };
-        } else { console.error("#btn-buscar not found!"); }
-
-        if (btnShuffle) {
-            btnShuffle.onclick = () => { if (allDaysData.length > 0) { const randomIndex = Math.floor(Math.random() * allDaysData.length); const randomDia = allDaysData[randomIndex]; const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1; if (currentMonthIndex !== randomMonthIndex) { currentMonthIndex = randomMonthIndex; dibujarMesActual(); setTimeout(() => abrirModalPreview(randomDia), 50); } else { abrirModalPreview(randomDia); } window.scrollTo(0, 0); } };
-        } else { console.error("#btn-shuffle not found!"); }
-
-        if (btnAddMemory) {
-            btnAddMemory.onclick = () => { abrirModalEdicion(null); };
-        } else { console.error("#btn-add-memory not found!"); }
-
-    } catch (e) {
-        console.error("Error configuring footer:", e);
-    }
-}
+// --- Búsqueda ---
 async function buscarMemorias(term) {
     console.log("Searching:", term);
-    const appContent = document.getElementById("app-content");
+    // appContent ya debería ser global
     if (!appContent) return;
 
     appContent.innerHTML = `<p>Searching for "${term}"...</p>`; let results = []; try { for (const dia of allDaysData) { const memSnapshot = await getDocs(collection(db, "Dias", dia.id, "Memorias")); memSnapshot.forEach(memDoc => { const memoria = { diaId: dia.id, diaNombre: dia.Nombre_Dia, id: memDoc.id, ...memDoc.data() }; let searchableText = memoria.Descripcion || ''; if(memoria.LugarNombre) searchableText += ' ' + memoria.LugarNombre; if(memoria.CancionInfo) searchableText += ' ' + memoria.CancionInfo; if (searchableText.toLowerCase().includes(term)) { results.push(memoria); } }); } if (results.length === 0) { appContent.innerHTML = `<p>No results for "${term}".</p>`; } else { console.log(`Found ${results.length}.`); results.sort((a, b) => (b.Fecha_Original?.toDate() ?? 0) - (a.Fecha_Original?.toDate() ?? 0)); appContent.innerHTML = `<h3>Results for "${term}" (${results.length}):</h3>`; const resultsList = document.createElement('div'); resultsList.id = 'search-results-list'; results.forEach(mem => { const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item search-result'; let fechaStr = 'Unknown date'; if (mem.Fecha_Original?.toDate) { try { fechaStr = mem.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) { /* fallback */ } } let contentHTML = `<small><b>${mem.diaNombre} (${mem.diaId})</b> - ${fechaStr}</small>`; switch (mem.Tipo) { case 'Lugar': contentHTML += `📍 ${memoria.LugarNombre || 'Place'}`; break; case 'Musica': if (memoria.CancionData?.trackName) contentHTML += `🎵 <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`; else contentHTML += `🎵 ${memoria.CancionInfo || 'Music'}`; break; case 'Imagen': contentHTML += `🖼️ Image`; if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank">View</a>)`; if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`; break; default: contentHTML += memoria.Descripcion || ''; break; } itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>`; itemDiv.style.cursor = 'pointer'; itemDiv.onclick = () => { const monthIndex = parseInt(mem.diaId.substring(0, 2), 10) - 1; if (monthIndex >= 0) { currentMonthIndex = monthIndex; dibujarMesActual(); const targetDia = allDaysData.find(d => d.id === mem.diaId); if(targetDia) setTimeout(() => abrirModalPreview(targetDia), 50); window.scrollTo(0, 0); } }; resultsList.appendChild(itemDiv); }); appContent.appendChild(resultsList); } } catch (e) { if (appContent) appContent.innerHTML = `<p class="error">Search error: ${e.message}</p>`; console.error(e); }
 }
 
+// --- Modales (Preview y Edición/Añadir) ---
+// (Estas funciones permanecen mayormente igual, solo se aseguran de que los elementos existan antes de usarlos)
 async function abrirModalPreview(dia) {
-    console.log("Opening preview:", dia.id);
+    console.log("Opening preview for:", dia.id);
     let modal = document.getElementById('preview-modal');
 
     if (!modal) {
@@ -310,22 +320,25 @@ async function abrirModalPreview(dia) {
         modal.className = 'modal-preview';
         modal.innerHTML = ` <div class="modal-preview-content"> <div class="modal-preview-header"> <h3 id="preview-title"></h3> <button id="edit-from-preview-btn" title="Edit this day">${pencilIconSVG}</button> </div> <div class="modal-preview-memorias"> <h4>Memories:</h4> <div id="preview-memorias-list">Loading...</div> </div> <button id="close-preview-btn" class="aqua-button">Close</button> </div>`;
         document.body.appendChild(modal);
-        document.getElementById('close-preview-btn').onclick = () => cerrarModalPreview();
+
+        const closeBtn = document.getElementById('close-preview-btn');
+        if (closeBtn) {
+            closeBtn.onclick = () => cerrarModalPreview();
+        }
         modal.onclick = (e) => { if (e.target.id === 'preview-modal') cerrarModalPreview(); };
     }
 
     const editBtn = document.getElementById('edit-from-preview-btn');
     if (editBtn) {
-        const diaToEdit = dia;
+        // Clonar y reemplazar para asegurar que el listener antiguo se elimina
+        const diaToEdit = dia; // Capturar el 'dia' actual
         const newEditBtn = editBtn.cloneNode(true);
-        editBtn.parentNode.replaceChild(newEditBtn, editBtn);
+        editBtn.parentNode.replaceChild(newEditBtn, editBtn); // Reemplazar nodo
 
         newEditBtn.addEventListener('click', () => {
-            console.log("Edit clicked for:", diaToEdit.id);
-            if (diaToEdit) {
-                cerrarModalPreview();
-                setTimeout(() => abrirModalEdicion(diaToEdit), 250);
-            }
+             console.log("Preview edit button clicked for:", diaToEdit.id);
+             cerrarModalPreview();
+             setTimeout(() => abrirModalEdicion(diaToEdit), 250); // Pasar el 'dia' capturado
         });
     } else {
         console.error("Edit button not found in preview modal.");
@@ -334,11 +347,14 @@ async function abrirModalPreview(dia) {
     const previewTitle = document.getElementById('preview-title');
     if (previewTitle) {
       previewTitle.textContent = `${dia.Nombre_Dia} ${dia.Nombre_Especial !== 'Unnamed Day' ? '('+dia.Nombre_Especial+')' : ''}`;
+    } else {
+        console.error("#preview-title not found!");
     }
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('visible'), 10);
     await cargarYMostrarMemorias(dia.id, 'preview-memorias-list');
 }
+
 function cerrarModalPreview() { const modal = document.getElementById('preview-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); } }
 
 async function abrirModalEdicion(dia) {
@@ -427,15 +443,15 @@ async function abrirModalEdicion(dia) {
         if(dayNameSection) dayNameSection.style.display = 'none';
         if (daySelect && currentlyOpenDay) daySelect.value = currentlyOpenDay.id;
         if(yearInput) yearInput.value = new Date().getFullYear();
-        formTitle.textContent = "Add New Memory";
-        memoriesList.innerHTML = '<p class="list-placeholder">Add memories below.</p>';
+        if (formTitle) formTitle.textContent = "Add New Memory";
+        if (memoriesList) memoriesList.innerHTML = '<p class="list-placeholder">Add memories below.</p>';
         currentMemories = [];
     } else {
         if(daySelectionSection) daySelectionSection.style.display = 'none';
         if(dayNameSection) dayNameSection.style.display = 'block';
         if (titleEl) titleEl.textContent = `Editing: ${currentlyOpenDay.Nombre_Dia} (${currentlyOpenDay.id})`;
         if (nameInput) nameInput.value = currentlyOpenDay.Nombre_Especial === 'Unnamed Day' ? '' : currentlyOpenDay.Nombre_Especial;
-        formTitle.textContent = "Add/Edit Memories";
+        if (formTitle) formTitle.textContent = "Add/Edit Memories";
         await cargarYMostrarMemorias(currentlyOpenDay.id, 'edit-memorias-list');
     }
     resetMemoryFormUnified(); handleMemoryTypeChangeUnified();
@@ -451,15 +467,14 @@ async function abrirModalEdicion(dia) {
     }
 }
 
-function cerrarModalEdicion() {
-    const modal = document.getElementById('edit-add-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); }
-    currentlyOpenDay = null;
-    editingMemoryId = null;
-    selectedPlace = null;
-    selectedMusicTrack = null;
-    if (mapMarker) { mapMarker.remove(); mapMarker = null; }
-}
+// --- Resto de funciones (cargarYMostrarMemorias, attachMemoryActionListeners, etc.) sin cambios ---
+// ... (Copiar el resto de funciones desde la v10.10) ...
+// ... Incluyendo initMapIfNeeded, handleMemoryTypeChangeUnified, buscarBSOUnified, buscarLugarUnified ...
+// ... startEditMemoriaUnified, handleMemoryFormSubmit, confirmDeleteMemoriaUnified, deleteMemoriaUnified ...
+// ... resetMemoryFormUnified, guardarNombreEspecial ...
 
+
+// --- Load/Display Memories ---
 async function cargarYMostrarMemorias(diaId, targetDivId) {
     const memoriasListDiv = document.getElementById(targetDivId); if (!memoriasListDiv) return;
     memoriasListDiv.innerHTML = 'Loading...'; if (targetDivId === 'edit-memorias-list') currentMemories = [];
@@ -769,7 +784,7 @@ async function handleMemoryFormSubmit(event) {
         const dayIndex = allDaysData.findIndex(d => d.id === diaId);
         if (dayIndex !== -1) allDaysData[dayIndex].hasMemories = true;
 
-        dibujarMesActual();
+        await dibujarMesActual(); // Esperar a que termine de dibujar antes de continuar
 
         resetMemoryFormUnified();
         await cargarYMostrarMemorias(diaId, 'edit-memorias-list');
@@ -780,7 +795,7 @@ async function handleMemoryFormSubmit(event) {
         if(previewList && currentlyOpenDay?.id === diaId && previewModal?.style.display === 'flex') {
             await cargarYMostrarMemorias(diaId, 'preview-memorias-list');
         }
-        updateTodayMemorySpotlight();
+        await updateTodayMemorySpotlight(); // Esperar a que termine
     } catch (e) {
         console.error("Save/Update Error:", e);
         statusDiv.textContent = `Error: ${e.message}`;
@@ -818,7 +833,7 @@ async function deleteMemoriaUnified(diaId, memoriaId) {
             if (dayIndex !== -1) allDaysData[dayIndex].hasMemories = false;
         }
 
-        dibujarMesActual();
+        await dibujarMesActual(); // Esperar a que termine
 
         s.textContent='Deleted!';
         s.className='success';
@@ -830,7 +845,7 @@ async function deleteMemoriaUnified(diaId, memoriaId) {
         if(pL&&currentlyOpenDay?.id===diaId&&pM?.style.display==='flex'){
             await cargarYMostrarMemorias(diaId,'preview-memorias-list');
         }
-        updateTodayMemorySpotlight();
+        await updateTodayMemorySpotlight(); // Esperar a que termine
     } catch(e){
         console.error("Delete Error:",e);
         s.textContent=`Error: ${e.message}`;
@@ -878,7 +893,10 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
         s.textContent="Name Saved!";
         s.className='success';
         if(currentlyOpenDay&&currentlyOpenDay.id===diaId)currentlyOpenDay.Nombre_Especial=v;
-        setTimeout(()=>{ if (s) s.textContent=''; dibujarMesActual(); },1200);
+        setTimeout(async ()=>{ // Hacer la función interna async
+             if (s) s.textContent='';
+             await dibujarMesActual(); // Esperar
+        },1200);
         const pT=document.getElementById('preview-title'),pM=document.getElementById('preview-modal');
         if(pT&&currentlyOpenDay&&currentlyOpenDay.id===diaId&&pM?.style.display==='flex') pT.textContent=`${currentlyOpenDay.Nombre_Dia} ${v!=='Unnamed Day'?'('+v+')':''}`;
     } catch(e){
@@ -887,6 +905,7 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
         console.error(e);
     }
 }
+
 
 // --- Expose functions needed globally ---
 window.handleMemoryTypeChangeUnified = handleMemoryTypeChangeUnified;
