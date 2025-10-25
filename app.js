@@ -1,4 +1,4 @@
-/* app.js - v10.6 - DOMContentLoaded Fix & Auth Error Explanation */
+/* app.js - v10.7 - DOM Load Fix */
 
 // Importaciones
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -28,8 +28,10 @@ const auth = getAuth(app);
 const storage = getStorage(app); 
 
 // --- Global Variables & Constants ---
-const appContent = document.getElementById("app-content");
-const monthNameDisplayEl = document.getElementById("month-name-display");
+// ¡CAMBIO! Declarar como 'let' y 'null'. Se asignarán cuando el DOM esté listo.
+let appContent = null;
+let monthNameDisplayEl = null;
+
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // Includes leap year Feb 29
 
@@ -58,7 +60,19 @@ async function handleLogout() { try { await signOut(auth); } catch (error) { con
 
 // --- Check/Repair DB ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v10.6...");
+    console.log("Starting Check/Repair v10.7...");
+    
+    // ¡CAMBIO! Asignar variables aquí, ahora que el DOM está listo.
+    appContent = document.getElementById("app-content");
+    monthNameDisplayEl = document.getElementById("month-name-display");
+
+    // Añadir un chequeo de seguridad
+    if (!appContent || !monthNameDisplayEl) {
+        console.error("Error crítico: No se encontraron los elementos #app-content o #month-name-display. El HTML no se cargó correctamente.");
+        document.body.innerHTML = "<p style='color:red; padding:20px;'>Error: HTML elements missing. Cannot start app.</p>";
+        return;
+    }
+
     appContent.innerHTML = "<p>Verifying database...</p>";
     try {
         const diasRef = collection(db, "Dias");
@@ -104,12 +118,9 @@ async function loadDataAndDrawCalendar(diasSnapshot) {
         allDaysData.sort((a, b) => a.id.localeCompare(b.id)); 
         console.log("Data sorted. First:", allDaysData[0]?.id, "Last:", allDaysData[allDaysData.length - 1]?.id); 
         
-        // ¡CAMBIO! Mover config después de asegurar que los elementos existen
-        // configurarNavegacion(); 
-        // configurarFooter(); 
         await dibujarMesActual(); 
 
-        // ¡NUEVO! Configurar navegación y footer DESPUÉS de dibujar y asegurar que el DOM está listo
+        // Configurar navegación y footer DESPUÉS de dibujar
         configurarNavegacion();
         configurarFooter();
 
@@ -120,7 +131,6 @@ async function loadDataAndDrawCalendar(diasSnapshot) {
 }
 function configurarNavegacion() {
     try {
-        // ¡NUEVO! Añadir chequeo por si acaso los elementos no existen
         const prevBtn = document.getElementById("prev-month");
         const nextBtn = document.getElementById("next-month");
         
@@ -140,22 +150,13 @@ function configurarNavegacion() {
     }
 }
 async function dibujarMesActual() {
-    // Asegurarse de que monthNameDisplayEl existe antes de usarlo
-    if (!monthNameDisplayEl) {
-        console.error("#month-name-display element not found!");
-        return; // Salir si no existe para evitar más errores
-    }
+    // El chequeo de 'monthNameDisplayEl' y 'appContent' ya se hace en checkAndRunApp
     monthNameDisplayEl.textContent = monthNames[currentMonthIndex]; 
     const monthNumberTarget = currentMonthIndex + 1; 
     console.log(`Drawing month ${monthNumberTarget}`); 
     const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget ); 
     console.log(`Found ${diasDelMes.length} days.`); 
     
-    // Asegurarse de que appContent existe
-    if (!appContent) {
-        console.error("#app-content element not found!");
-        return; 
-    }
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div><div id="today-memory-spotlight"></div>`; 
     
     const grid = document.getElementById("grid-dias"); 
