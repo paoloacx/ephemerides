@@ -1,4 +1,4 @@
-/* app.js - v10.12 - Timeout Fix for Element Finding */
+/* app.js - v10.13 - Reverted Load Logic + End-of-Body Script */
 
 // Importaciones
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -28,22 +28,23 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 
 // --- Global Variables & Constants ---
-let appContent = null;
-let monthNameDisplayEl = null;
+// Volvemos a asignar al inicio, confiando en que el script está al final del body
+const appContent = document.getElementById("app-content");
+const monthNameDisplayEl = document.getElementById("month-name-display");
 
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // Includes leap year Feb 29
 
 let allDaysData = [];
 let currentMonthIndex = new Date().getMonth();
 let currentMemories = [];
 let editingMemoryId = null;
-let currentlyOpenDay = null;
+let currentlyOpenDay = null; // Holds the full day object for the currently open modal
 let selectedMusicTrack = null;
 let selectedPlace = null;
 let currentUser = null;
-let map = null;
-let mapMarker = null;
+let map = null; // Para la instancia de Leaflet
+let mapMarker = null; // Para el marcador de Leaflet
 
 // --- SVG Icons ---
 const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/></svg>`;
@@ -59,13 +60,11 @@ async function handleLogout() { try { await signOut(auth); } catch (error) { con
 
 // --- Check/Repair DB ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v10.12..."); // Actualizar versión
+    console.log("Starting Check/Repair v10.13..."); // Asegúrate que esta versión coincide
 
-    appContent = document.getElementById("app-content");
-    monthNameDisplayEl = document.getElementById("month-name-display");
-
+    // Chequeo inicial crítico
     if (!appContent || !monthNameDisplayEl) {
-        console.error("Error crítico: No se encontraron #app-content o #month-name-display.");
+        console.error("Error crítico: #app-content o #month-name-display son null al inicio.");
         document.body.innerHTML = "<p style='color:red; padding:20px;'>Error: HTML elements missing. Cannot start app.</p>";
         return;
     }
@@ -95,7 +94,7 @@ async function checkAndRunApp() {
 async function generateCleanDatabase() {
     if (!appContent) { console.error("Cannot show status: appContent is null."); return; }
     console.log("--- Starting Regeneration ---");
-    // ... (resto de la función sin cambios) ...
+    // ... (resto sin cambios) ...
     const diasRef = collection(db, "Dias"); try { console.log("Deleting 'Dias'..."); appContent.innerHTML = "<p>Deleting old data...</p>"; const oldDocsSnapshot = await getDocs(diasRef); if (!oldDocsSnapshot.empty) { let batch = writeBatch(db); let deleteCount = 0; for (const docSnap of oldDocsSnapshot.docs) {
  batch.delete(docSnap.ref); deleteCount++; if (deleteCount >= 400) { console.log(`Committing delete batch (${deleteCount})...`); await batch.commit(); batch = writeBatch(db); deleteCount = 0; } } if (deleteCount > 0) { console.log(`Committing final delete batch (${deleteCount})...`); await batch.commit(); } console.log(`Deletion complete (${oldDocsSnapshot.size}).`); } else { console.log("'Dias' collection was already empty."); } } catch(e) { console.error("Error deleting collection:", e); throw e; }
     console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>"; let genBatch = writeBatch(db); let ops = 0, created = 0; try { for (let m = 0; m < 12; m++) { const monthNum = m + 1, monthStr = monthNum.toString().padStart(2, '0'); const numDays = daysInMonth[m]; for (let d = 1; d <= numDays; d++) { const dayStr = d.toString().padStart(2, '0'); const diaId = `${monthStr}-${dayStr}`; const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day", hasMemories: false };
@@ -103,42 +102,49 @@ async function generateCleanDatabase() {
 }
 
 // --- Load/Draw Calendar ---
+// Volvemos a la lógica de v10.9 (la de los logs)
 async function loadDataAndDrawCalendar() {
-    console.log("Entering loadDataAndDrawCalendar...");
+    console.log("Log 1: Entering loadDataAndDrawCalendar function...");
     if (!appContent) { console.error("#app-content is null in loadDataAndDrawCalendar"); return; }
 
-    appContent.innerHTML = "<p>Loading calendar...</p>";
+    appContent.innerHTML = "<p>Loading calendar...</p>"; // <-- Mensaje que se queda
     try {
-        console.log("Attempting to fetch 'Dias' collection...");
+        console.log("Log 2: Attempting to fetch 'Dias' collection from Firestore...");
         const diasSnapshot = await getDocs(collection(db, "Dias"));
-        console.log(`Firestore fetch successful. Received ${diasSnapshot.size} documents.`);
+        console.log(`Log 3: Firestore fetch successful. Received ${diasSnapshot.size} documents.`);
 
         allDaysData = [];
         diasSnapshot.forEach((doc) => {
             if (doc.id?.length === 5 && doc.id.includes('-')) allDaysData.push({ id: doc.id, ...doc.data() });
         });
         if (allDaysData.length === 0) throw new Error("Database empty or invalid after loading.");
-        console.log(`Processed ${allDaysData.length} valid day documents.`);
+        console.log(`Log 4: Processed ${allDaysData.length} valid day documents.`);
 
         allDaysData.sort((a, b) => a.id.localeCompare(b.id));
-        console.log("Data sorted.");
+        console.log("Log 4.5: Data sorted.");
 
-        console.log("Calling dibujarMesActual...");
+        console.log("Log 5: Calling dibujarMesActual...");
         await dibujarMesActual();
-        console.log("loadDataAndDrawCalendar finished successfully.");
+        console.log("Log 6: Returned from dibujarMesActual.");
+
+        console.log("Log 7: Calling configurarNavegacion...");
+        configurarNavegacion();
+         console.log("Log 8: Calling configurarFooter...");
+        configurarFooter();
+        console.log("Log 9: loadDataAndDrawCalendar finished successfully.");
 
     } catch (e) {
-        console.error("Error occurred within loadDataAndDrawCalendar:", e);
+        console.error("Log Error: Error occurred within loadDataAndDrawCalendar:", e);
         if (appContent) {
              appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`;
         }
     }
 }
 
-// --- Configuración (llamadas desde dibujarMesActual) ---
+
+// --- Configuración ---
 function configurarNavegacion() {
     console.log("Attempting to configure navigation...");
-    // ... (código sin cambios) ...
     try {
         const prevBtn = document.getElementById("prev-month");
         const nextBtn = document.getElementById("next-month");
@@ -147,14 +153,14 @@ function configurarNavegacion() {
             prevBtn.onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); };
             console.log("Prev month button configured.");
         } else {
-            console.error("#prev-month button not found!");
+            console.error("#prev-month button not found!"); // <-- Esto salía en los logs anteriores
         }
 
         if (nextBtn) {
             nextBtn.onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); };
             console.log("Next month button configured.");
         } else {
-            console.error("#next-month button not found!");
+            console.error("#next-month button not found!"); // <-- Esto salía en los logs anteriores
         }
     } catch (e) {
         console.error("Error configuring navigation:", e);
@@ -163,7 +169,6 @@ function configurarNavegacion() {
 
 function configurarFooter() {
     console.log("Attempting to configure footer...");
-    // ... (código sin cambios) ...
     try {
         const btnHoy = document.getElementById('btn-hoy');
         const btnBuscar = document.getElementById('btn-buscar');
@@ -173,22 +178,22 @@ function configurarFooter() {
         if (btnHoy) {
             btnHoy.onclick = () => { const today = new Date(); const todayMonth = today.getMonth(); const todayDay = today.getDate(); const todayId = `${(todayMonth + 1).toString().padStart(2, '0')}-${todayDay.toString().padStart(2, '0')}`; const todayDia = allDaysData.find(d => d.id === todayId); if (todayDia) { if (currentMonthIndex !== todayMonth) { currentMonthIndex = todayMonth; dibujarMesActual(); setTimeout(() => abrirModalPreview(todayDia), 50); } else { abrirModalPreview(todayDia); } window.scrollTo(0, 0); } else { alert("Error: Could not find data for today."); } };
             console.log("Today button configured.");
-        } else { console.error("#btn-hoy not found!"); }
+        } else { console.error("#btn-hoy not found!"); } // <-- Esto salía en los logs anteriores
 
         if (btnBuscar) {
             btnBuscar.onclick = () => { const searchTerm = prompt("Search memories:"); if (searchTerm?.trim()) { buscarMemorias(searchTerm.trim().toLowerCase()); } };
              console.log("Search button configured.");
-        } else { console.error("#btn-buscar not found!"); }
+        } else { console.error("#btn-buscar not found!"); } // <-- Esto salía en los logs anteriores
 
         if (btnShuffle) {
             btnShuffle.onclick = () => { if (allDaysData.length > 0) { const randomIndex = Math.floor(Math.random() * allDaysData.length); const randomDia = allDaysData[randomIndex]; const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1; if (currentMonthIndex !== randomMonthIndex) { currentMonthIndex = randomMonthIndex; dibujarMesActual(); setTimeout(() => abrirModalPreview(randomDia), 50); } else { abrirModalPreview(randomDia); } window.scrollTo(0, 0); } };
              console.log("Shuffle button configured.");
-        } else { console.error("#btn-shuffle not found!"); }
+        } else { console.error("#btn-shuffle not found!"); } // <-- Esto salía en los logs anteriores
 
         if (btnAddMemory) {
             btnAddMemory.onclick = () => { abrirModalEdicion(null); };
              console.log("Add Memory button configured.");
-        } else { console.error("#btn-add-memory not found!"); }
+        } else { console.error("#btn-add-memory not found!"); } // <-- Esto salía en los logs anteriores
 
     } catch (e) {
         console.error("Error configuring footer:", e);
@@ -210,12 +215,11 @@ async function dibujarMesActual() {
 
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div><div id="today-memory-spotlight"></div>`;
 
-    // AÑADIDO: Pequeña pausa para que el navegador procese el innerHTML
-    await new Promise(resolve => setTimeout(resolve, 0)); // 0ms timeout yield
-
+    // SIN TIMEOUT - confiando en que el script al final del body es suficiente
     const grid = document.getElementById("grid-dias");
     if (!grid) {
-        console.error("#grid-dias element not found after setting innerHTML and timeout!");
+        console.error("#grid-dias element not found immediately after setting innerHTML!");
+        // Si esto falla, el problema es más profundo que un simple timeout
         return;
     }
     if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; }
@@ -238,19 +242,15 @@ async function dibujarMesActual() {
 
     await updateTodayMemorySpotlight();
 
-    // ¡CAMBIO CLAVE! Usar setTimeout para llamar a la configuración
-    console.log("Scheduling configuration functions after a short delay...");
-    setTimeout(() => {
-        console.log("Executing configuration functions after delay.");
-        configurarNavegacion();
-        configurarFooter();
-    }, 10); // 10ms delay, ajustable si es necesario
-
-    console.log("Finished dibujarMesActual (configuration scheduled).");
+    // SIN TIMEOUT - Llamar directamente
+    console.log("Calling configuration functions directly from dibujarMesActual...");
+    // configurarNavegacion(); // Quitado de aquí, se llama en loadDataAndDrawCalendar
+    // configurarFooter(); // Quitado de aquí, se llama en loadDataAndDrawCalendar
+    console.log("Finished dibujarMesActual.");
 }
 
 // --- Resto de funciones (Spotlight, Búsqueda, Modales, CRUD, etc.) ---
-// ... (Copiar el resto de funciones desde v10.11 sin cambios) ...
+// ... (Copiar el resto de funciones desde v10.12 sin cambios) ...
 async function updateTodayMemorySpotlight() {
     const spotlightDiv = document.getElementById('today-memory-spotlight');
     if (!spotlightDiv) {
@@ -919,5 +919,6 @@ window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
 
 // --- Start App ---
-document.addEventListener('DOMContentLoaded', checkAndRunApp);
+// Llamar a checkAndRunApp directamente, ya que el script está al final del body
+checkAndRunApp();
 
