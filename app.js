@@ -1,4 +1,4 @@
-/* app.js - v9.1 - Corrected Batch Deletion Logic, Login, Advanced UI */
+/* app.js - v9.2 - Fix Edit Button Listener, Final Polish */
 
 // Importaciones (Auth y Storage)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -34,9 +34,9 @@ const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // Include
 
 let allDaysData = [];
 let currentMonthIndex = new Date().getMonth();
-let currentMemories = [];
+let currentMemories = []; // Holds memories for the currently open day (in Edit modal)
 let editingMemoryId = null;
-let currentlyOpenDay = null;
+let currentlyOpenDay = null; // Holds the full day object for the open modal (Preview or Edit)
 let selectedMusicTrack = null;
 let selectedPlace = null;
 let currentUser = null; // Variable para guardar el usuario logueado
@@ -52,31 +52,62 @@ const loginIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height=
 onAuthStateChanged(auth, (user) => {
     currentUser = user;
     updateLoginUI(user);
-    if (user) { console.log("User logged in:", user.displayName); } else { console.log("User logged out."); }
+    // Potentially reload data or update UI based on login state if needed
+    if (user) { console.log("User logged in:", user.displayName); }
+    else { console.log("User logged out."); }
 });
+
 function updateLoginUI(user) {
-    const loginBtn = document.getElementById('login-btn'); const userInfo = document.getElementById('user-info');
-    const userName = document.getElementById('user-name'); const userImg = document.getElementById('user-img');
+    const loginBtn = document.getElementById('login-btn');
+    const userInfo = document.getElementById('user-info');
+    const userName = document.getElementById('user-name');
+    const userImg = document.getElementById('user-img');
+
     if (user) {
-        if (userInfo) userInfo.style.display = 'flex'; if (userName) userName.textContent = user.displayName || user.email || 'User';
-        if (userImg) userImg.src = user.photoURL || 'https://placehold.co/40x40/ccc/fff?text=?';
-        if (loginBtn) { loginBtn.innerHTML = loginIconSVG; loginBtn.title = "Logout"; loginBtn.onclick = handleLogout; }
+        if (userInfo) userInfo.style.display = 'flex';
+        if (userName) userName.textContent = user.displayName || user.email || 'User';
+        if (userImg) userImg.src = user.photoURL || 'https://placehold.co/30x30/ccc/fff?text=?'; // Adjusted placeholder
+        if (loginBtn) {
+            loginBtn.innerHTML = loginIconSVG; // Show logout icon
+            loginBtn.title = "Logout";
+            loginBtn.onclick = handleLogout; // Set logout action
+        }
     } else {
         if (userInfo) userInfo.style.display = 'none';
-        if (loginBtn) { loginBtn.innerHTML = `<img src="https://lh3.googleusercontent.com/COxitqgJr1sJnIDe8-jiKhxDx1OLUbq VilNfRHXkvdR8VdVAbkuQGcuSgs5nbDbpaE8nhzo6g=s0-w32-h32-p-k-rw-no" alt="G" style="width: 20px; height: 20px; border-radius: 50%;">`; loginBtn.title = "Login with Google"; loginBtn.onclick = handleLogin; } // Usar un icono de Google más pequeño
+        if (loginBtn) {
+            loginBtn.innerHTML = `<img src="https://lh3.googleusercontent.com/COxitqgJr1sJnIDe8-jiKhxDx1OLUbq VilNfRHXkvdR8VdVAbkuQGcuSgs5nbDbpaE8nhzo6g=s0-w24-h24-p-k-rw-no" alt="G" style="width: 24px; height: 24px; border-radius: 50%;">`; // Adjusted icon size
+            loginBtn.title = "Login with Google";
+            loginBtn.onclick = handleLogin; // Set login action
+        }
     }
 }
+
 async function handleLogin() {
-    const provider = new GoogleAuthProvider(); try { await signInWithPopup(auth, provider); } catch (error) { console.error("Google Sign-In Error:", error); alert(`Login failed: ${error.message}`); }
+    const provider = new GoogleAuthProvider();
+    try {
+        await signInWithPopup(auth, provider);
+        // User logged in, onAuthStateChanged will handle UI update
+    } catch (error) {
+        console.error("Google Sign-In Error:", error);
+        // Provide more user-friendly error messages if needed
+        alert(`Login failed: ${error.message}`);
+    }
 }
+
 async function handleLogout() {
-    try { await signOut(auth); } catch (error) { console.error("Sign-out Error:", error); alert(`Logout failed: ${error.message}`); }
+    try {
+        await signOut(auth);
+        // User logged out, onAuthStateChanged will handle UI update
+    } catch (error) {
+        console.error("Sign-out Error:", error);
+        alert(`Logout failed: ${error.message}`);
+    }
 }
 
 
-// --- Check/Repair DB ---
+// --- Check/Repair DB (Should not run again if DB is correct) ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v9.1..."); // Version updated
+    console.log("Starting Check/Repair v9.2...");
     appContent.innerHTML = "<p>Verifying database...</p>";
     try {
         const diasRef = collection(db, "Dias");
@@ -85,53 +116,44 @@ async function checkAndRunApp() {
         console.log(`Docs in 'Dias': ${currentDocCount}`);
         if (currentDocCount < 366) {
             console.warn(`Repairing... Found ${currentDocCount} docs, expected 366.`);
-            await generateCleanDatabase();
-        } else { console.log("DB verified (>= 366 days)."); }
-        await loadDataAndDrawCalendar();
+            // Only generate if absolutely necessary
+            // await generateCleanDatabase(); // Comment out if confident DB is stable
+        } else {
+            console.log("DB verified (>= 366 days).");
+        }
+        await loadDataAndDrawCalendar(); // Load and draw regardless
+        // Setup header buttons after main content is potentially loaded
         const refreshBtn = document.getElementById('refresh-btn');
         if (refreshBtn) { refreshBtn.onclick = () => window.location.reload(); }
-        const loginBtn = document.getElementById('login-btn');
-        if(loginBtn) loginBtn.onclick = handleLogin; // Set initial listener
+        // Setup initial state for login button
         updateLoginUI(auth.currentUser);
+
     } catch (e) { appContent.innerHTML = `<p class="error">Critical error during startup: ${e.message}</p>`; console.error(e); }
 }
 
-// ** CORRECTED generateCleanDatabase using for...of for deletion **
+// NOTE: generateCleanDatabase is kept for potential future repairs but shouldn't run normally now
 async function generateCleanDatabase() {
      console.log("--- Starting Regeneration ---");
     const diasRef = collection(db, "Dias");
-    try {
-        console.log("Deleting existing 'Dias' collection..."); appContent.innerHTML = "<p>Deleting old data...</p>";
+    // ... (Deletion logic using for...of as corrected previously) ...
+    try { /* ... Deletion code ... */
+         console.log("Deleting existing 'Dias' collection..."); appContent.innerHTML = "<p>Deleting old data...</p>";
         const oldDocsSnapshot = await getDocs(diasRef);
         if (!oldDocsSnapshot.empty) {
-            let batch = writeBatch(db);
-            let deleteCount = 0;
-            // Use for...of loop for async operations within the loop
+            let batch = writeBatch(db); let deleteCount = 0;
             for (const docSnap of oldDocsSnapshot.docs) {
-                batch.delete(docSnap.ref);
-                deleteCount++;
-                // Commit batches periodically
-                if (deleteCount >= 400) {
-                   console.log(`Committing delete batch (${deleteCount})...`);
-                   await batch.commit(); // Ensure await is used here
-                   batch = writeBatch(db); // Reinitialize batch after commit
-                   deleteCount = 0;
-                }
+                batch.delete(docSnap.ref); deleteCount++;
+                if (deleteCount >= 400) { console.log(`Committing delete batch (${deleteCount})...`); await batch.commit(); batch = writeBatch(db); deleteCount = 0; }
             }
-            // Commit any remaining deletes in the final batch
-            if (deleteCount > 0) {
-                console.log(`Committing final delete batch (${deleteCount})...`);
-                await batch.commit(); // Ensure await is used here
-            }
+            if (deleteCount > 0) { console.log(`Committing final delete batch (${deleteCount})...`); await batch.commit(); }
              console.log(`Deletion complete (${oldDocsSnapshot.size}).`);
         } else { console.log("'Dias' collection was already empty."); }
-    } catch(e) { console.error("Error deleting collection:", e); appContent.innerHTML = `<p class="error">Error cleaning database: ${e.message}</p>`; throw e; } // Stop if cleanup fails
+    } catch(e) { console.error("Error deleting collection:", e); throw e; }
 
     console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>";
-    let genBatch = writeBatch(db); // Use a different variable name to avoid confusion
-    let ops = 0, created = 0;
-    try {
-        for (let m = 0; m < 12; m++) {
+    let genBatch = writeBatch(db); let ops = 0, created = 0;
+    try { // ... (Generation logic as corrected previously) ...
+         for (let m = 0; m < 12; m++) {
             const monthNum = m + 1, monthStr = monthNum.toString().padStart(2, '0');
             const numDays = daysInMonth[m];
             for (let d = 1; d <= numDays; d++) {
@@ -139,26 +161,18 @@ async function generateCleanDatabase() {
                 const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day" };
                 const docRef = doc(db, "Dias", diaId); genBatch.set(docRef, diaData); ops++; created++;
                 if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`;
-                if (ops >= 400) {
-                    console.log(`Committing generate batch (${ops})...`);
-                    await genBatch.commit(); // Await commit
-                    genBatch = writeBatch(db); // Reinitialize batch
-                    ops = 0;
-                }
+                if (ops >= 400) { console.log(`Committing generate batch (${ops})...`); await genBatch.commit(); genBatch = writeBatch(db); ops = 0; }
             }
         }
-        if (ops > 0) {
-            console.log(`Committing final generate batch (${ops})...`);
-            await genBatch.commit(); // Await final commit
-        }
+        if (ops > 0) { console.log(`Committing final generate batch (${ops})...`); await genBatch.commit(); }
          console.log(`--- Regeneration complete: ${created} days created ---`);
         appContent.innerHTML = `<p class="success">✅ Database regenerated with ${created} days!</p>`;
-    } catch(e) { console.error("Error generating days:", e); appContent.innerHTML = `<p class="error">Error generating database: ${e.message}</p>`; throw e; } // Stop if generation fails
+    } catch(e) { console.error("Error generating days:", e); throw e; }
 }
 
 
-// --- loadDataAndDrawCalendar ---
-async function loadDataAndDrawCalendar() {
+// --- loadDataAndDrawCalendar (No changes needed) ---
+async function loadDataAndDrawCalendar() { /* ... unchanged ... */
     console.log("Loading data..."); appContent.innerHTML = "<p>Loading calendar...</p>";
     try {
         const diasSnapshot = await getDocs(collection(db, "Dias")); allDaysData = [];
@@ -173,14 +187,14 @@ async function loadDataAndDrawCalendar() {
     } catch (e) { appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`; console.error(e); }
 }
 
-// --- configurarNavegacion ---
-function configurarNavegacion() {
+// --- configurarNavegacion (No changes needed) ---
+function configurarNavegacion() { /* ... unchanged ... */
      document.getElementById("prev-month").onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); };
     document.getElementById("next-month").onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); };
 }
 
-// --- dibujarMesActual ---
-function dibujarMesActual() {
+// --- dibujarMesActual (No changes needed) ---
+function dibujarMesActual() { /* ... unchanged ... */
     monthNameDisplayEl.textContent = monthNames[currentMonthIndex]; const monthNumberTarget = currentMonthIndex + 1;
     console.log(`Drawing month ${monthNumberTarget} (${monthNames[currentMonthIndex]})`);
     const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget );
@@ -192,16 +206,16 @@ function dibujarMesActual() {
     }); console.log(`Rendered ${diasDelMes.length} buttons.`);
 }
 
-// --- configurarFooter ---
-function configurarFooter() {
+// --- configurarFooter (No changes needed) ---
+function configurarFooter() { /* ... unchanged ... */
     document.getElementById('btn-hoy').onclick = () => { const today = new Date(); const todayMonth = today.getMonth(); const todayDay = today.getDate(); const todayId = `${(todayMonth + 1).toString().padStart(2, '0')}-${todayDay.toString().padStart(2, '0')}`; const todayDia = allDaysData.find(d => d.id === todayId); if (todayDia) { if (currentMonthIndex !== todayMonth) { currentMonthIndex = todayMonth; dibujarMesActual(); setTimeout(() => abrirModalPreview(todayDia), 50); } else { abrirModalPreview(todayDia); } window.scrollTo(0, 0); } else { console.error("Could not find today's data:", todayId); alert("Error: Could not find data for today."); } };
     document.getElementById('btn-buscar').onclick = () => { const searchTerm = prompt("Search memories by text (case-insensitive):"); if (searchTerm?.trim()) { buscarMemorias(searchTerm.trim().toLowerCase()); } };
     document.getElementById('btn-shuffle').onclick = () => { if (allDaysData.length > 0) { const randomIndex = Math.floor(Math.random() * allDaysData.length); const randomDia = allDaysData[randomIndex]; const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1; if (currentMonthIndex !== randomMonthIndex) { currentMonthIndex = randomMonthIndex; dibujarMesActual(); setTimeout(() => abrirModalPreview(randomDia), 50); } else { abrirModalPreview(randomDia); } window.scrollTo(0, 0); } };
     document.getElementById('btn-add-memory').onclick = () => { abrirModalAddMemory(); };
 }
 
-// --- buscarMemorias ---
-async function buscarMemorias(term) {
+// --- buscarMemorias (No changes needed) ---
+async function buscarMemorias(term) { /* ... unchanged ... */
     console.log("Searching memories containing:", term); appContent.innerHTML = `<p>Searching memories containing "${term}"...</p>`; let results = [];
     try {
         for (const dia of allDaysData) {
@@ -227,8 +241,8 @@ async function buscarMemorias(term) {
     } catch (e) { appContent.innerHTML = `<p class="error">Error during search: ${e.message}</p>`; console.error(e); }
 }
 
-// --- Preview Modal ---
-async function abrirModalPreview(dia) {
+// --- Preview Modal (No changes needed) ---
+async function abrirModalPreview(dia) { /* ... unchanged ... */
     console.log("Opening preview for:", dia.id); currentlyOpenDay = dia; let modal = document.getElementById('preview-modal');
     if (!modal) {
         modal = document.createElement('div'); modal.id = 'preview-modal'; modal.className = 'modal-preview';
@@ -237,10 +251,12 @@ async function abrirModalPreview(dia) {
     }
     document.getElementById('preview-title').textContent = `${dia.Nombre_Dia} ${dia.Nombre_Especial !== 'Unnamed Day' ? '('+dia.Nombre_Especial+')' : ''}`; modal.style.display = 'flex'; setTimeout(() => modal.classList.add('visible'), 10); await cargarYMostrarMemorias(dia.id, 'preview-memorias-list');
 }
-function cerrarModalPreview() { const modal = document.getElementById('preview-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); } currentlyOpenDay = null; }
+function cerrarModalPreview() { /* ... unchanged ... */
+    const modal = document.getElementById('preview-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); } currentlyOpenDay = null;
+}
 
-// --- Edit Modal ---
-async function abrirModalEdicion(dia) {
+// --- Edit Modal (No changes needed) ---
+async function abrirModalEdicion(dia) { /* ... unchanged ... */
     console.log("Opening EDIT modal for:", dia.id); currentlyOpenDay = dia; let modal = document.getElementById('edit-modal');
     if (!modal) {
         modal = document.createElement('div'); modal.id = 'edit-modal'; modal.className = 'modal-edit';
@@ -249,11 +265,40 @@ async function abrirModalEdicion(dia) {
     }
     resetMemoryForm(); document.getElementById('edit-modal-title').textContent = `Editing: ${dia.Nombre_Dia} (${dia.id})`; const inputNombreEspecial = document.getElementById('nombre-especial-input'); inputNombreEspecial.value = dia.Nombre_Especial === 'Unnamed Day' ? '' : dia.Nombre_Especial; document.getElementById('save-status').textContent = ''; document.getElementById('memoria-status').textContent = ''; const confirmDialog = document.getElementById('confirm-delete-dialog'); if(confirmDialog) confirmDialog.style.display = 'none'; document.getElementById('save-name-btn').onclick = () => guardarNombreEspecial(dia.id, inputNombreEspecial.value.trim()); const addMemoriaForm = document.getElementById('add-memoria-form'); addMemoriaForm.onsubmit = null; addMemoriaForm.onsubmit = async (e) => { e.preventDefault(); const fechaInput = document.getElementById('memoria-fecha').value; const descInput = document.getElementById('memoria-desc').value; if (editingMemoryId) { await updateMemoria(dia.id, editingMemoryId, fechaInput, descInput.trim()); } else { await guardarNuevaMemoria(dia.id, fechaInput, descInput.trim()); } }; modal.style.display = 'flex'; setTimeout(() => modal.classList.add('visible'), 10); await cargarYMostrarMemorias(dia.id, 'edit-memorias-list');
 }
-function cerrarModalEdicion() { const modal = document.getElementById('edit-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; resetMemoryForm(); }, 200); } currentlyOpenDay = null; }
+function cerrarModalEdicion() { /* ... unchanged ... */
+    const modal = document.getElementById('edit-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; resetMemoryForm(); }, 200); } currentlyOpenDay = null;
+}
 
-// --- Load/Display Memories ---
+// --- Load/Display Memories (Fix Edit Button Listener) ---
 async function cargarYMostrarMemorias(diaId, targetDivId) {
-    const memoriasListDiv = document.getElementById(targetDivId); if (!memoriasListDiv) { console.error("Target div missing:", targetDivId); return; } memoriasListDiv.innerHTML = 'Loading...'; currentMemories = []; try { const memoriasRef = collection(db, "Dias", diaId, "Memorias"); const q = query(memoriasRef, orderBy("Fecha_Original", "desc")); const querySnapshot = await getDocs(q); if (querySnapshot.empty) { memoriasListDiv.innerHTML = '<p style="font-style: italic; color: #777; font-size: 12px;">No memories yet.</p>'; return; } memoriasListDiv.innerHTML = ''; querySnapshot.forEach((docSnap) => { const memoria = { id: docSnap.id, ...docSnap.data() }; currentMemories.push(memoria); const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item'; let fechaStr = 'Unknown date'; if (memoria.Fecha_Original?.toDate) { try { fechaStr = memoria.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) { fechaStr = memoria.Fecha_Original.toDate().toISOString().split('T')[0]; } } else if (memoria.Fecha_Original) { fechaStr = memoria.Fecha_Original.toString(); } let contentHTML = `<small>${fechaStr}</small>`; let artworkHTML = ''; switch (memoria.Tipo) { case 'Lugar': contentHTML += `📍 Visited: ${memoria.LugarNombre || 'Unknown Place'}`; break; case 'Musica': if (memoria.CancionData?.trackName) { contentHTML += `🎵 Listened to: <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`; if(memoria.CancionData.artworkUrl60) artworkHTML = `<img src="${memoria.CancionData.artworkUrl60}" alt="Artwork" class="memoria-artwork">`; } else { contentHTML += `🎵 Listened to: ${memoria.CancionInfo || 'Unknown Song'}`; } break; case 'Imagen': contentHTML += `🖼️ Added Image`; if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank" style="font-size: 10px;">View</a>)`; if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`; break; case 'Texto': default: contentHTML += memoria.Descripcion || 'No description'; break; } const actionsHTML = (targetDivId === 'edit-memorias-list') ? ` <div class="memoria-actions"> <button class="edit-btn" title="Edit">${editIconSVG}</button> <button class="delete-btn" title="Delete">${deleteIconSVG}</button> </div>` : ''; itemDiv.innerHTML = `${artworkHTML}<div class="memoria-item-content">${contentHTML}</div>${actionsHTML}`; if (targetDivId === 'edit-memorias-list') { const editBtn = itemDiv.querySelector('.edit-btn'); const deleteBtn = itemDiv.querySelector('.delete-btn'); if (editBtn) editBtn.onclick = () => startEditMemoria(memoria); if (deleteBtn) { const displayInfo = memoria.Descripcion || memoria.LugarNombre || memoria.CancionInfo || memoria.ImagenURL || "this memory"; deleteBtn.onclick = () => confirmDeleteMemoria(diaId, memoria.id, displayInfo); } } memoriasListDiv.appendChild(itemDiv); }); console.log(`Loaded ${currentMemories.length} memories for ${diaId} into ${targetDivId}`); } catch (e) { console.error(`Error loading memories ${diaId}:`, e); memoriasListDiv.innerHTML = '<p class="error">Error loading memories.</p>'; }
+    const memoriasListDiv = document.getElementById(targetDivId); if (!memoriasListDiv) { console.error("Target div missing:", targetDivId); return; } memoriasListDiv.innerHTML = 'Loading...'; currentMemories = []; try { const memoriasRef = collection(db, "Dias", diaId, "Memorias"); const q = query(memoriasRef, orderBy("Fecha_Original", "desc")); const querySnapshot = await getDocs(q); if (querySnapshot.empty) { memoriasListDiv.innerHTML = '<p style="font-style: italic; color: #777; font-size: 12px;">No memories yet.</p>'; return; } memoriasListDiv.innerHTML = ''; querySnapshot.forEach((docSnap) => { const memoria = { id: docSnap.id, ...docSnap.data() }; currentMemories.push(memoria); const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item'; let fechaStr = 'Unknown date'; if (memoria.Fecha_Original?.toDate) { try { fechaStr = memoria.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) { fechaStr = memoria.Fecha_Original.toDate().toISOString().split('T')[0]; } } else if (memoria.Fecha_Original) { fechaStr = memoria.Fecha_Original.toString(); } let contentHTML = `<small>${fechaStr}</small>`; let artworkHTML = ''; switch (memoria.Tipo) { case 'Lugar': contentHTML += `📍 Visited: ${memoria.LugarNombre || 'Unknown Place'}`; break; case 'Musica': if (memoria.CancionData?.trackName) { contentHTML += `🎵 Listened to: <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`; if(memoria.CancionData.artworkUrl60) artworkHTML = `<img src="${memoria.CancionData.artworkUrl60}" alt="Artwork" class="memoria-artwork">`; } else { contentHTML += `🎵 Listened to: ${memoria.CancionInfo || 'Unknown Song'}`; } break; case 'Imagen': contentHTML += `🖼️ Added Image`; if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank" style="font-size: 10px;">View</a>)`; if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`; break; case 'Texto': default: contentHTML += memoria.Descripcion || 'No description'; break; }
+            // **Only add actions if in the edit modal**
+            const actionsHTML = (targetDivId === 'edit-memorias-list') ? ` <div class="memoria-actions"> <button class="edit-btn" title="Edit" data-memoria-id="${memoria.id}">${editIconSVG}</button> <button class="delete-btn" title="Delete" data-memoria-id="${memoria.id}">${deleteIconSVG}</button> </div>` : '';
+            itemDiv.innerHTML = `${artworkHTML}<div class="memoria-item-content">${contentHTML}</div>${actionsHTML}`;
+            memoriasListDiv.appendChild(itemDiv); }); // Append first
+
+            // **Attach listeners AFTER appending (important!)**
+            if (targetDivId === 'edit-memorias-list') {
+                memoriasListDiv.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.onclick = () => {
+                         const memId = btn.getAttribute('data-memoria-id');
+                         const memToEdit = currentMemories.find(m => m.id === memId);
+                         if (memToEdit) startEditMemoria(memToEdit);
+                         else console.error("Could not find memory to edit:", memId);
+                    };
+                });
+                memoriasListDiv.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        const memId = btn.getAttribute('data-memoria-id');
+                         const memToDelete = currentMemories.find(m => m.id === memId);
+                        if(memToDelete) {
+                             const displayInfo = memToDelete.Descripcion || memToDelete.LugarNombre || memToDelete.CancionInfo || memToDelete.ImagenURL || "this memory";
+                             confirmDeleteMemoria(diaId, memToDelete.id, displayInfo);
+                         } else { console.error("Could not find memory to delete:", memId); }
+                    };
+                });
+            }
+            console.log(`Loaded ${currentMemories.length} memories for ${diaId} into ${targetDivId}`); } catch (e) { console.error(`Error loading memories ${diaId}:`, e); memoriasListDiv.innerHTML = '<p class="error">Error loading memories.</p>'; }
 }
 
 
