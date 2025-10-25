@@ -1,4 +1,4 @@
-/* style.css - v9.2 - Notepad Modal Style */
+/* style.css - v9.3 - Footer Style & Memory Stamp */
 
 body {
     margin: 0; padding: 0 0 90px 0; /* Footer height */
@@ -102,6 +102,19 @@ main { padding: 10px; }
 }
 .dia-btn .nombre-especial { display: none; }
 
+/* ¡NUEVO! Sello para días con memorias */
+.dia-btn.tiene-memorias::after {
+    content: '®'; /* Sello simple */
+    position: absolute;
+    bottom: 4px;
+    right: 5px;
+    font-size: 14px;
+    font-weight: bold;
+    color: rgba(0, 0, 0, 0.35);
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7);
+    z-index: 2;
+}
+
 
 /* --- Modales --- */
 .modal-preview, .modal-edit {
@@ -163,7 +176,7 @@ main { padding: 10px; }
     background: #f7f7f7; /* Fallback background, no beige here */
 }
 
-/* NUEVO: Franja superior marrón con "costura" */
+/* Franja superior marrón con "costura" */
 .modal-edit .modal-content::before {
     content: '';
     display: block;
@@ -174,7 +187,7 @@ main { padding: 10px; }
     flex-shrink: 0; /* No se encoge */
 }
 
-/* CAMBIO: Contenedor scrollable con estilo de papel */
+/* Contenedor scrollable con estilo de papel */
 .modal-edit .modal-content-scrollable { 
     overflow-y: auto; 
     padding: 0; 
@@ -195,19 +208,19 @@ main { padding: 10px; }
     box-sizing: border-box; /* Importante */
 }
 
-/* NUEVO: Línea roja vertical del margen */
+/* Línea roja vertical del margen */
 .modal-edit .modal-content-scrollable::before {
     content: '';
     position: absolute;
     top: 0;
     left: 30px; /* Posición del margen */
-    bottom: 0;
+    bottom: 0; /* Se estira hasta abajo del contenedor scrollable */
     width: 1px;
     background-color: #ff8a80; /* Color rojo pálido */
 }
 
 
-/* CAMBIO: Secciones internas sin padding/borde */
+/* Secciones internas sin padding/borde */
 .modal-section { 
     padding: 10px 0; /* Solo espaciado vertical */
     border-bottom: none; /* Sin bordes, para que se vea el papel */
@@ -297,16 +310,22 @@ main { padding: 10px; }
 .place-result { font-size: 13px; }
 
 
-/* --- Footer Dock (Taller, Brushed Metal CSS) --- */
+/* --- CAMBIO: Footer Dock (iOS 1-6 Glass Style) --- */
 .footer-dock {
     position: fixed; bottom: 0; left: 0; right: 0;
     height: 90px; /* Increased height */
-    /* Brushed Metal CSS Gradient */
-    background: linear-gradient(to bottom, #d8d8d8 0%, #c8c8c8 5%, #b8b8b8 50%, #c8c8c8 95%, #d8d8d8 100%);
-    background-color: #c8c8c8; /* Fallback */
-    border-top: 1px solid #777; /* Darker top border */
-    box-shadow: 0 -1px 3px rgba(0,0,0,0.2); /* Subtle shadow */
-    display: flex; justify-content: space-around; align-items: center; padding: 5px 10px; z-index: 20;
+    
+    /* iOS Glass Gradient */
+    background: linear-gradient(to bottom, #a5a5a5 0%, #7d7d7d 50%, #6d6d6d 51%, #656565 100%);
+    background-color: #7d7d7d; /* Fallback */
+    
+    border-top: 1px solid #c5c5c5; /* Borde superior claro */
+    
+    /* Sombra interior para "brillo" y sombra exterior */
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 -1px 3px rgba(0,0,0,0.3);
+    
+    display: flex; justify-content: space-around; align-items: center; 
+    padding: 5px 10px; z-index: 20;
     box-sizing: border-box; /* Include padding in height */
 }
 .dock-button { background: none; border: none; color: #fff; text-align: center; cursor: pointer; padding: 5px; display: flex; flex-direction: column; align-items: center; opacity: 0.9; transition: opacity 0.2s, transform 0.1s; flex-basis: 0; flex-grow: 1; }
@@ -334,3 +353,4 @@ a:hover { text-decoration: underline; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }
 ::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px;}
 ::-webkit-scrollbar-thumb:hover { background: #999; }
+
