@@ -1,7 +1,8 @@
 /* style.css - v8.0 - Final Polish, 7 Columns, Unified Edit Modal */
 
 body {
-    margin: 0; padding: 0 0 100px 0; /* Increased padding-bottom for taller footer */
+    margin: 0; padding: 0 0 90px 0; /* Increased padding-bottom for taller footer */
+    /* Ensure plain linen background is applied */
     background-image: url('plain-linen.jpeg');
     background-color: #E1E1E1; /* Fallback color */
     background-repeat: repeat;
@@ -15,13 +16,16 @@ button, input, textarea, select { font-family: inherit; font-size: inherit; }
 
 header {
     background: linear-gradient(to bottom, #bcc6d1 0%, #a4b0bd 50%, #909dad 51%, #a4b0bd 100%);
-    border-bottom: 1px solid #6d6d6d; padding: 5px 10px; text-align: center;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 10;
-    display: flex; justify-content: space-between; align-items: center; height: 45px;
+    border-bottom: 1px solid #6d6d6d; padding: 5px 10px;
+    text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    position: sticky; top: 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: center;
+    height: 45px;
 }
 header h1 {
-    margin: 0; font-size: 20px; color: #ffffff; font-weight: bold; text-shadow: 0 -1px 0 rgba(0,0,0,0.5);
-    flex-grow: 1; text-align: center; padding-left: 50px; /* Approx center based on button widths */
+    margin: 0; font-size: 20px; color: #ffffff; font-weight: bold;
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.5); font-family: inherit;
+    flex-grow: 1; text-align: center; padding-left: 50px; /* Approx center */
 }
 #refresh-btn, #login-section { flex-shrink: 0; margin: 0 5px; }
 #refresh-btn { background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0; }
@@ -56,15 +60,16 @@ header h1 {
 }
 .aqua-button:hover { background: linear-gradient(to bottom, #b8dcf4 0%, #8cc8ec 50%, #6fbde4 51%, #5fb9e2 100%) !important; }
 .aqua-button:active { background: linear-gradient(to top, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%) !important; box-shadow: inset 0 2px 3px rgba(0,0,0,0.3) !important; transform: translateY(1px); }
-.month-nav button { /* Inherit from aqua-button */ }
+/* Apply to nav buttons too */
+.month-nav button.aqua-button { /* Already styled */ }
 
 
 main { padding: 15px; }
 /* --- Calendar Grid (7 Columns, Responsive) --- */
 .calendario-grid {
     display: grid;
-    /* 7 columns, flexible width but minimum size */
-    grid-template-columns: repeat(7, minmax(0, 1fr)); /* Force 7 columns */
+    /* 7 columns, equal width */
+    grid-template-columns: repeat(7, minmax(0, 1fr)); /* Force 7 columns, flexible width */
     gap: 15px; /* Increased gap */
     padding-bottom: 20px;
     max-width: 960px; /* Limit width on large screens */
@@ -76,8 +81,8 @@ main { padding: 15px; }
     padding: 0; text-align: center; cursor: pointer;
     box-shadow: 1px 1px 3px rgba(0,0,0,0.2), inset 0 0 5px rgba(0,0,0,0.05);
     color: #333;
-    /* Size adjusted for 7 columns */
-    min-height: 90px; /* Slightly smaller base */
+    /* Adjusted Size */
+    min-height: 90px; /* Base height */
     aspect-ratio: 1 / 1; /* Keep square */
     display: flex; flex-direction: column;
     justify-content: center; align-items: center;
@@ -101,11 +106,11 @@ main { padding: 15px; }
     background-color: #e57373;
     border-bottom: 1px solid #c62828;
 }
-.dia-btn .nombre-especial { display: none; }
+.dia-btn .nombre-especial { display: none; } /* Hidden */
 
 
 /* --- Modales --- */
-.modal-preview, .modal-edit { /* Removed .modal-add-memory */
+.modal-preview, .modal-edit {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
     display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; box-sizing: border-box;
     opacity: 0; transform: scale(0.95); transition: opacity 0.2s ease-out, transform 0.2s ease-out;
@@ -115,7 +120,12 @@ main { padding: 15px; }
 .modal-preview-content, .modal-edit .modal-content {
     background: #f7f7f7; padding: 0; border-radius: 10px; width: 100%;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #888;
-    max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
+    max-height: 90vh; /* Allow scroll */ display: flex; flex-direction: column; overflow: hidden; /* Hide overflow initially */
+}
+/* ADDED: Make main content scrollable */
+.modal-edit .modal-content-scrollable {
+    overflow-y: auto;
+    flex-grow: 1; /* Allow this part to take up space and scroll */
 }
 
 /* --- Modal Preview (Larger, CSS Background) --- */
@@ -125,14 +135,14 @@ main { padding: 15px; }
     background-color: #f5f5dc; /* Fallback beige */
     max-width: 550px; /* Wider */
     min-height: 400px; /* Taller */
-    max-height: 85vh;
-    padding: 0;
-    justify-content: space-between;
+    max-height: 85vh; /* Max height */
+    padding: 0; /* No padding on container */
+    justify-content: space-between; /* Push close button down */
 }
 .modal-preview-header {
     display: flex; justify-content: space-between; align-items: center;
     border-bottom: 1px solid rgba(0,0,0,0.2);
-    padding: 15px 20px 10px 20px;
+    padding: 15px 20px 10px 20px; /* Padding inside */
     margin-bottom: 0;
     background: rgba(255, 255, 255, 0.3);
 }
@@ -142,8 +152,8 @@ main { padding: 15px; }
 #edit-from-preview-btn svg { width: 22px; height: 22px; }
 .modal-preview-memorias {
     flex-grow: 1; overflow-y: auto; text-align: left;
-    margin: 0; padding: 15px 20px;
-    max-height: calc(85vh - 180px); /* Adjust max-height */
+    margin: 0; padding: 15px 20px; /* Padding inside */
+    max-height: calc(85vh - 150px); /* Adjust max-height based on header/footer */
 }
 .modal-preview-memorias h4 { margin: 0 0 10px 0; font-size: 16px; color: #555; font-weight: bold; }
 #preview-memorias-list { background-color: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.1); padding: 10px; border-radius: 5px; min-height: 40px; }
@@ -151,43 +161,50 @@ main { padding: 15px; }
 #close-preview-btn { margin: 15px 20px; align-self: center;}
 
 
-/* --- Unified Edit Modal --- */
+/* --- Unified Edit/Add Modal (Scrollable, Padding) --- */
 .modal-edit .modal-content { max-width: 450px; /* Wider */ }
+/* Scrollable container for sections */
+.modal-edit .modal-content-scrollable {
+    overflow-y: auto;
+    padding: 0; /* Padding will be on sections */
+    flex-grow: 1;
+}
 .modal-section { padding: 15px 20px; border-bottom: 1px solid #ccc; }
-.modal-section:last-child { border-bottom: none; }
+.modal-section:last-child { border-bottom: none; padding-bottom: 20px; /* Ensure space at bottom */ }
 .modal-edit .modal-content h3 { font-size: 18px; font-weight: bold; margin: 0 0 8px 0; text-align: center;}
-.modal-edit .modal-content p.section-description { font-size: 14px; margin: 0 0 10px 0; text-align: center; color: #555; } /* Style for descriptions */
+.modal-edit .modal-content p.section-description { font-size: 14px; margin: 0 0 10px 0; text-align: center; color: #555; }
 .modal-edit .modal-content label { display: block; font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 4px; color: #444; text-align: left;}
+/* Inputs need box-sizing AND margin */
 .modal-edit .modal-content input[type="text"],
 .modal-edit .modal-content input[type="date"],
-.modal-edit .modal-content input[type="number"], /* Added number */
-.modal-edit .modal-content input[type="file"], /* Added file */
-.modal-edit .modal-content input[type="url"],  /* Added url */
-.modal-edit .modal-content select, /* Added select */
+.modal-edit .modal-content input[type="number"],
+.modal-edit .modal-content input[type="file"],
+.modal-edit .modal-content input[type="url"],
+.modal-edit .modal-content select,
 .modal-edit .modal-content textarea {
-    width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #aaa; border-radius: 5px;
+    width: 100%; padding: 10px 12px; margin-bottom: 12px; /* Bottom margin */ border: 1px solid #aaa; border-radius: 5px;
     box-sizing: border-box; /* IMPORTANT */
     font-size: 14px; background-color: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); font-family: inherit;
 }
 .modal-edit .modal-content textarea { height: 70px; resize: vertical; }
 .modal-section #save-name-btn { display: block; width: 100%; margin-top: 10px; }
-.modal-main-buttons { display: flex; border-top: 1px solid #ababab; background-color: #f0f0f0; margin-top: auto; /* Push to bottom */ }
+/* Main buttons container at bottom */
+.modal-main-buttons { display: flex; border-top: 1px solid #ababab; background-color: #f0f0f0; margin-top: auto; /* Push to bottom */ flex-shrink: 0; /* Prevent shrinking */ }
 .modal-main-buttons button { flex: 1; background: transparent; border: none; border-left: 1px solid #ababab; padding: 12px 10px; font-size: 16px; color: #007aff; cursor: pointer; margin: 0; border-radius: 0; box-shadow: none; text-shadow: none; font-weight: bold; }
 .modal-main-buttons button:first-child { border-left: none; }
 .modal-main-buttons button:active { background-color: #d9d9d9; }
-.modal-main-buttons #close-edit-btn { color: #555; font-weight: normal; }
-.modal-main-buttons #close-edit-btn:active { color: #007aff; }
+.modal-main-buttons #close-edit-add-btn { color: #555; font-weight: normal; } /* Unified close button */
+.modal-main-buttons #close-edit-add-btn:active { color: #007aff; }
 
 /* Memory List and Form Styles (Unified Edit Modal) */
 #save-status, #memoria-status { font-size: 12px; margin-top: 8px; min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px; }
 .success { color: green; } .error { color: red; }
 .memorias-section { text-align: left; }
 .memorias-section h4 { margin: 0 0 10px 0; font-size: 16px; color: #555; }
-#edit-memorias-list { max-height: 150px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #ccc; background-color: #fff; padding: 8px; border-radius: 5px; min-height: 40px; }
+#edit-memorias-list { max-height: 180px; /* Allow more height */ overflow-y: auto; margin-bottom: 15px; border: 1px solid #ccc; background-color: #fff; padding: 8px; border-radius: 5px; min-height: 40px; }
 .memoria-item { /* Simple background */
     font-size: 13px; padding: 10px 8px; border-bottom: 1px solid #eee;
-    background-color: #fff; /* Plain background */
-    display: flex; justify-content: space-between; align-items: center;
+    background-color: #fff; display: flex; justify-content: space-between; align-items: center;
     border-radius: 3px; margin-bottom: 5px;
 }
 .memoria-item:last-child { border-bottom: none; margin-bottom: 0; }
@@ -199,17 +216,14 @@ main { padding: 15px; }
 .memoria-actions button svg { width: 16px; height: 16px; }
 .memoria-actions button:hover { opacity: 1; color: #000; }
 .delete-btn { color: #d15047; } .delete-btn:hover { color: #a00; }
-#add-memoria-form { margin-top: 15px; }
-#add-memoria-btn { /* Style consistent with aqua-button */ }
-#add-memoria-btn.update-mode { /* Blue when updating */ }
-/* Add Memory specific inputs inside Edit Modal */
-.add-memory-input-group { display: none; /* Hidden by default */ }
-.add-memory-input-group label { margin-top: 8px; } /* Space above label */
-#add-memoria-form button.aqua-button { width: 100%; margin-top: 10px; } /* Full width Add/Update btn */
+#memory-form { margin-top: 15px; }
+.add-memory-input-group { display: none; }
+.add-memory-input-group label { margin-top: 8px; }
+#memory-form button.aqua-button { width: 100%; margin-top: 10px; }
 
 
 /* Confirmación de Borrado (Remove extra space) */
-#confirm-delete-dialog { position: absolute; background-color: rgba(247, 247, 247, 0.95); border: 1px solid #888; border-radius: 8px; padding: 15px; box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1002; text-align: center; max-width: 80%; top: 30%; left: 50%; transform: translateX(-50%); display: none; }
+#confirm-delete-dialog { position: absolute; background-color: rgba(247, 247, 247, 0.95); border: 1px solid #888; border-radius: 8px; padding: 15px; /* Added back padding */ box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1002; text-align: center; max-width: 80%; top: 30%; left: 50%; transform: translateX(-50%); display: none; }
 #confirm-delete-dialog p { margin: 0 0 15px 0; /* No top margin */ font-size: 14px; }
 #confirm-delete-dialog button { margin: 0 12px; }
 #confirm-delete-yes { /* Rojo */
@@ -219,7 +233,7 @@ main { padding: 15px; }
 #confirm-delete-yes:active { background: linear-gradient(to top, #ff8a80 0%, #ff5252 100%);}
 
 /* Music/Place Results Styling */
-#itunes-results, #place-results { max-height: 150px; overflow-y: auto; border: 1px solid #ccc; border-radius: 3px; margin-top: 8px; background: white; }
+#itunes-results, #place-results { max-height: 150px; overflow-y: auto; border: 1px solid #ccc; border-radius: 3px; margin-top: 8px; background: white; margin-bottom: 10px; /* Ensure space below */ }
 .itunes-track, .place-result { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
 .itunes-track:last-child, .place-result:last-child { border-bottom: none; }
 .itunes-track:hover, .place-result:hover { background-color: #f0f8ff; }
@@ -229,22 +243,21 @@ main { padding: 15px; }
 .itunes-track-name { font-weight: bold; font-size: 13px; }
 .itunes-track-artist { color: #555; font-size: 12px; }
 .itunes-track-select { margin-left: auto; color: #ccc; font-size: 18px; padding: 0 5px; }
-.itunes-track.selected, .place-result.selected { background-color: #e6ffed !important; } /* Highlight selection */
+.itunes-track.selected, .place-result.selected { background-color: #e6ffed !important; }
 .place-result { font-size: 13px; }
-
 
 /* --- Footer Dock (Taller, Brushed Metal CSS) --- */
 .footer-dock {
     position: fixed; bottom: 0; left: 0; right: 0;
-    height: 100px; /* Increased height */
+    height: 90px; /* Increased height */
     /* Brushed Metal CSS Gradient */
-    background: linear-gradient(to bottom, #a0a0a0 0%, #c0c0c0 5%, #b0b0b0 50%, #c0c0c0 95%, #a0a0a0 100%);
-    background-color: #b0b0b0; /* Fallback */
+    background: linear-gradient(to bottom, #b8b8b8 0%, #d8d8d8 5%, #c8c8c8 50%, #d8d8d8 95%, #b8b8b8 100%);
+    background-color: #c8c8c8; /* Fallback */
     border-top: 1px solid #777; /* Darker top border */
     box-shadow: 0 -1px 3px rgba(0,0,0,0.2); /* Subtle shadow */
     display: flex; justify-content: space-around; align-items: center; padding: 5px 10px; /* Adjust padding */ z-index: 20;
 }
-.dock-button { background: none; border: none; color: #fff; text-align: center; cursor: pointer; padding: 5px; display: flex; flex-direction: column; align-items: center; opacity: 0.9; transition: opacity 0.2s, transform 0.1s; flex-basis: 0; flex-grow: 1; /* Equal space */ }
+.dock-button { background: none; border: none; color: #fff; text-align: center; cursor: pointer; padding: 5px; display: flex; flex-direction: column; align-items: center; opacity: 0.9; transition: opacity 0.2s, transform 0.1s; flex-basis: 0; flex-grow: 1; }
 .dock-button:hover, .dock-button:active { opacity: 1; transform: scale(1.1); }
 .dock-button svg {
     margin-bottom: 5px; /* More space */
@@ -263,4 +276,10 @@ a:hover { text-decoration: underline; }
 /* Utility Classes */
 .error { color: red !important; }
 .success { color: green !important; }
+
+/* Ensure scrollbars look okay if they appear */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px;}
+::-webkit-scrollbar-thumb:hover { background: #999; }
 
