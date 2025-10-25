@@ -1,4 +1,4 @@
-/* style.css - v9.1 - Grid/Modal Visual Fixes */
+/* style.css - v9.2 - Notepad Modal Style */
 
 body {
     margin: 0; padding: 0 0 90px 0; /* Footer height */
@@ -82,23 +82,17 @@ main { padding: 10px; }
 }
 .dia-btn:active { background-color: #eee; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); transform: translateY(1px); }
 
-/* --- CAMBIO 1 --- */
 .dia-numero {
     /* Tamaño de fuente fluido y grande, pero con límites */
     font-size: clamp(24px, 4.5vw, 44px); 
     font-weight: bold; color: #444; line-height: 1;
     position: absolute;
-    /* Calculamos el centro del área blanca (2/3 inferiores):
-      La franja roja ocupa 33.3%. El área blanca es 66.7%.
-      El centro del área blanca es: 33.3% + (66.7% / 2) = 66.65%
-      Usamos 67% para simplificar.
-    */
+    /* Calculamos el centro del área blanca (2/3 inferiores) */
     top: 67%; 
     left: 50%; 
     transform: translate(-50%, -50%);
     width: 100%; text-align: center;
 }
-/* --- CAMBIO 2 --- */
 /* Franja roja (1/3 de la altura) */
 .dia-btn::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0;
@@ -163,22 +157,73 @@ main { padding: 10px; }
 #close-preview-btn { margin: 15px 20px; align-self: center;}
 
 
-/* --- Unified Edit/Add Modal (Padding Fix & Scroll) --- */
-/* --- CAMBIO 3 --- */
+/* --- Unified Edit/Add Modal (Notepad Style) --- */
 .modal-edit .modal-content { 
     max-width: 480px; /* Wider */ 
-    /* ¡MEJORA! Aplicamos el fondo beige de papel */
-    background: linear-gradient(to bottom, #f5f5dc, #e8e8cd);
-    background-color: #f5f5dc; /* Fallback */
+    background: #f7f7f7; /* Fallback background, no beige here */
 }
-/* Scrollable container */
-.modal-edit .modal-content-scrollable { overflow-y: auto; padding: 0; flex-grow: 1; }
-.modal-section { padding: 15px 20px; border-bottom: 1px solid #ccc; }
-.modal-section:last-child { border-bottom: none; padding-bottom: 20px; }
+
+/* NUEVO: Franja superior marrón con "costura" */
+.modal-edit .modal-content::before {
+    content: '';
+    display: block;
+    height: 25px; /* Altura de la franja */
+    background-color: #8B5A2B; /* Color marrón/cuero */
+    border-bottom: 2px dashed rgba(0,0,0,0.3); /* Costura */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2) inset; /* Sombra interior leve */
+    flex-shrink: 0; /* No se encoge */
+}
+
+/* CAMBIO: Contenedor scrollable con estilo de papel */
+.modal-edit .modal-content-scrollable { 
+    overflow-y: auto; 
+    padding: 0; 
+    flex-grow: 1; 
+    position: relative; /* Para la línea roja */
+
+    /* Fondo de papel de notas */
+    background-color: #f5f5dc; /* Color beige */
+    /* Líneas horizontales sutiles */
+    background-image: linear-gradient(to bottom, transparent 24px, #dcd8c0 25px); 
+    background-size: 100% 25px; /* Espaciado de 25px por línea */
+    
+    /* Padding para dejar espacio al margen rojo y al contenido */
+    padding-left: 35px; 
+    padding-right: 20px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    box-sizing: border-box; /* Importante */
+}
+
+/* NUEVO: Línea roja vertical del margen */
+.modal-edit .modal-content-scrollable::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 30px; /* Posición del margen */
+    bottom: 0;
+    width: 1px;
+    background-color: #ff8a80; /* Color rojo pálido */
+}
+
+
+/* CAMBIO: Secciones internas sin padding/borde */
+.modal-section { 
+    padding: 10px 0; /* Solo espaciado vertical */
+    border-bottom: none; /* Sin bordes, para que se vea el papel */
+    background: transparent; /* Fondo transparente */
+}
+.modal-section:last-child { 
+    border-bottom: none; 
+    padding-bottom: 20px; 
+}
+
+
 .modal-edit .modal-content h3 { font-size: 18px; font-weight: bold; margin: 0 0 8px 0; text-align: center;}
 .modal-edit .modal-content p.section-description { font-size: 14px; margin: 0 0 10px 0; text-align: center; color: #555; }
 .modal-edit .modal-content label { display: block; font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 4px; color: #444; text-align: left;}
-/* Inputs need box-sizing AND margin */
+
+/* Inputs con fondo blanco para que destaquen sobre el papel */
 .modal-edit .modal-content input[type="text"],
 .modal-edit .modal-content input[type="date"],
 .modal-edit .modal-content input[type="number"],
@@ -191,6 +236,7 @@ main { padding: 10px; }
 }
 .modal-edit .modal-content textarea { height: 70px; resize: vertical; }
 .modal-section #save-name-btn { display: block; width: 100%; margin-top: 10px; }
+
 /* Main buttons container at bottom */
 .modal-main-buttons { display: flex; border-top: 1px solid #ababab; background-color: #f0f0f0; margin-top: auto; flex-shrink: 0; }
 .modal-main-buttons button { flex: 1; background: transparent; border: none; border-left: 1px solid #ababab; padding: 12px 10px; font-size: 16px; color: #007aff; cursor: pointer; margin: 0; border-radius: 0; box-shadow: none; text-shadow: none; font-weight: bold; }
