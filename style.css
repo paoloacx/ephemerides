@@ -1,70 +1,61 @@
-/* style.css - v5.0 - Visual Polish & Fixes */
+/* style.css - v6.0 - Final Polish & Responsiveness */
 
 body {
-    margin: 0; padding: 0 0 60px 0; /* Add padding-bottom for footer */
-    /* Restore plain linen background */
+    margin: 0; padding: 0 0 70px 0; /* Increased padding-bottom for taller footer */
     background-image: url('plain-linen.jpeg');
-    background-color: #E1E1E1; /* Fallback color */
-    background-repeat: repeat; /* Ensure texture covers */
+    background-color: #E1E1E1;
+    background-repeat: repeat;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     color: #333;
+    font-size: 14px; /* Increased base font size */
+}
+
+/* Ensure consistent font application */
+button, input, textarea, select {
+    font-family: inherit;
+    font-size: inherit; /* Inherit base size */
 }
 
 header {
     background: linear-gradient(to bottom, #bcc6d1 0%, #a4b0bd 50%, #909dad 51%, #a4b0bd 100%);
-    border-bottom: 1px solid #6d6d6d; padding: 5px 10px; /* Reduced padding */
+    border-bottom: 1px solid #6d6d6d; padding: 5px 10px;
     text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
     position: sticky; top: 0; z-index: 10;
-    display: flex; /* Use flexbox for layout */
-    justify-content: space-between; /* Space out items */
-    align-items: center; /* Center vertically */
-    height: 45px; /* Fixed height */
+    display: flex; justify-content: space-between; align-items: center;
+    height: 45px;
 }
 header h1 {
     margin: 0; font-size: 20px; color: #ffffff; font-weight: bold;
     text-shadow: 0 -1px 0 rgba(0,0,0,0.5); font-family: inherit;
-    flex-grow: 1; /* Allow title to take up space */
-    text-align: center; /* Center title */
-    padding-left: 50px; /* Add padding to roughly center with buttons */
+    flex-grow: 1; text-align: center; padding-left: 50px; /* Approx center */
 }
-#refresh-btn, #login-section {
-    flex-shrink: 0; /* Prevent buttons from shrinking */
-    margin: 0 5px; /* Add some margin */
-}
-#refresh-btn {
-     background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0;
-}
+#refresh-btn, #login-section { flex-shrink: 0; margin: 0 5px; }
+#refresh-btn { background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0; }
 #refresh-btn:hover { opacity: 1; }
 #refresh-btn svg { width: 18px; height: 18px; }
-
 #login-section { display: flex; align-items: center; }
 #user-info { display: none; align-items: center; margin-right: 5px; }
 #user-img { width: 30px; height: 30px; border-radius: 50%; margin-right: 5px; border: 1px solid rgba(255,255,255,0.5); }
 #user-name { color: white; font-size: 12px; text-shadow: 0 -1px 0 rgba(0,0,0,0.5); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.header-login-btn {
-    background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0;
-    display: flex; align-items: center; justify-content: center;
-}
+.header-login-btn { background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0; display: flex; align-items: center; justify-content: center; }
 .header-login-btn:hover { opacity: 1; }
 .header-login-btn svg { width: 18px; height: 18px; }
-.header-login-btn img { width: 24px; height: 24px; border-radius: 50%; } /* Slightly larger Google icon */
+.header-login-btn img { width: 24px; height: 24px; border-radius: 50%; }
 
 .month-nav {
     display: flex; justify-content: space-between; align-items: center;
     padding: 8px 15px; background-color: #f0f0f0; border-bottom: 1px solid #bbb;
-    position: sticky; top: 45px; z-index: 9; /* Stick below header */
+    position: sticky; top: 45px; z-index: 9;
 }
-#month-name-display {
-    font-size: 16px; font-weight: bold; color: #000000; text-align: center; flex-grow: 1;
-}
+#month-name-display { font-size: 16px; font-weight: bold; color: #000000; text-align: center; flex-grow: 1; }
 
-/* --- Aqua Button Style (Improved/Corrected) --- */
+/* --- Aqua Button Style (Consistent) --- */
 .aqua-button {
     background: linear-gradient(to bottom, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%);
-    border: 1px solid #3c82b1 !important; /* Override specificity if needed */
-    border-radius: 15px !important; /* Increased roundness */
-    padding: 6px 15px !important; /* Adjusted padding */
-    font-size: 13px !important;
+    border: 1px solid #3c82b1 !important;
+    border-radius: 15px !important;
+    padding: 8px 18px !important; /* Slightly more padding */
+    font-size: 14px !important; /* Base font size */
     font-weight: bold !important;
     color: #fff !important;
     cursor: pointer;
@@ -72,77 +63,66 @@ header h1 {
     text-shadow: 0 -1px 0 rgba(0,0,0,0.3) !important;
     min-width: 40px;
     transition: all 0.1s ease-in-out;
-    margin: 5px; /* Add some default margin */
-    line-height: normal !important; /* Reset line height */
-    -webkit-appearance: none; /* Reset default browser styles */
-    appearance: none;
+    margin: 5px;
+    line-height: normal !important;
+    -webkit-appearance: none; appearance: none;
     text-align: center;
+    display: inline-block; /* Ensure it behaves like a button */
 }
-.aqua-button:hover {
-    background: linear-gradient(to bottom, #b8dcf4 0%, #8cc8ec 50%, #6fbde4 51%, #5fb9e2 100%) !important;
-}
-.aqua-button:active {
-    background: linear-gradient(to top, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%) !important;
-    box-shadow: inset 0 2px 3px rgba(0,0,0,0.3) !important;
-    transform: translateY(1px);
-}
-/* Ensure nav buttons also use it */
+.aqua-button:hover { background: linear-gradient(to bottom, #b8dcf4 0%, #8cc8ec 50%, #6fbde4 51%, #5fb9e2 100%) !important; }
+.aqua-button:active { background: linear-gradient(to top, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%) !important; box-shadow: inset 0 2px 3px rgba(0,0,0,0.3) !important; transform: translateY(1px); }
+/* Apply to nav buttons too */
 .month-nav button { /* Inherit from aqua-button */ }
 
 
-main { padding: 15px; /* More padding around grid */ }
+main { padding: 15px; }
+/* --- Responsive Calendar Grid --- */
 .calendario-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 10px; /* Increased gap */
+    /* Responsive columns: fit as many as possible with min size 110px */
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 15px; /* Increased gap */
     padding-bottom: 20px;
 }
 .dia-btn {
-    background-color: #fdfdfd;
-    border: 1px solid #ccc;
-    border-radius: 0; /* Square corners */
-    padding: 0; /* Remove padding, control with internal elements */
-    text-align: center; cursor: pointer;
+    background-color: #fdfdfd; border: 1px solid #ccc;
+    border-radius: 0; /* Square */
+    padding: 0; text-align: center; cursor: pointer;
     box-shadow: 1px 1px 3px rgba(0,0,0,0.2), inset 0 0 5px rgba(0,0,0,0.05);
     color: #333;
-    min-height: 80px; /* Increased height */
-    min-width: 80px; /* Increased width to aim for square */
-    aspect-ratio: 1 / 1; /* Force square shape */
-    display: flex;
-    flex-direction: column;
-    justify-content: center; /* Center vertically */
-    align-items: center; /* Center horizontally */
+    /* Larger Size */
+    min-height: 100px; /* Increased height */
+    aspect-ratio: 1 / 1; /* Keep square */
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
     position: relative; overflow: hidden;
     transition: background-color 0.1s, transform 0.1s;
 }
 .dia-btn:active { background-color: #eee; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); transform: translateY(1px); }
 .dia-numero {
-    font-size: 28px; /* Larger number */
-    font-weight: bold;
-    color: #444;
-    line-height: 1;
-    /* Centering within the white space */
-    position: absolute; /* Position relative to parent */
-    top: 55%; /* Adjust percentage to center below red line */
+    font-size: 32px; /* Much Larger number */
+    font-weight: bold; color: #444; line-height: 1;
+    position: absolute;
+    /* Center below the red line */
+    top: calc(12px + (100% - 12px) / 2); /* Calculate center of white area */
     left: 50%;
-    transform: translate(-50%, -50%); /* Precise centering */
-    width: 100%; /* Ensure it takes full width for text-align */
-    text-align: center;
+    transform: translate(-50%, -50%);
+    width: 100%; text-align: center;
 }
-/* Thicker red line at the top */
+/* Thicker red line */
 .dia-btn::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0;
     height: 12px; /* Increased height */
-    background-color: #e57373; /* Red color */
-    border-bottom: 1px solid #c62828; /* Darker border below red */
+    background-color: #e57373;
+    border-bottom: 1px solid #c62828;
 }
-.dia-btn .nombre-especial { display: none; } /* Hidden as requested */
+.dia-btn .nombre-especial { display: none; }
 
 
 /* --- Modales (Common Styles) --- */
 .modal-preview, .modal-edit, .modal-add-memory {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4);
-    display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; /* Reduced padding */ box-sizing: border-box;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); /* Darker backdrop */
+    display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; box-sizing: border-box;
     opacity: 0; transform: scale(0.95); transition: opacity 0.2s ease-out, transform 0.2s ease-out;
 }
 .modal-preview.visible, .modal-edit.visible, .modal-add-memory.visible { display: flex; opacity: 1; transform: scale(1); }
@@ -153,40 +133,38 @@ main { padding: 15px; /* More padding around grid */ }
     max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
 }
 
-/* --- Modal Preview Specific --- */
+/* --- Modal Preview Specific (Larger) --- */
 .modal-preview-content {
-    background-image: url('beige-paper.jpg'); /* Apply background */
-    background-size: cover;
-    background-position: center;
-    max-width: 350px; /* Slightly wider */
+    background-image: url('beige-paper.jpg'); background-size: cover; background-position: center;
+    max-width: 450px; /* Wider */
+    min-height: 300px; /* Minimum height */
+    max-height: 85vh; /* Allow more height */
     padding: 15px;
+    justify-content: space-between; /* Push close button down */
 }
 .modal-preview-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.2); padding-bottom: 10px; margin-bottom: 10px; }
-.modal-preview-header h3 { margin: 0; font-size: 16px; font-weight: bold; color: #333; text-align: left; flex-grow: 1; }
+.modal-preview-header h3 { margin: 0; font-size: 18px; /* Larger title */ font-weight: bold; color: #333; text-align: left; flex-grow: 1; }
 #edit-from-preview-btn { background: none; border: none; padding: 5px; cursor: pointer; color: #555; line-height: 0; opacity: 0.7; }
 #edit-from-preview-btn:hover { opacity: 1; color: #000; }
-#edit-from-preview-btn svg { width: 20px; height: 20px; }
-.modal-preview-memorias { flex-grow: 1; overflow-y: auto; text-align: left; margin-bottom: 15px; max-height: 60vh; /* Limit height */ }
-.modal-preview-memorias h4 { margin: 0 0 10px 0; font-size: 14px; color: #555; font-weight: bold; }
-#preview-memorias-list { background-color: rgba(255,255,255,0.6); border: 1px solid rgba(0,0,0,0.1); padding: 5px; border-radius: 5px; min-height: 30px; }
-#close-preview-btn { margin-top: auto; }
+#edit-from-preview-btn svg { width: 22px; height: 22px; } /* Larger icon */
+.modal-preview-memorias { flex-grow: 1; overflow-y: auto; text-align: left; margin-bottom: 15px; max-height: calc(85vh - 150px); /* Adjust max-height based on other elements */ }
+.modal-preview-memorias h4 { margin: 0 0 10px 0; font-size: 16px; /* Larger */ color: #555; font-weight: bold; }
+#preview-memorias-list { background-color: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.1); padding: 10px; /* More padding */ border-radius: 5px; min-height: 40px; }
+#close-preview-btn { margin-top: 10px; /* Reduced top margin */ }
 
 
-/* --- Modal Edición Específico --- */
-.modal-edit .modal-content { max-width: 350px; /* Consistent width */ }
+/* --- Modal Edición Specific (No layout changes needed) --- */
+.modal-edit .modal-content { max-width: 350px; }
 .modal-section { padding: 15px; border-bottom: 1px solid #ccc; }
 .modal-section:last-child { border-bottom: none; }
-.modal-edit .modal-content h3 { font-size: 16px; font-weight: bold; margin: 0 0 5px 0; text-align: center; }
-.modal-edit .modal-content p { font-size: 13px; margin: 0 0 10px 0; text-align: center; }
-.modal-edit .modal-content label { display: block; font-size: 13px; font-weight: bold; margin-top: 10px; margin-bottom: 3px; color: #444; text-align: left;}
+.modal-edit .modal-content h3 { font-size: 18px; /* Larger */ font-weight: bold; margin: 0 0 8px 0; text-align: center;}
+.modal-edit .modal-content p { font-size: 14px; /* Larger */ margin: 0 0 10px 0; text-align: center; }
+.modal-edit .modal-content label { display: block; font-size: 14px; /* Larger */ font-weight: bold; margin-top: 12px; margin-bottom: 4px; color: #444; text-align: left;}
 .modal-edit .modal-content input[type="text"],
 .modal-edit .modal-content input[type="date"],
-.modal-edit .modal-content textarea { width: 100%; padding: 8px 10px; margin-bottom: 10px; border: 1px solid #aaa; border-radius: 5px; box-sizing: border-box; font-size: 14px; background-color: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); font-family: inherit; }
-.modal-edit .modal-content textarea { height: 60px; resize: vertical; }
-
-.modal-section #save-name-btn { display: block; width: 100%; margin-top: 10px; } /* Now positioned correctly */
-
-/* Botones Principales ABAJO (Solo Cerrar) */
+.modal-edit .modal-content textarea { width: 100%; padding: 10px 12px; /* More padding */ margin-bottom: 12px; border: 1px solid #aaa; border-radius: 5px; box-sizing: border-box; font-size: 14px; background-color: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); font-family: inherit; }
+.modal-edit .modal-content textarea { height: 70px; /* Taller */ resize: vertical; }
+.modal-section #save-name-btn { display: block; width: 100%; margin-top: 10px; }
 .modal-main-buttons { display: flex; border-top: 1px solid #ababab; background-color: #f0f0f0; }
 .modal-main-buttons button { flex: 1; background: transparent; border: none; border-left: 1px solid #ababab; padding: 12px 10px; font-size: 16px; color: #007aff; cursor: pointer; margin: 0; border-radius: 0; box-shadow: none; text-shadow: none; font-weight: bold; }
 .modal-main-buttons button:first-child { border-left: none; }
@@ -194,96 +172,96 @@ main { padding: 15px; /* More padding around grid */ }
 .modal-main-buttons #close-edit-btn { color: #555; font-weight: normal; }
 .modal-main-buttons #close-edit-btn:active { color: #007aff; }
 
-/* Estados y sección memorias */
-#save-status, #memoria-status { font-size: 12px; margin-top: 5px; min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px; }
+/* Memory List and Form Styles (Adjusted Padding) */
+#save-status, #memoria-status { font-size: 12px; margin-top: 8px; /* Increased */ min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px; }
 .success { color: green; } .error { color: red; }
 .memorias-section { text-align: left; }
-.memorias-section h4 { margin: 0 0 10px 0; font-size: 14px; color: #555; }
-#edit-memorias-list { max-height: 150px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #ccc; background-color: #fff; padding: 5px; border-radius: 5px; min-height: 30px; }
-.memoria-item { /* Simplified style, removing frame */
-    font-size: 12px;
-    padding: 8px 5px;
+.memorias-section h4 { margin: 0 0 10px 0; font-size: 16px; /* Larger */ color: #555; }
+#edit-memorias-list { max-height: 150px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #ccc; background-color: #fff; padding: 8px; /* Increased */ border-radius: 5px; min-height: 40px; }
+.memoria-item {
+    font-size: 13px; /* Slightly larger */
+    padding: 10px 8px; /* More padding */
     border-bottom: 1px solid #eee;
-    background-color: #fff; /* Plain background */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-radius: 3px; /* Slight rounding */
-    margin-bottom: 3px; /* Spacing */
+    background-image: url('memory-frame.jpg'); /* Apply frame */
+    background-size: 100% 100%; /* Stretch frame */
+    background-repeat: no-repeat;
+    display: flex; justify-content: space-between; align-items: center;
+    border-radius: 3px; margin-bottom: 5px; /* More spacing */
+    min-height: 50px; /* Ensure frame shows */
 }
 .memoria-item:last-child { border-bottom: none; margin-bottom: 0; }
-.memoria-item-content { flex-grow: 1; margin-right: 5px;}
-.memoria-item small { display: block; color: #777; margin-bottom: 3px; font-weight: bold; }
-.memoria-artwork { width: 30px; height: 30px; margin-right: 8px; border-radius: 3px; object-fit: cover; }
-.memoria-actions button { background: none; border: none; padding: 2px 4px; margin-left: 3px; cursor: pointer; font-size: 14px; color: #007aff; line-height: 0; opacity: 0.7; }
-.memoria-actions button svg { width: 14px; height: 14px; }
+.memoria-item-content { flex-grow: 1; margin-right: 5px; background: rgba(255,255,255,0.8); padding: 3px 5px; border-radius: 2px;} /* Add slight background for readability on frame */
+.memoria-item small { display: block; color: #555; /* Darker */ margin-bottom: 3px; font-weight: bold; }
+.memoria-artwork { width: 35px; height: 35px; margin-right: 8px; border-radius: 3px; object-fit: cover; flex-shrink: 0; border: 1px solid #ddd; }
+.memoria-actions button { background: none; border: none; padding: 3px 5px; /* Slightly larger tap area */ margin-left: 4px; cursor: pointer; font-size: 16px; /* Larger icons */ color: #007aff; line-height: 0; opacity: 0.7; }
+.memoria-actions button svg { width: 16px; height: 16px; }
 .memoria-actions button:hover { opacity: 1; color: #0056b3; }
 .delete-btn { color: #ff3b30; } .delete-btn:hover { color: #c00; }
-#add-memoria-form { margin-top: 10px; }
+#add-memoria-form { margin-top: 15px; } /* More space */
 #add-memoria-btn { /* Style consistent with aqua-button */ }
 #add-memoria-btn.update-mode { /* Blue when updating */ }
 
 /* Confirmación de Borrado (Reduced Padding/Margin) */
-#confirm-delete-dialog { position: absolute; background-color: rgba(247, 247, 247, 0.95); border: 1px solid #888; border-radius: 8px; padding: 10px; /* Reduced */ box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1002; text-align: center; max-width: 80%; top: 30%; left: 50%; transform: translateX(-50%); display: none; }
-#confirm-delete-dialog p { margin-bottom: 10px; /* Reduced */ font-size: 13px; }
-#confirm-delete-dialog button { margin: 0 8px; /* Adjusted margin */ } /* Space added */
+#confirm-delete-dialog { position: absolute; background-color: rgba(247, 247, 247, 0.95); border: 1px solid #888; border-radius: 8px; padding: 15px; /* More padding */ box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1002; text-align: center; max-width: 80%; top: 30%; left: 50%; transform: translateX(-50%); display: none; }
+#confirm-delete-dialog p { margin-bottom: 15px; font-size: 14px; /* Larger */ }
+#confirm-delete-dialog button { margin: 0 12px; /* Increased margin */ } /* Space added */
 #confirm-delete-yes { /* Rojo */ }
 
+
 /* --- Add Memory Modal Specific --- */
-.modal-add-memory-content { max-width: 380px; /* Wider for inputs */ }
+.modal-add-memory-content { max-width: 400px; /* Wider */ }
 .modal-add-memory .modal-section { padding: 10px 15px; } /* Tighter padding */
-.modal-add-memory h3 { text-align: center; margin-bottom: 10px;}
-.add-memory-form-section { margin-bottom: 10px; }
-.add-memory-form-section label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 3px; color: #444; }
+.modal-add-memory h3 { text-align: center; margin-bottom: 15px; /* More space */ font-size: 18px; }
+.add-memory-form-section { margin-bottom: 15px; } /* More space */
+.add-memory-form-section label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 4px; color: #444; }
 .add-memory-form-section select,
 .add-memory-form-section input[type="number"],
 .add-memory-form-section input[type="text"],
 .add-memory-form-section input[type="file"],
-.add-memory-form-section textarea { width: 100%; padding: 8px 10px; margin-bottom: 8px; border: 1px solid #aaa; border-radius: 5px; box-sizing: border-box; font-size: 14px; background-color: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); font-family: inherit; }
-.add-memory-form-section textarea { height: 60px; }
-.add-memory-form-section button { margin-top: 5px; /* Space above search buttons */ }
-#itunes-results, #place-results { max-height: 150px; overflow-y: auto; border: 1px solid #ccc; border-radius: 3px; margin-top: 5px; background: white; }
-.itunes-track, .place-result { display: flex; align-items: center; padding: 5px; border-bottom: 1px solid #eee; cursor: pointer; }
+.add-memory-form-section input[type="url"], /* Added URL type */
+.add-memory-form-section textarea {
+    width: 100%; padding: 10px 12px; margin-bottom: 10px; /* Added margin */ border: 1px solid #aaa; border-radius: 5px; box-sizing: border-box; font-size: 14px; background-color: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); font-family: inherit;
+}
+.add-memory-form-section textarea { height: 70px; }
+.add-memory-form-section button { margin-top: 8px; /* Space above search buttons */ width: 100%; /* Full width */ }
+#itunes-results, #place-results { max-height: 150px; overflow-y: auto; border: 1px solid #ccc; border-radius: 3px; margin-top: 8px; background: white; }
+.itunes-track, .place-result { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; /* Larger */ }
 .itunes-track:last-child, .place-result:last-child { border-bottom: none; }
 .itunes-track:hover, .place-result:hover { background-color: #f0f8ff; }
-.itunes-artwork { width: 40px; height: 40px; margin-right: 8px; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
+.itunes-artwork { width: 45px; height: 45px; margin-right: 10px; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
 .itunes-track.no-artwork .itunes-artwork { display: none; }
-.itunes-track-info { flex-grow: 1; font-size: 12px; }
-.itunes-track-name { font-weight: bold; }
-.itunes-track-artist { color: #555; }
+.itunes-track-info { flex-grow: 1; }
+.itunes-track-name { font-weight: bold; font-size: 13px; }
+.itunes-track-artist { color: #555; font-size: 12px; }
 .itunes-track-select { margin-left: auto; color: #ccc; font-size: 18px; padding: 0 5px; }
 .itunes-track.selected { background-color: #e6ffed; }
-.place-result { font-size: 12px; }
-.button-group { display: flex; justify-content: space-between; padding: 10px 15px; border-top: 1px solid #ccc; background-color: #f0f0f0; }
-#add-memory-status { font-size: 12px; text-align: center; padding: 5px 15px; min-height: 1.2em; }
+.place-result { font-size: 13px; } /* Larger */
+.button-group { display: flex; justify-content: space-around; /* Space buttons out */ padding: 15px; border-top: 1px solid #ccc; background-color: #f0f0f0; margin-top: 10px; /* Remove potential extra space */ }
+#add-memory-status { font-size: 12px; text-align: center; padding: 5px 15px 10px 15px; /* Added bottom padding */ min-height: 1.2em; }
 
 
-/* --- Footer Dock Estilo iOS 3 --- */
+/* --- Footer Dock Estilo iOS 3 (Taller) --- */
 .footer-dock {
-    position: fixed; bottom: 0; left: 0; right: 0; height: 55px; /* Slightly taller */
-    /* Apply grid texture */
-    background-image: url('grid-texture.jpg');
-    background-size: auto 100%; /* Tile horizontally */
-    background-repeat: repeat-x;
-    background-color: rgba(50,50,50,0.85); /* Dark fallback */
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 65px; /* Increased height */
+    background-image: url('grid-texture.jpg'); background-size: auto 100%; background-repeat: repeat-x; background-color: rgba(50,50,50,0.85);
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     border-top: 1px solid rgba(255, 255, 255, 0.2); display: flex;
     justify-content: space-around; align-items: center; padding: 0 10px; z-index: 20;
 }
-.dock-button {
-    background: none; border: none; color: #fff; text-align: center; cursor: pointer; padding: 0;
-    display: flex; flex-direction: column; align-items: center; opacity: 0.9; /* Slightly more opaque */ transition: opacity 0.2s, transform 0.1s;
-}
+.dock-button { background: none; border: none; color: #fff; text-align: center; cursor: pointer; padding: 5px; /* Added padding */ display: flex; flex-direction: column; align-items: center; opacity: 0.9; transition: opacity 0.2s, transform 0.1s; }
 .dock-button:hover, .dock-button:active { opacity: 1; transform: scale(1.1); }
-.dock-button svg { margin-bottom: 3px; filter: brightness(0) invert(1); /* Force white */ width: 22px; height: 22px; /* Slightly smaller */ }
-.dock-button span { font-size: 10px; text-shadow: 0 1px 1px rgba(0,0,0,0.6); }
+.dock-button svg { margin-bottom: 4px; /* More space */ filter: brightness(0) invert(1); width: 24px; height: 24px; /* Slightly larger */ }
+.dock-button span { font-size: 11px; /* Slightly larger */ text-shadow: 0 1px 1px rgba(0,0,0,0.6); }
 
 /* Placeholder button style */
-.placeholder-button {
-    font-size: 12px; padding: 4px 8px; margin-top: 5px; background-color: #ddd; color: #777; border: 1px solid #bbb; cursor: not-allowed; border-radius: 5px; display: block; width: 100%; text-align: center;
-}
+.placeholder-button { font-size: 12px; padding: 4px 8px; margin-top: 5px; background-color: #ddd; color: #777; border: 1px solid #bbb; cursor: not-allowed; border-radius: 5px; display: block; width: 100%; text-align: center; }
 
 /* General Link styling */
 a { color: #007aff; text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+/* Utility Classes */
+.error { color: red !important; }
+.success { color: green !important; }
 
