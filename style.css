@@ -1,4 +1,4 @@
-/* style.css - v9.0 - Final Grid, Spacing, Unified Modal, Footer */
+/* style.css - v9.1 - Grid/Modal Visual Fixes */
 
 body {
     margin: 0; padding: 0 0 90px 0; /* Footer height */
@@ -81,19 +81,28 @@ main { padding: 10px; }
     transition: background-color 0.1s, transform 0.1s;
 }
 .dia-btn:active { background-color: #eee; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); transform: translateY(1px); }
+
+/* --- CAMBIO 1 --- */
 .dia-numero {
-    font-size: 32px; /* Increased size */
+    /* Tamaño de fuente fluido y grande, pero con límites */
+    font-size: clamp(24px, 4.5vw, 44px); 
     font-weight: bold; color: #444; line-height: 1;
     position: absolute;
-    /* Center below the TALLER red line */
-    top: calc(25px + (100% - 25px) / 2); /* Calculate center below 25px line */
-    left: 50%; transform: translate(-50%, -50%);
+    /* Calculamos el centro del área blanca (2/3 inferiores):
+      La franja roja ocupa 33.3%. El área blanca es 66.7%.
+      El centro del área blanca es: 33.3% + (66.7% / 2) = 66.65%
+      Usamos 67% para simplificar.
+    */
+    top: 67%; 
+    left: 50%; 
+    transform: translate(-50%, -50%);
     width: 100%; text-align: center;
 }
-/* Taller red line (25px) */
+/* --- CAMBIO 2 --- */
+/* Franja roja (1/3 de la altura) */
 .dia-btn::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0;
-    height: 25px; /* Increased height */
+    height: 33.33%; /* 1/3 de la altura total */
     background-color: #e57373;
     border-bottom: 1px solid #c62828;
 }
@@ -155,7 +164,13 @@ main { padding: 10px; }
 
 
 /* --- Unified Edit/Add Modal (Padding Fix & Scroll) --- */
-.modal-edit .modal-content { max-width: 480px; /* Wider */ }
+/* --- CAMBIO 3 --- */
+.modal-edit .modal-content { 
+    max-width: 480px; /* Wider */ 
+    /* ¡MEJORA! Aplicamos el fondo beige de papel */
+    background: linear-gradient(to bottom, #f5f5dc, #e8e8cd);
+    background-color: #f5f5dc; /* Fallback */
+}
 /* Scrollable container */
 .modal-edit .modal-content-scrollable { overflow-y: auto; padding: 0; flex-grow: 1; }
 .modal-section { padding: 15px 20px; border-bottom: 1px solid #ccc; }
@@ -273,4 +288,3 @@ a:hover { text-decoration: underline; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }
 ::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px;}
 ::-webkit-scrollbar-thumb:hover { background: #999; }
-
