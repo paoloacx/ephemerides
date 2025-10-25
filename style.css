@@ -1,4 +1,4 @@
-/* style.css - v9.3 - Footer Style & Memory Stamp */
+/* style.css - v9.4 - Footer Style & Memory Stamp & Spotlight */
 
 body {
     margin: 0; padding: 0 0 90px 0; /* Footer height */
@@ -15,13 +15,23 @@ body {
 
 button, input, textarea, select { font-family: inherit; font-size: inherit; }
 
-header { /* ... no changes ... */
+header { 
     background: linear-gradient(to bottom, #bcc6d1 0%, #a4b0bd 50%, #909dad 51%, #a4b0bd 100%);
     border-bottom: 1px solid #6d6d6d; padding: 5px 10px; text-align: center;
     box-shadow: 0 1px 2px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 10;
     display: flex; justify-content: space-between; align-items: center; height: 45px;
 }
-header h1 { margin: 0; font-size: 20px; color: #ffffff; font-weight: bold; text-shadow: 0 -1px 0 rgba(0,0,0,0.5); flex-grow: 1; text-align: center; padding-left: 50px; }
+header h1 { 
+    margin: 0; 
+    font-size: 24px; /* Más grande */ 
+    color: #ffffff; 
+    font-weight: bold; 
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.5); 
+    flex-grow: 1; 
+    text-align: center; 
+    padding-left: 0; /* Centrado */
+    text-transform: uppercase; /* Mayúsculas */
+}
 #refresh-btn, #login-section { flex-shrink: 0; margin: 0 5px; }
 #refresh-btn { background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0; }
 #refresh-btn:hover { opacity: 1; } #refresh-btn svg { width: 18px; height: 18px; }
@@ -31,15 +41,18 @@ header h1 { margin: 0; font-size: 20px; color: #ffffff; font-weight: bold; text-
 .header-login-btn { background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0; display: flex; align-items: center; justify-content: center; }
 .header-login-btn:hover { opacity: 1; } .header-login-btn svg { width: 18px; height: 18px; } .header-login-btn img { width: 24px; height: 24px; border-radius: 50%; }
 
-.month-nav { /* ... no changes ... */
+.month-nav { 
     display: flex; justify-content: space-between; align-items: center;
     padding: 8px 15px; background-color: #f0f0f0; border-bottom: 1px solid #bbb;
     position: sticky; top: 45px; z-index: 9;
 }
-#month-name-display { font-size: 17px; font-weight: bold; color: #000000; text-align: center; flex-grow: 1; }
+#month-name-display { 
+    font-size: 20px; /* Más grande */ 
+    font-weight: bold; color: #000000; text-align: center; flex-grow: 1; 
+}
 
 /* --- Aqua Button Style --- */
-.aqua-button { /* ... no changes ... */
+.aqua-button { 
     background: linear-gradient(to bottom, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%);
     border: 1px solid #3c82b1 !important; border-radius: 15px !important;
     padding: 8px 20px !important; font-size: 15px !important; font-weight: bold !important;
@@ -102,17 +115,81 @@ main { padding: 10px; }
 }
 .dia-btn .nombre-especial { display: none; }
 
-/* ¡NUEVO! Sello para días con memorias */
+/* ¡CAMBIO! Sello para días con memorias */
 .dia-btn.tiene-memorias::after {
-    content: '®'; /* Sello simple */
+    content: '&reg;'; /* Carácter de marca registrada HTML, NO EMOJI */
     position: absolute;
-    bottom: 4px;
-    right: 5px;
+    top: 2px; /* Más pegado al borde superior */
+    right: 5px; /* Más pegado al borde derecho */
     font-size: 14px;
     font-weight: bold;
-    color: rgba(0, 0, 0, 0.35);
-    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7);
+    color: #333; /* Gris oscuro */
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8), 0 -1px 0 rgba(0,0,0,0.2); /* Sombra para el efecto de sello */
     z-index: 2;
+}
+
+/* --- Today Memory Spotlight --- */
+#today-memory-spotlight {
+    max-width: 400px; /* Ancho máximo para el efecto de diapositiva */
+    margin: 20px auto 30px auto; /* Centrado y espaciado */
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2); /* Sombra más pronunciada */
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    position: relative;
+    overflow: hidden; /* Para el efecto de la foto */
+}
+#today-memory-spotlight:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+}
+#today-memory-spotlight h3 {
+    margin: 0;
+    padding: 12px 15px;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #ddd;
+    font-size: 16px;
+    color: #555;
+    font-weight: bold;
+}
+.spotlight-content {
+    padding: 15px;
+    min-height: 120px; /* Altura mínima */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.spotlight-memory {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    width: 100%;
+}
+.spotlight-memory p {
+    margin: 0;
+    font-size: 14px;
+    color: #444;
+    text-align: left;
+    flex-grow: 1;
+}
+.spotlight-artwork {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid #eee;
+    flex-shrink: 0;
+}
+.no-memory-message {
+    font-style: italic;
+    color: #777;
+    font-size: 14px;
+    margin: 10px 0;
 }
 
 
@@ -127,13 +204,15 @@ main { padding: 10px; }
 .modal-preview-content, .modal-edit .modal-content {
     background: #f7f7f7; padding: 0; border-radius: 10px; width: 100%;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #888;
-    max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; /* Important for scroll */
+    max-height: 90vh; /* Altura máxima del contenido del modal */
+    display: flex; flex-direction: column; overflow: hidden; /* Important for scroll */
 }
 /* Scrollable container WITHIN the modal content */
 .modal-content-scrollable {
     overflow-y: auto; /* Enable vertical scroll if needed */
     flex-grow: 1; /* Allow this to take space */
     padding: 0; /* Padding will be on sections */
+    height: 100%; /* ¡CLAVE! Asegura que la altura sea 100% del padre flexible */
 }
 
 
@@ -260,7 +339,7 @@ main { padding: 10px; }
 
 /* Memory List and Form Styles (Unified Edit Modal - No Frame) */
 #save-status, #memoria-status { font-size: 12px; margin-top: 8px; min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px; }
-.success { color: green; } .error { color: red; }
+.success { color: green; } .error { color: red !important; }
 .memorias-section { text-align: left; }
 .memorias-section h4 { margin: 0 0 10px 0; font-size: 16px; color: #555; }
 #edit-memorias-list { max-height: 180px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #ccc; background-color: #fff; padding: 8px; border-radius: 5px; min-height: 40px; }
