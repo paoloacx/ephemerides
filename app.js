@@ -1,4 +1,4 @@
-/* app.js - v10.8 - Get Elements Just-In-Time */
+/* app.js - v10.9 - Reverted Load Logic, kept JIT Elements */
 
 // Importaciones
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -25,10 +25,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const storage = getStorage(app); 
+const storage = getStorage(app);
 
 // --- Global Variables & Constants ---
-// ¡CAMBIO! Eliminamos las variables globales para appContent y monthNameDisplayEl
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // Includes leap year Feb 29
 
@@ -57,14 +56,12 @@ async function handleLogout() { try { await signOut(auth); } catch (error) { con
 
 // --- Check/Repair DB ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v10.8...");
-    
-    // ¡CAMBIO! Obtener appContent aquí.
-    const appContent = document.getElementById("app-content"); 
-    
-    // Chequeo de seguridad
+    console.log("Starting Check/Repair v10.9...");
+
+    const appContent = document.getElementById("app-content");
+
     if (!appContent) {
-        console.error("Error crítico: No se encontró el elemento #app-content. El HTML no se cargó correctamente.");
+        console.error("Error crítico: No se encontró el elemento #app-content.");
         document.body.innerHTML = "<p style='color:red; padding:20px;'>Error: HTML elements missing. Cannot start app.</p>";
         return;
     }
@@ -72,80 +69,84 @@ async function checkAndRunApp() {
     appContent.innerHTML = "<p>Verifying database...</p>";
     try {
         const diasRef = collection(db, "Dias");
-        let diasSnapshot = await getDocs(diasRef);
-        const currentDocCount = diasSnapshot.size;
-        
+        // ¡REVERTIDO! Cargar datos solo para contar
+        const checkSnapshot = await getDocs(diasRef);
+        const currentDocCount = checkSnapshot.size;
+
         console.log(`Docs in 'Dias': ${currentDocCount}`);
         if (currentDocCount < 366) {
             console.warn(`Repairing... Found ${currentDocCount} docs, expected 366.`);
              await generateCleanDatabase();
-             console.log("Re-fetching data after repair...");
-             diasSnapshot = await getDocs(diasRef);
+             // No necesitamos recargar aquí, loadDataAndDrawCalendar lo hará
         } else {
             console.log("DB verified (>= 366 days).");
         }
-        
-        await loadDataAndDrawCalendar(diasSnapshot); 
-        
+
+        // ¡REVERTIDO! loadDataAndDrawCalendar cargará sus propios datos
+        await loadDataAndDrawCalendar();
+
         const refreshBtn = document.getElementById('refresh-btn');
         if (refreshBtn) { refreshBtn.onclick = () => window.location.reload(); }
-        updateLoginUI(auth.currentUser); 
+        updateLoginUI(auth.currentUser);
     } catch (e) { appContent.innerHTML = `<p class="error">Critical error during startup: ${e.message}</p>`; console.error(e); }
 }
 
+
 async function generateCleanDatabase() {
-    // ¡CAMBIO! Obtener appContent aquí también por si se llama durante el arranque
     const appContent = document.getElementById("app-content");
     if (!appContent) { console.error("Cannot show status: #app-content missing."); return; }
-    
-    console.log("--- Starting Regeneration ---"); const diasRef = collection(db, "Dias"); try { console.log("Deleting 'Dias'..."); appContent.innerHTML = "<p>Deleting old data...</p>"; const oldDocsSnapshot = await getDocs(diasRef); if (!oldDocsSnapshot.empty) { let batch = writeBatch(db); let deleteCount = 0; for (const docSnap of oldDocsSnapshot.docs) { 
+
+    console.log("--- Starting Regeneration ---"); const diasRef = collection(db, "Dias"); try { console.log("Deleting 'Dias'..."); appContent.innerHTML = "<p>Deleting old data...</p>"; const oldDocsSnapshot = await getDocs(diasRef); if (!oldDocsSnapshot.empty) { let batch = writeBatch(db); let deleteCount = 0; for (const docSnap of oldDocsSnapshot.docs) {
  batch.delete(docSnap.ref); deleteCount++; if (deleteCount >= 400) { console.log(`Committing delete batch (${deleteCount})...`); await batch.commit(); batch = writeBatch(db); deleteCount = 0; } } if (deleteCount > 0) { console.log(`Committing final delete batch (${deleteCount})...`); await batch.commit(); } console.log(`Deletion complete (${oldDocsSnapshot.size}).`); } else { console.log("'Dias' collection was already empty."); } } catch(e) { console.error("Error deleting collection:", e); throw e; }
-    console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>"; let genBatch = writeBatch(db); let ops = 0, created = 0; try { for (let m = 0; m < 12; m++) { const monthNum = m + 1, monthStr = monthNum.toString().padStart(2, '0'); const numDays = daysInMonth[m]; for (let d = 1; d <= numDays; d++) { const dayStr = d.toString().padStart(2, '0'); const diaId = `${monthStr}-${dayStr}`; const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day", hasMemories: false }; 
+    console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>"; let genBatch = writeBatch(db); let ops = 0, created = 0; try { for (let m = 0; m < 12; m++) { const monthNum = m + 1, monthStr = monthNum.toString().padStart(2, '0'); const numDays = daysInMonth[m]; for (let d = 1; d <= numDays; d++) { const dayStr = d.toString().padStart(2, '0'); const diaId = `${monthStr}-${dayStr}`; const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day", hasMemories: false };
  const docRef = doc(db, "Dias", diaId); genBatch.set(docRef, diaData); ops++; created++; if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`; if (ops >= 400) { console.log(`Committing generate batch (${ops})...`); await genBatch.commit(); genBatch = writeBatch(db); ops = 0; } } } if (ops > 0) { console.log(`Committing final generate batch (${ops})...`); await genBatch.commit(); } console.log(`--- Regeneration complete: ${created} days created ---`); appContent.innerHTML = `<p class="success">✅ DB regenerated: ${created} days!</p>`; } catch(e) { console.error("Error generating days:", e); throw e; }
 }
 
 // --- Load/Draw Calendar ---
-async function loadDataAndDrawCalendar(diasSnapshot) {
-    console.log("Loading data..."); 
-    // ¡CAMBIO! Obtener appContent aquí.
+// ¡REVERTIDO! Quitar el parámetro diasSnapshot
+async function loadDataAndDrawCalendar() {
+    console.log("Loading data...");
     const appContent = document.getElementById("app-content");
     if (!appContent) { console.error("#app-content not found in loadDataAndDrawCalendar"); return; }
-    
-    appContent.innerHTML = "<p>Loading calendar...</p>"; 
-    try { 
-        allDaysData = []; 
-        diasSnapshot.forEach((doc) => { 
-            if (doc.id?.length === 5 && doc.id.includes('-')) allDaysData.push({ id: doc.id, ...doc.data() }); 
-        }); 
-        if (allDaysData.length === 0) throw new Error("Database empty or invalid after loading."); 
-        console.log(`Loaded ${allDaysData.length} valid days.`); 
-        allDaysData.sort((a, b) => a.id.localeCompare(b.id)); 
-        console.log("Data sorted. First:", allDaysData[0]?.id, "Last:", allDaysData[allDaysData.length - 1]?.id); 
-        
-        await dibujarMesActual(); 
 
-        // Configurar navegación y footer DESPUÉS de dibujar
+    appContent.innerHTML = "<p>Loading calendar...</p>";
+    try {
+        // ¡REVERTIDO! Cargar los datos aquí de nuevo
+        const diasSnapshot = await getDocs(collection(db, "Dias"));
+        allDaysData = [];
+        diasSnapshot.forEach((doc) => {
+            if (doc.id?.length === 5 && doc.id.includes('-')) allDaysData.push({ id: doc.id, ...doc.data() });
+        });
+        if (allDaysData.length === 0) throw new Error("Database empty or invalid after loading.");
+        console.log(`Loaded ${allDaysData.length} valid days.`);
+        allDaysData.sort((a, b) => a.id.localeCompare(b.id));
+        console.log("Data sorted. First:", allDaysData[0]?.id, "Last:", allDaysData[allDaysData.length - 1]?.id);
+
+        await dibujarMesActual();
+
         configurarNavegacion();
         configurarFooter();
 
-    } catch (e) { 
-        appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`; 
-        console.error("Error in loadDataAndDrawCalendar:", e); 
+    } catch (e) {
+        appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`;
+        console.error("Error in loadDataAndDrawCalendar:", e);
     }
 }
+
+// (El resto de funciones permanecen igual que en v10.8)
 function configurarNavegacion() {
     try {
         const prevBtn = document.getElementById("prev-month");
         const nextBtn = document.getElementById("next-month");
-        
+
         if (prevBtn) {
-            prevBtn.onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); }; 
+            prevBtn.onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); };
         } else {
             console.error("#prev-month button not found!");
         }
-        
+
         if (nextBtn) {
-            nextBtn.onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); }; 
+            nextBtn.onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); };
         } else {
             console.error("#next-month button not found!");
         }
@@ -154,49 +155,47 @@ function configurarNavegacion() {
     }
 }
 async function dibujarMesActual() {
-    // ¡CAMBIO! Obtener los elementos aquí.
     const monthNameDisplayEl = document.getElementById("month-name-display");
-    const appContent = document.getElementById("app-content"); 
-    
+    const appContent = document.getElementById("app-content");
+
     if (!monthNameDisplayEl || !appContent) {
         console.error("#month-name-display or #app-content element not found in dibujarMesActual!");
-        return; 
+        return;
     }
-    monthNameDisplayEl.textContent = monthNames[currentMonthIndex]; 
-    const monthNumberTarget = currentMonthIndex + 1; 
-    console.log(`Drawing month ${monthNumberTarget}`); 
-    const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget ); 
-    console.log(`Found ${diasDelMes.length} days.`); 
-    
-    appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div><div id="today-memory-spotlight"></div>`; 
-    
-    const grid = document.getElementById("grid-dias"); 
+    monthNameDisplayEl.textContent = monthNames[currentMonthIndex];
+    const monthNumberTarget = currentMonthIndex + 1;
+    console.log(`Drawing month ${monthNumberTarget}`);
+    const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget );
+    console.log(`Found ${diasDelMes.length} days.`);
+
+    appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div><div id="today-memory-spotlight"></div>`;
+
+    const grid = document.getElementById("grid-dias");
     if (!grid) {
         console.error("#grid-dias element not found after setting innerHTML!");
         return;
     }
-    if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; } 
-    const diasEsperados = daysInMonth[currentMonthIndex]; 
-    if (diasDelMes.length !== diasEsperados) console.warn(`ALERT: Found ${diasDelMes.length}/${diasEsperados} for ${monthNames[currentMonthIndex]}.`); 
-    
-    diasDelMes.forEach(dia => { 
-        const btn = document.createElement("button"); 
-        btn.className = "dia-btn"; 
-        btn.innerHTML = `<span class="dia-numero">${dia.id.substring(3)}</span>`; 
-        btn.dataset.diaId = dia.id; 
-        btn.addEventListener('click', () => abrirModalPreview(dia)); 
-        
+    if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; }
+    const diasEsperados = daysInMonth[currentMonthIndex];
+    if (diasDelMes.length !== diasEsperados) console.warn(`ALERT: Found ${diasDelMes.length}/${diasEsperados} for ${monthNames[currentMonthIndex]}.`);
+
+    diasDelMes.forEach(dia => {
+        const btn = document.createElement("button");
+        btn.className = "dia-btn";
+        btn.innerHTML = `<span class="dia-numero">${dia.id.substring(3)}</span>`;
+        btn.dataset.diaId = dia.id;
+        btn.addEventListener('click', () => abrirModalPreview(dia));
+
         if (dia.hasMemories) {
             btn.classList.add('tiene-memorias');
         }
-        
-        grid.appendChild(btn); 
-    }); 
+
+        grid.appendChild(btn);
+    });
     console.log(`Rendered ${diasDelMes.length} buttons.`);
-    await updateTodayMemorySpotlight(); 
+    await updateTodayMemorySpotlight();
 }
 
-// --- Today Memory Spotlight ---
 async function updateTodayMemorySpotlight() {
     const spotlightDiv = document.getElementById('today-memory-spotlight');
     if (!spotlightDiv) {
@@ -221,7 +220,7 @@ async function updateTodayMemorySpotlight() {
     let memoryToShow = null;
 
     if (!snapshot.empty) {
-        memoryToShow = snapshot.docs[0].data(); 
+        memoryToShow = snapshot.docs[0].data();
         let memoryText = memoryToShow.Descripcion || memoryToShow.LugarNombre || memoryToShow.CancionInfo || "A memory...";
         let artwork = '';
         if (memoryToShow.Tipo === 'Musica' && memoryToShow.CancionData?.artworkUrl60) {
@@ -236,17 +235,16 @@ async function updateTodayMemorySpotlight() {
                 <p>${memoryText.length > 100 ? memoryText.substring(0, 97) + '...' : memoryText}</p>
             </div>
         `;
-        spotlightDiv.classList.add('has-memory'); 
+        spotlightDiv.classList.add('has-memory');
     } else {
         contentHTML += `<p class="no-memory-message">Nothing to remember today... yet!</p>`;
-        spotlightDiv.classList.remove('has-memory'); 
+        spotlightDiv.classList.remove('has-memory');
     }
 
     spotlightDiv.innerHTML = `<div class="spotlight-content">${contentHTML}</div>`;
-    spotlightDiv.onclick = () => abrirModalPreview(todayDay); 
+    spotlightDiv.onclick = () => abrirModalPreview(todayDay);
 }
 
-// --- Footer ---
 function configurarFooter() {
     try {
         const btnHoy = document.getElementById('btn-hoy');
@@ -261,13 +259,13 @@ function configurarFooter() {
         if (btnBuscar) {
             btnBuscar.onclick = () => { const searchTerm = prompt("Search memories:"); if (searchTerm?.trim()) { buscarMemorias(searchTerm.trim().toLowerCase()); } };
         } else { console.error("#btn-buscar not found!"); }
-        
+
         if (btnShuffle) {
             btnShuffle.onclick = () => { if (allDaysData.length > 0) { const randomIndex = Math.floor(Math.random() * allDaysData.length); const randomDia = allDaysData[randomIndex]; const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1; if (currentMonthIndex !== randomMonthIndex) { currentMonthIndex = randomMonthIndex; dibujarMesActual(); setTimeout(() => abrirModalPreview(randomDia), 50); } else { abrirModalPreview(randomDia); } window.scrollTo(0, 0); } };
         } else { console.error("#btn-shuffle not found!"); }
-        
+
         if (btnAddMemory) {
-            btnAddMemory.onclick = () => { abrirModalEdicion(null); }; 
+            btnAddMemory.onclick = () => { abrirModalEdicion(null); };
         } else { console.error("#btn-add-memory not found!"); }
 
     } catch (e) {
@@ -275,88 +273,83 @@ function configurarFooter() {
     }
 }
 async function buscarMemorias(term) {
-    console.log("Searching:", term); 
-    // ¡CAMBIO! Obtener appContent aquí.
+    console.log("Searching:", term);
     const appContent = document.getElementById("app-content");
-    if (!appContent) return; 
-    
+    if (!appContent) return;
+
     appContent.innerHTML = `<p>Searching for "${term}"...</p>`; let results = []; try { for (const dia of allDaysData) { const memSnapshot = await getDocs(collection(db, "Dias", dia.id, "Memorias")); memSnapshot.forEach(memDoc => { const memoria = { diaId: dia.id, diaNombre: dia.Nombre_Dia, id: memDoc.id, ...memDoc.data() }; let searchableText = memoria.Descripcion || ''; if(memoria.LugarNombre) searchableText += ' ' + memoria.LugarNombre; if(memoria.CancionInfo) searchableText += ' ' + memoria.CancionInfo; if (searchableText.toLowerCase().includes(term)) { results.push(memoria); } }); } if (results.length === 0) { appContent.innerHTML = `<p>No results for "${term}".</p>`; } else { console.log(`Found ${results.length}.`); results.sort((a, b) => (b.Fecha_Original?.toDate() ?? 0) - (a.Fecha_Original?.toDate() ?? 0)); appContent.innerHTML = `<h3>Results for "${term}" (${results.length}):</h3>`; const resultsList = document.createElement('div'); resultsList.id = 'search-results-list'; results.forEach(mem => { const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item search-result'; let fechaStr = 'Unknown date'; if (mem.Fecha_Original?.toDate) { try { fechaStr = mem.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) { /* fallback */ } } let contentHTML = `<small><b>${mem.diaNombre} (${mem.diaId})</b> - ${fechaStr}</small>`; switch (mem.Tipo) { case 'Lugar': contentHTML += `📍 ${memoria.LugarNombre || 'Place'}`; break; case 'Musica': if (memoria.CancionData?.trackName) contentHTML += `🎵 <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`; else contentHTML += `🎵 ${memoria.CancionInfo || 'Music'}`; break; case 'Imagen': contentHTML += `🖼️ Image`; if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank">View</a>)`; if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`; break; default: contentHTML += memoria.Descripcion || ''; break; } itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>`; itemDiv.style.cursor = 'pointer'; itemDiv.onclick = () => { const monthIndex = parseInt(mem.diaId.substring(0, 2), 10) - 1; if (monthIndex >= 0) { currentMonthIndex = monthIndex; dibujarMesActual(); const targetDia = allDaysData.find(d => d.id === mem.diaId); if(targetDia) setTimeout(() => abrirModalPreview(targetDia), 50); window.scrollTo(0, 0); } }; resultsList.appendChild(itemDiv); }); appContent.appendChild(resultsList); } } catch (e) { if (appContent) appContent.innerHTML = `<p class="error">Search error: ${e.message}</p>`; console.error(e); }
 }
 
-// --- Preview Modal ---
-// (Sin cambios en esta sección)
 async function abrirModalPreview(dia) {
-    console.log("Opening preview:", dia.id); 
-    let modal = document.getElementById('preview-modal'); 
-    
-    if (!modal) { 
-        modal = document.createElement('div'); 
-        modal.id = 'preview-modal'; 
-        modal.className = 'modal-preview'; 
-        modal.innerHTML = ` <div class="modal-preview-content"> <div class="modal-preview-header"> <h3 id="preview-title"></h3> <button id="edit-from-preview-btn" title="Edit this day">${pencilIconSVG}</button> </div> <div class="modal-preview-memorias"> <h4>Memories:</h4> <div id="preview-memorias-list">Loading...</div> </div> <button id="close-preview-btn" class="aqua-button">Close</button> </div>`; 
-        document.body.appendChild(modal); 
-        document.getElementById('close-preview-btn').onclick = () => cerrarModalPreview(); 
-        modal.onclick = (e) => { if (e.target.id === 'preview-modal') cerrarModalPreview(); }; 
+    console.log("Opening preview:", dia.id);
+    let modal = document.getElementById('preview-modal');
+
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'preview-modal';
+        modal.className = 'modal-preview';
+        modal.innerHTML = ` <div class="modal-preview-content"> <div class="modal-preview-header"> <h3 id="preview-title"></h3> <button id="edit-from-preview-btn" title="Edit this day">${pencilIconSVG}</button> </div> <div class="modal-preview-memorias"> <h4>Memories:</h4> <div id="preview-memorias-list">Loading...</div> </div> <button id="close-preview-btn" class="aqua-button">Close</button> </div>`;
+        document.body.appendChild(modal);
+        document.getElementById('close-preview-btn').onclick = () => cerrarModalPreview();
+        modal.onclick = (e) => { if (e.target.id === 'preview-modal') cerrarModalPreview(); };
     }
-    
+
     const editBtn = document.getElementById('edit-from-preview-btn');
     if (editBtn) {
-        const diaToEdit = dia; 
-        const newEditBtn = editBtn.cloneNode(true); 
+        const diaToEdit = dia;
+        const newEditBtn = editBtn.cloneNode(true);
         editBtn.parentNode.replaceChild(newEditBtn, editBtn);
-        
+
         newEditBtn.addEventListener('click', () => {
             console.log("Edit clicked for:", diaToEdit.id);
-            if (diaToEdit) { 
+            if (diaToEdit) {
                 cerrarModalPreview();
-                setTimeout(() => abrirModalEdicion(diaToEdit), 250); 
+                setTimeout(() => abrirModalEdicion(diaToEdit), 250);
             }
         });
-    } else { 
-        console.error("Edit button not found in preview modal."); 
+    } else {
+        console.error("Edit button not found in preview modal.");
     }
-     
+
     const previewTitle = document.getElementById('preview-title');
     if (previewTitle) {
-      previewTitle.textContent = `${dia.Nombre_Dia} ${dia.Nombre_Especial !== 'Unnamed Day' ? '('+dia.Nombre_Especial+')' : ''}`; 
+      previewTitle.textContent = `${dia.Nombre_Dia} ${dia.Nombre_Especial !== 'Unnamed Day' ? '('+dia.Nombre_Especial+')' : ''}`;
     }
-    modal.style.display = 'flex'; 
-    setTimeout(() => modal.classList.add('visible'), 10); 
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('visible'), 10);
     await cargarYMostrarMemorias(dia.id, 'preview-memorias-list');
 }
 function cerrarModalPreview() { const modal = document.getElementById('preview-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); } }
 
-// --- Unified Edit/Add Modal ---
-// (Sin cambios en esta sección y las siguientes hasta el final)
-async function abrirModalEdicion(dia) { 
+async function abrirModalEdicion(dia) {
     const isAdding = !dia;
     console.log(isAdding ? "Opening unified modal: ADD mode" : `Opening unified modal: EDIT mode for ${dia?.id}`);
 
     if (isAdding) {
         const today = new Date();
         const todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-        currentlyOpenDay = allDaysData.find(d => d.id === todayId) || allDaysData[0]; 
+        currentlyOpenDay = allDaysData.find(d => d.id === todayId) || allDaysData[0];
          if (!currentlyOpenDay) { console.error("No day data found to default to."); alert("Error: No calendar data loaded."); return; }
         console.log("Defaulting Add mode to day:", currentlyOpenDay.id);
     } else {
-        currentlyOpenDay = dia; 
+        currentlyOpenDay = dia;
     }
      if (!currentlyOpenDay?.id) { console.error("Invalid day data for modal:", currentlyOpenDay); alert("Error loading day data."); return; }
 
     let modal = document.getElementById('edit-add-modal');
     if (!modal) {
         modal = document.createElement('div'); modal.id = 'edit-add-modal'; modal.className = 'modal-edit';
-        
+
         modal.innerHTML = `
             <div class="modal-content">
-                <div class="modal-content-scrollable"> <div class="modal-section" id="day-selection-section" style="display: none;"> 
+                <div class="modal-content-scrollable"> <div class="modal-section" id="day-selection-section" style="display: none;">
                          <h3>Add Memory To...</h3>
                          <label for="edit-mem-day">Day (MM-DD):</label>
                          <select id="edit-mem-day"></select>
                          <label for="edit-mem-year">Year of Memory:</label>
                          <input type="number" id="edit-mem-year" placeholder="YYYY" min="1800" max="${new Date().getFullYear() + 1}" required>
                     </div>
-                    <div class="modal-section" id="day-name-section" style="display: none;"> 
+                    <div class="modal-section" id="day-name-section" style="display: none;">
                         <h3 id="edit-modal-title"></h3>
                         <label for="nombre-especial-input">Name this day:</label>
                         <input type="text" id="nombre-especial-input" placeholder="e.g., Pizza Day" maxlength="25">
@@ -400,7 +393,6 @@ async function abrirModalEdicion(dia) {
         document.getElementById('save-name-btn').onclick = () => { if(currentlyOpenDay) guardarNombreEspecial(currentlyOpenDay.id, document.getElementById('nombre-especial-input').value.trim()); };
     }
 
-    // --- Configuración ---
     const daySelectionSection = document.getElementById('day-selection-section');
     const dayNameSection = document.getElementById('day-name-section');
     const daySelect = document.getElementById('edit-mem-day');
@@ -413,37 +405,37 @@ async function abrirModalEdicion(dia) {
     if (isAdding) {
         if(daySelectionSection) daySelectionSection.style.display = 'block';
         if(dayNameSection) dayNameSection.style.display = 'none';
-        if (daySelect && currentlyOpenDay) daySelect.value = currentlyOpenDay.id; 
-        if(yearInput) yearInput.value = new Date().getFullYear(); 
-        formTitle.textContent = "Add New Memory"; 
-        memoriesList.innerHTML = '<p class="list-placeholder">Add memories below.</p>'; 
+        if (daySelect && currentlyOpenDay) daySelect.value = currentlyOpenDay.id;
+        if(yearInput) yearInput.value = new Date().getFullYear();
+        formTitle.textContent = "Add New Memory";
+        memoriesList.innerHTML = '<p class="list-placeholder">Add memories below.</p>';
         currentMemories = [];
     } else {
         if(daySelectionSection) daySelectionSection.style.display = 'none';
         if(dayNameSection) dayNameSection.style.display = 'block';
         if (titleEl) titleEl.textContent = `Editing: ${currentlyOpenDay.Nombre_Dia} (${currentlyOpenDay.id})`;
         if (nameInput) nameInput.value = currentlyOpenDay.Nombre_Especial === 'Unnamed Day' ? '' : currentlyOpenDay.Nombre_Especial;
-        formTitle.textContent = "Add/Edit Memories"; 
+        formTitle.textContent = "Add/Edit Memories";
         await cargarYMostrarMemorias(currentlyOpenDay.id, 'edit-memorias-list');
     }
-    resetMemoryFormUnified(); handleMemoryTypeChangeUnified(); 
+    resetMemoryFormUnified(); handleMemoryTypeChangeUnified();
     const saveStatus = document.getElementById('save-status');
     const memoriaStatus = document.getElementById('memoria-status');
-    if (saveStatus) saveStatus.textContent = ''; 
+    if (saveStatus) saveStatus.textContent = '';
     if (memoriaStatus) memoriaStatus.textContent = '';
     const confirmDialog = document.getElementById('confirm-delete-dialog'); if(confirmDialog) confirmDialog.style.display = 'none';
     modal.style.display = 'flex'; setTimeout(() => modal.classList.add('visible'), 10);
-    
+
     if (document.getElementById('leaflet-map')) {
         initMapIfNeeded();
     }
 }
 
 function cerrarModalEdicion() {
-    const modal = document.getElementById('edit-add-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); } 
-    currentlyOpenDay = null; 
-    editingMemoryId = null; 
-    selectedPlace = null; 
+    const modal = document.getElementById('edit-add-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); }
+    currentlyOpenDay = null;
+    editingMemoryId = null;
+    selectedPlace = null;
     selectedMusicTrack = null;
     if (mapMarker) { mapMarker.remove(); mapMarker = null; }
 }
@@ -454,9 +446,9 @@ async function cargarYMostrarMemorias(diaId, targetDivId) {
     try {
         const memoriasRef = collection(db, "Dias", diaId, "Memorias"); const q = query(memoriasRef, orderBy("Fecha_Original", "desc")); const querySnapshot = await getDocs(q); if (querySnapshot.empty) { memoriasListDiv.innerHTML = '<p class="list-placeholder">No memories yet.</p>'; return; } memoriasListDiv.innerHTML = ''; const fragment = document.createDocumentFragment();
         querySnapshot.forEach((docSnap) => { const memoria = { id: docSnap.id, ...docSnap.data() }; if (targetDivId === 'edit-memorias-list') currentMemories.push(memoria); const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item'; let fechaStr = 'Unknown date'; if (memoria.Fecha_Original?.toDate) { try { fechaStr = memoria.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) { /* fallback */ } } let contentHTML = `<small>${fechaStr}</small>`; let artworkHTML = ''; switch (memoria.Tipo) { case 'Lugar': contentHTML += `📍 ${memoria.LugarNombre || 'Place'}`; break; case 'Musica': if (memoria.CancionData?.trackName) { contentHTML += `🎵 <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`; if(memoria.CancionData.artworkUrl60) artworkHTML = `<img src="${memoria.CancionData.artworkUrl60}" class="memoria-artwork">`; } else { contentHTML += `🎵 ${memoria.CancionInfo || 'Music'}`; } break; case 'Imagen': contentHTML += `🖼️ Image`; if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank">View</a>)`; if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`; break; default: contentHTML += memoria.Descripcion || ''; break; } const actionsHTML = (targetDivId === 'edit-memorias-list') ? ` <div class="memoria-actions"> <button class="edit-btn" title="Edit" data-memoria-id="${memoria.id}">${editIconSVG}</button> <button class="delete-btn" title="Delete" data-memoria-id="${memoria.id}">${deleteIconSVG}</button> </div>` : ''; itemDiv.innerHTML = `${artworkHTML}<div class="memoria-item-content">${contentHTML}</div>${actionsHTML}`; fragment.appendChild(itemDiv); });
-        memoriasListDiv.appendChild(fragment); 
+        memoriasListDiv.appendChild(fragment);
         if (targetDivId === 'edit-memorias-list') {
-             attachMemoryActionListeners(diaId); 
+             attachMemoryActionListeners(diaId);
         }
         console.log(`Loaded ${querySnapshot.size} memories for ${diaId} into ${targetDivId}`);
     } catch (e) { console.error(`Error loading memories ${diaId}:`, e); memoriasListDiv.innerHTML = '<p class="error">Error loading memories.</p>'; }
@@ -465,7 +457,7 @@ async function cargarYMostrarMemorias(diaId, targetDivId) {
 function attachMemoryActionListeners(diaId) {
     const listDiv = document.getElementById('edit-memorias-list');
     if (!listDiv) return;
-    listDiv.replaceWith(listDiv.cloneNode(true)); 
+    listDiv.replaceWith(listDiv.cloneNode(true));
     const newListDiv = document.getElementById('edit-memorias-list');
     newListDiv.addEventListener('click', (event) => {
         const editButton = event.target.closest('.edit-btn');
@@ -496,7 +488,7 @@ function initMapIfNeeded() {
     if (!map) {
         try {
             console.log("Initializing Leaflet map...");
-            map = L.map('leaflet-map').setView([40.41, -3.70], 5); 
+            map = L.map('leaflet-map').setView([40.41, -3.70], 5);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
@@ -508,47 +500,47 @@ function initMapIfNeeded() {
     }
 }
 
-function handleMemoryTypeChangeUnified() { 
-    const t=document.getElementById('memoria-type')?.value; 
-    if (!t) return; 
+function handleMemoryTypeChangeUnified() {
+    const t=document.getElementById('memoria-type')?.value;
+    if (!t) return;
     ['Texto','Lugar','Musica','Imagen'].forEach(id=>{
         const d=document.getElementById(`input-type-${id}`);
         if(d)d.style.display='none'
-    }); 
-    const dS=document.getElementById(`input-type-${t}`); 
-    if(dS)dS.style.display='block'; 
+    });
+    const dS=document.getElementById(`input-type-${t}`);
+    if(dS)dS.style.display='block';
     const mapDiv = document.getElementById('leaflet-map');
     if(t === 'Lugar') {
         if (mapDiv) mapDiv.style.display = 'block';
-        initMapIfNeeded(); 
+        initMapIfNeeded();
     } else {
         if (mapDiv) mapDiv.style.display = 'none';
     }
-    if(t!=='Musica'){const r=document.getElementById('itunes-results');if(r)r.innerHTML='';selectedMusicTrack=null;} 
-    if(t!=='Lugar'){const r=document.getElementById('place-results');if(r)r.innerHTML='';selectedPlace=null;} 
-    if(t!=='Imagen'){const f=document.getElementById('memoria-image-upload');if(f)f.value=null; const i=document.getElementById('image-upload-status');if(i)i.textContent='';} 
+    if(t!=='Musica'){const r=document.getElementById('itunes-results');if(r)r.innerHTML='';selectedMusicTrack=null;}
+    if(t!=='Lugar'){const r=document.getElementById('place-results');if(r)r.innerHTML='';selectedPlace=null;}
+    if(t!=='Imagen'){const f=document.getElementById('memoria-image-upload');if(f)f.value=null; const i=document.getElementById('image-upload-status');if(i)i.textContent='';}
 }
-async function buscarBSOUnified() { 
-    const i=document.getElementById('memoria-music-search'),r=document.getElementById('itunes-results'),s=document.getElementById('memoria-status'),q=i?.value.trim(); 
-    if (!i || !r || !s) return; 
-    if(!q){r.innerHTML='<p class="error">Enter term.</p>';return;} 
-    r.innerHTML='<p>Searching...</p>';s.textContent='';selectedMusicTrack=null; 
-    const p='https://api.allorigins.win/raw?url=', u=`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=5`,f=p+encodeURIComponent(u); 
+async function buscarBSOUnified() {
+    const i=document.getElementById('memoria-music-search'),r=document.getElementById('itunes-results'),s=document.getElementById('memoria-status'),q=i?.value.trim();
+    if (!i || !r || !s) return;
+    if(!q){r.innerHTML='<p class="error">Enter term.</p>';return;}
+    r.innerHTML='<p>Searching...</p>';s.textContent='';selectedMusicTrack=null;
+    const p='https://api.allorigins.win/raw?url=', u=`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=5`,f=p+encodeURIComponent(u);
     try{
-        const e=await fetch(f); 
-        if(!e.ok)throw new Error(`HTTP ${e.status}`); 
-        const d=await e.json(); 
-        if(!d.results||d.resultCount===0){r.innerHTML='<p>No results.</p>';return;} 
-        r.innerHTML=''; 
-        d.results.forEach(t=>{const v=document.createElement('div'); v.className='itunes-track'; const a=t.artworkUrl100||t.artworkUrl60||''; v.innerHTML=` <img src="${a}" class="itunes-artwork" style="${a?'':'display:none;'}" onerror="this.style.display='none';"><div class="itunes-track-info"><div class="itunes-track-name">${t.trackName||'?'}</div><div class="itunes-track-artist">${t.artistName||'?'}</div></div><div class="itunes-track-select">➔</div>`; v.onclick=()=>{selectedMusicTrack=t;i.value=`${t.trackName} - ${t.artistName}`;r.innerHTML=`<div class="itunes-track selected"><img src="${a}" class="itunes-artwork" style="${a?'':'display:none;'}">... <span style="color:green;">✓</span></div>`;console.log("Selected:",selectedMusicTrack);}; r.appendChild(v);}); 
+        const e=await fetch(f);
+        if(!e.ok)throw new Error(`HTTP ${e.status}`);
+        const d=await e.json();
+        if(!d.results||d.resultCount===0){r.innerHTML='<p>No results.</p>';return;}
+        r.innerHTML='';
+        d.results.forEach(t=>{const v=document.createElement('div'); v.className='itunes-track'; const a=t.artworkUrl100||t.artworkUrl60||''; v.innerHTML=` <img src="${a}" class="itunes-artwork" style="${a?'':'display:none;'}" onerror="this.style.display='none';"><div class="itunes-track-info"><div class="itunes-track-name">${t.trackName||'?'}</div><div class="itunes-track-artist">${t.artistName||'?'}</div></div><div class="itunes-track-select">➔</div>`; v.onclick=()=>{selectedMusicTrack=t;i.value=`${t.trackName} - ${t.artistName}`;r.innerHTML=`<div class="itunes-track selected"><img src="${a}" class="itunes-artwork" style="${a?'':'display:none;'}">... <span style="color:green;">✓</span></div>`;console.log("Selected:",selectedMusicTrack);}; r.appendChild(v);});
     }catch(e){
         console.error('iTunes Error:',e);
         r.innerHTML=`<p class="error">Search error: ${e.message}</p>`;
-    } 
+    }
 }
-async function buscarLugarUnified() { 
-    const i=document.getElementById('memoria-place-search'),r=document.getElementById('place-results'),s=document.getElementById('memoria-status'),q=i?.value.trim(); 
-    if (!i || !r || !s) return; 
+async function buscarLugarUnified() {
+    const i=document.getElementById('memoria-place-search'),r=document.getElementById('place-results'),s=document.getElementById('memoria-status'),q=i?.value.trim();
+    if (!i || !r || !s) return;
     if(!q){r.innerHTML='<p class="error">Enter place.</p>';return;} r.innerHTML='<p>Searching...</p>';s.textContent='';selectedPlace=null; const n=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5`; try{const e=await fetch(n,{headers:{'Accept':'application/json'}}); if(!e.ok)throw new Error(`HTTP ${e.status}`); const d=await e.json(); if(!d||d.length===0){r.innerHTML='<p>No results.</p>';return;} r.innerHTML=''; d.forEach(p=>{const v=document.createElement('div'); v.className='place-result'; v.innerHTML=`${p.display_name}`; v.onclick=()=>{selectedPlace={name:p.display_name,lat:p.lat,lon:p.lon,osm_id:p.osm_id,osm_type:p.osm_type};i.value=p.display_name;r.innerHTML=`<p class="success">Selected: ${p.display_name}</p>`;console.log("Selected:",selectedPlace);
             if (map) {
                 const latLon = [p.lat, p.lon];
@@ -559,19 +551,19 @@ async function buscarLugarUnified() {
                     mapMarker = L.marker(latLon).addTo(map);
                 }
             }
-        }; r.appendChild(v);}); }catch(e){console.error('Nominatim Error:',e);r.innerHTML=`<p class="error">Search error: ${e.message}</p>`;} 
+        }; r.appendChild(v);}); }catch(e){console.error('Nominatim Error:',e);r.innerHTML=`<p class="error">Search error: ${e.message}</p>`;}
 }
 
 function startEditMemoriaUnified(memoria) {
-    editingMemoryId = memoria.id; 
-    const typeSelect = document.getElementById('memoria-type'); 
-    const fechaInput = document.getElementById('memoria-fecha'); 
-    const descTextarea = document.getElementById('memoria-desc'); 
-    const placeInput = document.getElementById('memoria-place-search'); 
-    const musicInput = document.getElementById('memoria-music-search'); 
-    const imageDescInput = document.getElementById('memoria-image-desc'); 
-    const imageFileInput = document.getElementById('memoria-image-upload'); 
-    const imageStatus = document.getElementById('image-upload-status'); 
+    editingMemoryId = memoria.id;
+    const typeSelect = document.getElementById('memoria-type');
+    const fechaInput = document.getElementById('memoria-fecha');
+    const descTextarea = document.getElementById('memoria-desc');
+    const placeInput = document.getElementById('memoria-place-search');
+    const musicInput = document.getElementById('memoria-music-search');
+    const imageDescInput = document.getElementById('memoria-image-desc');
+    const imageFileInput = document.getElementById('memoria-image-upload');
+    const imageStatus = document.getElementById('image-upload-status');
     const saveButton = document.getElementById('save-memoria-btn');
     const placeResults = document.getElementById('place-results');
     const itunesResults = document.getElementById('itunes-results');
@@ -581,220 +573,220 @@ function startEditMemoriaUnified(memoria) {
         return;
     }
 
-    typeSelect.value = memoria.Tipo || 'Texto'; 
-    handleMemoryTypeChangeUnified(); 
+    typeSelect.value = memoria.Tipo || 'Texto';
+    handleMemoryTypeChangeUnified();
     if (memoria.Fecha_Original?.toDate) { try { fechaInput.value = memoria.Fecha_Original.toDate().toISOString().split('T')[0]; } catch(e){ fechaInput.value = ''; } } else { fechaInput.value = ''; }
-    selectedPlace = null; selectedMusicTrack = null; 
-    placeResults.innerHTML = ''; 
-    itunesResults.innerHTML = ''; 
+    selectedPlace = null; selectedMusicTrack = null;
+    placeResults.innerHTML = '';
+    itunesResults.innerHTML = '';
     imageStatus.textContent = ''; imageFileInput.value = null;
-    
+
     if (mapMarker) { mapMarker.remove(); mapMarker = null; }
 
-    switch (memoria.Tipo) { 
-        case 'Lugar': 
-            placeInput.value = memoria.LugarNombre || ''; descTextarea.value = ''; musicInput.value = ''; imageDescInput.value = ''; 
-            selectedPlace = memoria.LugarData ? { name: memoria.LugarNombre, ...memoria.LugarData } : null; 
+    switch (memoria.Tipo) {
+        case 'Lugar':
+            placeInput.value = memoria.LugarNombre || ''; descTextarea.value = ''; musicInput.value = ''; imageDescInput.value = '';
+            selectedPlace = memoria.LugarData ? { name: memoria.LugarNombre, ...memoria.LugarData } : null;
             if (map && selectedPlace && selectedPlace.lat && selectedPlace.lon) {
                 const latLon = [selectedPlace.lat, selectedPlace.lon];
                 map.setView(latLon, 13);
                 mapMarker = L.marker(latLon).addTo(map);
             }
-            break; 
-        case 'Musica': 
-            musicInput.value = memoria.CancionInfo || ''; descTextarea.value = ''; placeInput.value = ''; imageDescInput.value = ''; 
-            selectedMusicTrack = memoria.CancionData || null; 
-            break; 
-        case 'Imagen': 
-            imageDescInput.value = memoria.Descripcion || ''; descTextarea.value = ''; placeInput.value = ''; musicInput.value = ''; 
-            imageStatus.textContent = memoria.ImagenURL ? `Current image saved.` : 'No image file selected.'; 
-            break; 
-        default: 
-            descTextarea.value = memoria.Descripcion || ''; placeInput.value = ''; musicInput.value = ''; imageDescInput.value = ''; 
-            break; 
+            break;
+        case 'Musica':
+            musicInput.value = memoria.CancionInfo || ''; descTextarea.value = ''; placeInput.value = ''; imageDescInput.value = '';
+            selectedMusicTrack = memoria.CancionData || null;
+            break;
+        case 'Imagen':
+            imageDescInput.value = memoria.Descripcion || ''; descTextarea.value = ''; placeInput.value = ''; musicInput.value = '';
+            imageStatus.textContent = memoria.ImagenURL ? `Current image saved.` : 'No image file selected.';
+            break;
+        default:
+            descTextarea.value = memoria.Descripcion || ''; placeInput.value = ''; musicInput.value = ''; imageDescInput.value = '';
+            break;
     }
-    saveButton.textContent = 'Update Memory'; saveButton.classList.add('update-mode'); 
-    if (memoria.Tipo === 'Texto' || memoria.Tipo === 'Imagen') descTextarea.focus(); 
-    else if (memoria.Tipo === 'Lugar') placeInput.focus(); 
+    saveButton.textContent = 'Update Memory'; saveButton.classList.add('update-mode');
+    if (memoria.Tipo === 'Texto' || memoria.Tipo === 'Imagen') descTextarea.focus();
+    else if (memoria.Tipo === 'Lugar') placeInput.focus();
     else if (memoria.Tipo === 'Musica') musicInput.focus();
 }
 
 async function handleMemoryFormSubmit(event) {
-    event.preventDefault(); 
-    const statusDiv = document.getElementById('memoria-status'); 
-    if (!statusDiv) return; 
-    statusDiv.className = ''; 
-    statusDiv.textContent = editingMemoryId ? 'Updating...' : 'Saving...'; 
-    
-    let diaId; 
-    const daySelect = document.getElementById('edit-mem-day'); 
-    const yearInput = document.getElementById('edit-mem-year'); 
-    const daySelectionVisible = document.getElementById('day-selection-section')?.style.display !== 'none'; 
-    
-    if (daySelectionVisible && daySelect?.value) { 
-        diaId = daySelect.value; 
-    } else if (currentlyOpenDay) { 
-        diaId = currentlyOpenDay.id; 
-    } else { 
-        statusDiv.textContent = 'Error: No day selected.'; 
-        statusDiv.className = 'error'; 
-        return; 
-    } 
-    
-    const typeSelect = document.getElementById('memoria-type');
-    const fechaInput = document.getElementById('memoria-fecha');
-    if (!typeSelect || !fechaInput) return; 
+    event.preventDefault();
+    const statusDiv = document.getElementById('memoria-status');
+    if (!statusDiv) return;
+    statusDiv.className = '';
+    statusDiv.textContent = editingMemoryId ? 'Updating...' : 'Saving...';
 
-    const type = typeSelect.value; 
-    const fechaStr = fechaInput.value; 
+    let diaId;
+    const daySelect = document.getElementById('edit-mem-day');
+    const yearInput = document.getElementById('edit-mem-year');
+    const daySelectionVisible = document.getElementById('day-selection-section')?.style.display !== 'none';
 
-    if (!diaId || !fechaStr) { 
-        statusDiv.textContent = 'Day and original date are required.'; 
-        statusDiv.className = 'error'; 
-        return; 
+    if (daySelectionVisible && daySelect?.value) {
+        diaId = daySelect.value;
+    } else if (currentlyOpenDay) {
+        diaId = currentlyOpenDay.id;
+    } else {
+        statusDiv.textContent = 'Error: No day selected.';
+        statusDiv.className = 'error';
+        return;
     }
 
-    if (daySelectionVisible && yearInput) { 
-        const year = parseInt(yearInput.value, 10); 
+    const typeSelect = document.getElementById('memoria-type');
+    const fechaInput = document.getElementById('memoria-fecha');
+    if (!typeSelect || !fechaInput) return;
+
+    const type = typeSelect.value;
+    const fechaStr = fechaInput.value;
+
+    if (!diaId || !fechaStr) {
+        statusDiv.textContent = 'Day and original date are required.';
+        statusDiv.className = 'error';
+        return;
+    }
+
+    if (daySelectionVisible && yearInput) {
+        const year = parseInt(yearInput.value, 10);
         if (!year || isNaN(year) || year < 1800 || year > new Date().getFullYear() + 1) {
-            statusDiv.textContent = 'A valid year for the day is required.'; 
-            statusDiv.className = 'error'; 
-            return; 
+            statusDiv.textContent = 'A valid year for the day is required.';
+            statusDiv.className = 'error';
+            return;
         }
     }
 
-    let dateOfMemory; 
-    try { 
-        const dateParts = fechaStr.split('-'); 
-        dateOfMemory = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]))); 
-        if (isNaN(dateOfMemory.getTime())) throw new Error(); 
-    } catch(e) { 
-        statusDiv.textContent = 'Invalid date.'; 
-        statusDiv.className = 'error'; 
-        return; 
-    } 
-    
-    const fechaOriginalTimestamp = Timestamp.fromDate(dateOfMemory); 
-    let memoryData = { Fecha_Original: fechaOriginalTimestamp, Tipo: type }; 
-    let isValid = true; 
+    let dateOfMemory;
+    try {
+        const dateParts = fechaStr.split('-');
+        dateOfMemory = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2])));
+        if (isNaN(dateOfMemory.getTime())) throw new Error();
+    } catch(e) {
+        statusDiv.textContent = 'Invalid date.';
+        statusDiv.className = 'error';
+        return;
+    }
+
+    const fechaOriginalTimestamp = Timestamp.fromDate(dateOfMemory);
+    let memoryData = { Fecha_Original: fechaOriginalTimestamp, Tipo: type };
+    let isValid = true;
     let imageFileToUpload = null;
-    
+
     const descTextarea = document.getElementById('memoria-desc');
     const placeSearchInput = document.getElementById('memoria-place-search');
     const musicSearchInput = document.getElementById('memoria-music-search');
     const fileUploadInput = document.getElementById('memoria-image-upload');
     const imageDescInput = document.getElementById('memoria-image-desc');
-    
-    switch (type) { 
-        case 'Texto': 
-            if (!descTextarea) return; 
-            memoryData.Descripcion = descTextarea.value.trim(); 
-            if (!memoryData.Descripcion) isValid = false; 
-            break; 
-        case 'Lugar': 
-            if (!placeSearchInput) return; 
-            if (selectedPlace) { memoryData.LugarNombre = selectedPlace.name; memoryData.LugarData = { lat: selectedPlace.lat, lon: selectedPlace.lon, osm_id: selectedPlace.osm_id, osm_type: selectedPlace.osm_type }; } 
-            else { memoryData.LugarNombre = placeSearchInput.value.trim(); if (!memoryData.LugarNombre) isValid = false; memoryData.LugarData = null; } 
-            break; 
-        case 'Musica': 
-            if (!musicSearchInput) return; 
-            if (selectedMusicTrack) { memoryData.CancionData = { trackId: selectedMusicTrack.trackId, artistName: selectedMusicTrack.artistName, trackName: selectedMusicTrack.trackName, artworkUrl60: selectedMusicTrack.artworkUrl60, trackViewUrl: selectedMusicTrack.trackViewUrl }; memoryData.CancionInfo = `${selectedMusicTrack.trackName} - ${selectedMusicTrack.artistName}`; } 
-            else { memoryData.CancionInfo = musicSearchInput.value.trim(); if (!memoryData.CancionInfo) isValid = false; memoryData.CancionData = null; } 
-            break; 
-        case 'Imagen': 
-            if (!fileUploadInput || !imageDescInput) return; 
-            memoryData.Descripcion = imageDescInput.value.trim() || null; 
-            if (fileUploadInput.files && fileUploadInput.files[0]) { 
-                imageFileToUpload = fileUploadInput.files[0]; 
+
+    switch (type) {
+        case 'Texto':
+            if (!descTextarea) return;
+            memoryData.Descripcion = descTextarea.value.trim();
+            if (!memoryData.Descripcion) isValid = false;
+            break;
+        case 'Lugar':
+            if (!placeSearchInput) return;
+            if (selectedPlace) { memoryData.LugarNombre = selectedPlace.name; memoryData.LugarData = { lat: selectedPlace.lat, lon: selectedPlace.lon, osm_id: selectedPlace.osm_id, osm_type: selectedPlace.osm_type }; }
+            else { memoryData.LugarNombre = placeSearchInput.value.trim(); if (!memoryData.LugarNombre) isValid = false; memoryData.LugarData = null; }
+            break;
+        case 'Musica':
+            if (!musicSearchInput) return;
+            if (selectedMusicTrack) { memoryData.CancionData = { trackId: selectedMusicTrack.trackId, artistName: selectedMusicTrack.artistName, trackName: selectedMusicTrack.trackName, artworkUrl60: selectedMusicTrack.artworkUrl60, trackViewUrl: selectedMusicTrack.trackViewUrl }; memoryData.CancionInfo = `${selectedMusicTrack.trackName} - ${selectedMusicTrack.artistName}`; }
+            else { memoryData.CancionInfo = musicSearchInput.value.trim(); if (!memoryData.CancionInfo) isValid = false; memoryData.CancionData = null; }
+            break;
+        case 'Imagen':
+            if (!fileUploadInput || !imageDescInput) return;
+            memoryData.Descripcion = imageDescInput.value.trim() || null;
+            if (fileUploadInput.files && fileUploadInput.files[0]) {
+                imageFileToUpload = fileUploadInput.files[0];
             } else if (editingMemoryId) {
                 const existingMem = currentMemories.find(m => m.id === editingMemoryId);
                 if (existingMem?.ImagenURL) {
                     memoryData.ImagenURL = existingMem.ImagenURL;
-                } else { 
-                    isValid = false; 
+                } else {
+                    isValid = false;
                 }
-            } else { 
-                isValid = false; 
+            } else {
+                isValid = false;
             }
-            break; 
-        default: 
-            isValid = false; 
-            break; 
-    } 
-    
+            break;
+        default:
+            isValid = false;
+            break;
+    }
+
     if (!isValid) { statusDiv.textContent = 'Fill required fields or select a file.'; statusDiv.className = 'error'; return; }
-    
-    try { 
+
+    try {
         if (imageFileToUpload) {
             statusDiv.textContent = 'Uploading image...';
             const filePath = `images/${diaId}/${Date.now()}-${imageFileToUpload.name}`;
             const storageRef = ref(storage, filePath);
             const uploadTask = await uploadBytes(storageRef, imageFileToUpload);
             const downloadURL = await getDownloadURL(uploadTask.ref);
-            memoryData.ImagenURL = downloadURL; 
+            memoryData.ImagenURL = downloadURL;
             statusDiv.textContent = 'Image uploaded!';
         }
 
-        const memoriasRef = collection(db, "Dias", diaId, "Memorias"); 
-        
-        if (editingMemoryId) { 
+        const memoriasRef = collection(db, "Dias", diaId, "Memorias");
+
+        if (editingMemoryId) {
             statusDiv.textContent = 'Updating...';
-            const memRef = doc(db, "Dias", diaId, "Memorias", editingMemoryId); 
-            await updateDoc(memRef, memoryData); 
-            statusDiv.textContent = 'Updated!'; 
-            statusDiv.className = 'success'; 
-        } else { 
+            const memRef = doc(db, "Dias", diaId, "Memorias", editingMemoryId);
+            await updateDoc(memRef, memoryData);
+            statusDiv.textContent = 'Updated!';
+            statusDiv.className = 'success';
+        } else {
             statusDiv.textContent = 'Saving...';
-            memoryData.Creado_En = Timestamp.now(); 
-            await addDoc(memoriasRef, memoryData); 
-            statusDiv.textContent = 'Saved!'; 
-            statusDiv.className = 'success'; 
-        } 
-        
+            memoryData.Creado_En = Timestamp.now();
+            await addDoc(memoriasRef, memoryData);
+            statusDiv.textContent = 'Saved!';
+            statusDiv.className = 'success';
+        }
+
         const diaRef = doc(db, "Dias", diaId);
         await updateDoc(diaRef, { hasMemories: true });
         const dayIndex = allDaysData.findIndex(d => d.id === diaId);
         if (dayIndex !== -1) allDaysData[dayIndex].hasMemories = true;
-        
-        dibujarMesActual(); 
 
-        resetMemoryFormUnified(); 
-        await cargarYMostrarMemorias(diaId, 'edit-memorias-list'); 
-        setTimeout(() => { if (statusDiv) statusDiv.textContent = '' }, 2000); 
-        
-        const previewList = document.getElementById('preview-memorias-list'); 
-        const previewModal = document.getElementById('preview-modal'); 
-        if(previewList && currentlyOpenDay?.id === diaId && previewModal?.style.display === 'flex') { 
-            await cargarYMostrarMemorias(diaId, 'preview-memorias-list'); 
-        } 
-        updateTodayMemorySpotlight(); 
-    } catch (e) { 
-        console.error("Save/Update Error:", e); 
-        statusDiv.textContent = `Error: ${e.message}`; 
-        statusDiv.className = 'error'; 
+        dibujarMesActual();
+
+        resetMemoryFormUnified();
+        await cargarYMostrarMemorias(diaId, 'edit-memorias-list');
+        setTimeout(() => { if (statusDiv) statusDiv.textContent = '' }, 2000);
+
+        const previewList = document.getElementById('preview-memorias-list');
+        const previewModal = document.getElementById('preview-modal');
+        if(previewList && currentlyOpenDay?.id === diaId && previewModal?.style.display === 'flex') {
+            await cargarYMostrarMemorias(diaId, 'preview-memorias-list');
+        }
+        updateTodayMemorySpotlight();
+    } catch (e) {
+        console.error("Save/Update Error:", e);
+        statusDiv.textContent = `Error: ${e.message}`;
+        statusDiv.className = 'error';
     }
 }
 
-function confirmDeleteMemoriaUnified(diaId, memoriaId, displayInfo) { 
+function confirmDeleteMemoriaUnified(diaId, memoriaId, displayInfo) {
     const d=document.getElementById('confirm-delete-dialog'),y=document.getElementById('confirm-delete-yes'),t=document.getElementById('confirm-delete-text');
-    if (!d || !y || !t) return; 
-    const p=displayInfo?(displayInfo.length>50?displayInfo.substring(0,47)+'...':displayInfo):'this memory'; 
-    t.textContent=`Delete "${p}"?`; 
-    d.style.display='block'; 
-    const m=document.querySelector('#edit-add-modal .modal-content'); 
-    if(m&&!m.contains(d)) m.appendChild(d); 
-    y.onclick=null; 
-    y.onclick=async()=>{d.style.display='none';await deleteMemoriaUnified(diaId,memoriaId);}; 
+    if (!d || !y || !t) return;
+    const p=displayInfo?(displayInfo.length>50?displayInfo.substring(0,47)+'...':displayInfo):'this memory';
+    t.textContent=`Delete "${p}"?`;
+    d.style.display='block';
+    const m=document.querySelector('#edit-add-modal .modal-content');
+    if(m&&!m.contains(d)) m.appendChild(d);
+    y.onclick=null;
+    y.onclick=async()=>{d.style.display='none';await deleteMemoriaUnified(diaId,memoriaId);};
 }
 
-async function deleteMemoriaUnified(diaId, memoriaId) { 
-    const s=document.getElementById('memoria-status'); 
-    if (!s) return; 
-    s.textContent='Deleting...'; 
-    s.className=''; 
+async function deleteMemoriaUnified(diaId, memoriaId) {
+    const s=document.getElementById('memoria-status');
+    if (!s) return;
+    s.textContent='Deleting...';
+    s.className='';
     try{
-        const r=doc(db,"Dias",diaId,"Memorias",memoriaId); 
-        await deleteDoc(r); 
+        const r=doc(db,"Dias",diaId,"Memorias",memoriaId);
+        await deleteDoc(r);
 
         const memoriasRef = collection(db, "Dias", diaId, "Memorias");
         const snapshot = await getDocs(memoriasRef);
@@ -804,75 +796,75 @@ async function deleteMemoriaUnified(diaId, memoriaId) {
             const dayIndex = allDaysData.findIndex(d => d.id === diaId);
             if (dayIndex !== -1) allDaysData[dayIndex].hasMemories = false;
         }
-        
+
         dibujarMesActual();
 
-        s.textContent='Deleted!'; 
-        s.className='success'; 
-        currentMemories=currentMemories.filter(m=>m.id!==memoriaId); 
-        await cargarYMostrarMemorias(diaId,'edit-memorias-list'); 
-        setTimeout(()=>{ if (s) s.textContent='' },2000); 
-        
-        const pL=document.getElementById('preview-memorias-list'),pM=document.getElementById('preview-modal'); 
+        s.textContent='Deleted!';
+        s.className='success';
+        currentMemories=currentMemories.filter(m=>m.id!==memoriaId);
+        await cargarYMostrarMemorias(diaId,'edit-memorias-list');
+        setTimeout(()=>{ if (s) s.textContent='' },2000);
+
+        const pL=document.getElementById('preview-memorias-list'),pM=document.getElementById('preview-modal');
         if(pL&&currentlyOpenDay?.id===diaId&&pM?.style.display==='flex'){
             await cargarYMostrarMemorias(diaId,'preview-memorias-list');
-        } 
-        updateTodayMemorySpotlight(); 
+        }
+        updateTodayMemorySpotlight();
     } catch(e){
-        console.error("Delete Error:",e); 
-        s.textContent=`Error: ${e.message}`; 
+        console.error("Delete Error:",e);
+        s.textContent=`Error: ${e.message}`;
         s.className='error';
-    } 
+    }
 }
-function resetMemoryFormUnified() { 
-    editingMemoryId=null; 
-    const f=document.getElementById('memory-form'); 
+function resetMemoryFormUnified() {
+    editingMemoryId=null;
+    const f=document.getElementById('memory-form');
     if(f){
-        f.reset(); 
-        const b=document.getElementById('save-memoria-btn'); 
-        if(b){b.textContent='Add Memory';b.classList.remove('update-mode');} 
-        const s=document.getElementById('memoria-status'); if(s)s.textContent=''; 
-        
+        f.reset();
+        const b=document.getElementById('save-memoria-btn');
+        if(b){b.textContent='Add Memory';b.classList.remove('update-mode');}
+        const s=document.getElementById('memoria-status'); if(s)s.textContent='';
+
         const itunesResults = document.getElementById('itunes-results');
         const placeResults = document.getElementById('place-results');
         const imageStatus = document.getElementById('image-upload-status');
-        
-        if(itunesResults) itunesResults.innerHTML=''; 
-        if(placeResults) placeResults.innerHTML=''; 
-        if(imageStatus) imageStatus.textContent=''; 
-        
-        selectedPlace=null; 
-        selectedMusicTrack=null; 
-    
+
+        if(itunesResults) itunesResults.innerHTML='';
+        if(placeResults) placeResults.innerHTML='';
+        if(imageStatus) imageStatus.textContent='';
+
+        selectedPlace=null;
+        selectedMusicTrack=null;
+
         if (mapMarker) { mapMarker.remove(); mapMarker = null; }
-        if (map) { map.setView([40.41, -3.70], 5); } 
-    
+        if (map) { map.setView([40.41, -3.70], 5); }
+
         handleMemoryTypeChangeUnified();
-    } 
+    }
 }
 
-async function guardarNombreEspecial(diaId, nuevoNombre) { 
-    const s=document.getElementById('save-status'); 
-    if (!s) return; 
+async function guardarNombreEspecial(diaId, nuevoNombre) {
+    const s=document.getElementById('save-status');
+    if (!s) return;
     try{
-        s.textContent="Saving..."; 
-        s.className=''; 
-        const r=doc(db,"Dias",diaId); 
-        const v=nuevoNombre||"Unnamed Day"; 
-        await updateDoc(r,{Nombre_Especial:v}); 
-        const i=allDaysData.findIndex(d=>d.id===diaId); 
-        if(i!==-1)allDaysData[i].Nombre_Especial=v; 
-        s.textContent="Name Saved!"; 
-        s.className='success'; 
-        if(currentlyOpenDay&&currentlyOpenDay.id===diaId)currentlyOpenDay.Nombre_Especial=v; 
-        setTimeout(()=>{ if (s) s.textContent=''; dibujarMesActual(); },1200); 
-        const pT=document.getElementById('preview-title'),pM=document.getElementById('preview-modal'); 
-        if(pT&&currentlyOpenDay&&currentlyOpenDay.id===diaId&&pM?.style.display==='flex') pT.textContent=`${currentlyOpenDay.Nombre_Dia} ${v!=='Unnamed Day'?'('+v+')':''}`; 
+        s.textContent="Saving...";
+        s.className='';
+        const r=doc(db,"Dias",diaId);
+        const v=nuevoNombre||"Unnamed Day";
+        await updateDoc(r,{Nombre_Especial:v});
+        const i=allDaysData.findIndex(d=>d.id===diaId);
+        if(i!==-1)allDaysData[i].Nombre_Especial=v;
+        s.textContent="Name Saved!";
+        s.className='success';
+        if(currentlyOpenDay&&currentlyOpenDay.id===diaId)currentlyOpenDay.Nombre_Especial=v;
+        setTimeout(()=>{ if (s) s.textContent=''; dibujarMesActual(); },1200);
+        const pT=document.getElementById('preview-title'),pM=document.getElementById('preview-modal');
+        if(pT&&currentlyOpenDay&&currentlyOpenDay.id===diaId&&pM?.style.display==='flex') pT.textContent=`${currentlyOpenDay.Nombre_Dia} ${v!=='Unnamed Day'?'('+v+')':''}`;
     } catch(e){
-        s.textContent=`Error: ${e.message}`; 
-        s.className='error'; 
+        s.textContent=`Error: ${e.message}`;
+        s.className='error';
         console.error(e);
-    } 
+    }
 }
 
 // --- Expose functions needed globally ---
@@ -881,7 +873,7 @@ window.buscarBSOUnified = buscarBSOUnified;
 window.buscarLugarUnified = buscarLugarUnified;
 window.handleMemoryFormSubmit = handleMemoryFormSubmit;
 window.cerrarModalPreview = cerrarModalPreview;
-window.abrirModalEdicion = abrirModalEdicion; 
+window.abrirModalEdicion = abrirModalEdicion;
 window.cerrarModalEdicion = cerrarModalEdicion;
 window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
