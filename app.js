@@ -1,4 +1,4 @@
-/* app.js - v10.9 - Reverted Load Logic, kept JIT Elements */
+/* app.js - v10.10 - Debug Logging */
 
 // Importaciones
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -56,7 +56,7 @@ async function handleLogout() { try { await signOut(auth); } catch (error) { con
 
 // --- Check/Repair DB ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v10.9...");
+    console.log("Starting Check/Repair v10.10..."); // Asegúrate que esta versión coincide
 
     const appContent = document.getElementById("app-content");
 
@@ -69,7 +69,6 @@ async function checkAndRunApp() {
     appContent.innerHTML = "<p>Verifying database...</p>";
     try {
         const diasRef = collection(db, "Dias");
-        // ¡REVERTIDO! Cargar datos solo para contar
         const checkSnapshot = await getDocs(diasRef);
         const currentDocCount = checkSnapshot.size;
 
@@ -77,12 +76,10 @@ async function checkAndRunApp() {
         if (currentDocCount < 366) {
             console.warn(`Repairing... Found ${currentDocCount} docs, expected 366.`);
              await generateCleanDatabase();
-             // No necesitamos recargar aquí, loadDataAndDrawCalendar lo hará
         } else {
             console.log("DB verified (>= 366 days).");
         }
 
-        // ¡REVERTIDO! loadDataAndDrawCalendar cargará sus propios datos
         await loadDataAndDrawCalendar();
 
         const refreshBtn = document.getElementById('refresh-btn');
@@ -90,7 +87,6 @@ async function checkAndRunApp() {
         updateLoginUI(auth.currentUser);
     } catch (e) { appContent.innerHTML = `<p class="error">Critical error during startup: ${e.message}</p>`; console.error(e); }
 }
-
 
 async function generateCleanDatabase() {
     const appContent = document.getElementById("app-content");
@@ -105,35 +101,59 @@ async function generateCleanDatabase() {
 // --- Load/Draw Calendar ---
 // ¡REVERTIDO! Quitar el parámetro diasSnapshot
 async function loadDataAndDrawCalendar() {
-    console.log("Loading data...");
+    // Añadido Log 1
+    console.log("Entering loadDataAndDrawCalendar function...");
     const appContent = document.getElementById("app-content");
-    if (!appContent) { console.error("#app-content not found in loadDataAndDrawCalendar"); return; }
+    if (!appContent) {
+        console.error("#app-content not found in loadDataAndDrawCalendar");
+        return;
+    }
 
-    appContent.innerHTML = "<p>Loading calendar...</p>";
+    appContent.innerHTML = "<p>Loading calendar...</p>"; // <-- Se queda aquí
     try {
+        // Añadido Log 2
+        console.log("Attempting to fetch 'Dias' collection from Firestore...");
         // ¡REVERTIDO! Cargar los datos aquí de nuevo
         const diasSnapshot = await getDocs(collection(db, "Dias"));
+        // Añadido Log 3
+        console.log(`Firestore fetch successful. Received ${diasSnapshot.size} documents.`);
+
         allDaysData = [];
         diasSnapshot.forEach((doc) => {
             if (doc.id?.length === 5 && doc.id.includes('-')) allDaysData.push({ id: doc.id, ...doc.data() });
         });
         if (allDaysData.length === 0) throw new Error("Database empty or invalid after loading.");
-        console.log(`Loaded ${allDaysData.length} valid days.`);
+        // Añadido Log 4
+        console.log(`Processed ${allDaysData.length} valid day documents.`);
+
         allDaysData.sort((a, b) => a.id.localeCompare(b.id));
-        console.log("Data sorted. First:", allDaysData[0]?.id, "Last:", allDaysData[allDaysData.length - 1]?.id);
+        console.log("Data sorted.");
 
+        // Añadido Log 5
+        console.log("Calling dibujarMesActual...");
         await dibujarMesActual();
+        // Añadido Log 6
+        console.log("Returned from dibujarMesActual.");
 
+        // Añadido Log 7
+        console.log("Calling configurarNavegacion...");
         configurarNavegacion();
+         // Añadido Log 8
+        console.log("Calling configurarFooter...");
         configurarFooter();
+        // Añadido Log 9
+        console.log("loadDataAndDrawCalendar finished successfully.");
 
     } catch (e) {
-        appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`;
-        console.error("Error in loadDataAndDrawCalendar:", e);
+        // Añadido Log Error
+        console.error("Error occurred within loadDataAndDrawCalendar:", e);
+        if (appContent) { // Asegurarse que appContent existe antes de usarlo
+             appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`;
+        }
     }
 }
 
-// (El resto de funciones permanecen igual que en v10.8)
+
 function configurarNavegacion() {
     try {
         const prevBtn = document.getElementById("prev-month");
@@ -646,6 +666,7 @@ async function handleMemoryFormSubmit(event) {
         return;
     }
 
+    // Bug Fix: Check year only if visible
     if (daySelectionVisible && yearInput) {
         const year = parseInt(yearInput.value, 10);
         if (!year || isNaN(year) || year < 1800 || year > new Date().getFullYear() + 1) {
