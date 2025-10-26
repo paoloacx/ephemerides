@@ -13,12 +13,11 @@
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
     <!-- Tu CSS -->
-    <link rel="stylesheet" href="style.css?v=10.6"> <!-- Asegúrate que la versión es la correcta si has hecho cambios -->
+    <link rel="stylesheet" href="style.css?v=10.6"> <!-- Asegúrate que la versión CSS es la correcta -->
     <style>
         body, button, input, textarea, select {
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
         }
-        /* Estilo para el mapa Leaflet */
         #leaflet-map { height: 200px; width: 100%; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; display: none; }
     </style>
 </head>
@@ -77,8 +76,9 @@
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
 
-    <!-- ¡MOVIDO AQUÍ! Tu script principal -->
-    <script type="module" src="app.js?v=10.13"></script> <!-- Actualiza la versión -->
+    <!-- ¡CAMBIO! Scripts al final del body -->
+    <script type="module" src="firebase-config.js"></script> <!-- Primero la config -->
+    <script type="module" src="app.js?v=10.16"></script> <!-- Luego tu app, actualiza versión -->
 
 </body>
 </html>
