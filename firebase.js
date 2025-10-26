@@ -1,12 +1,14 @@
-/* firebase.js */
-/* Este módulo se encarga de inicializar Firebase y exportar las instancias */
+/*
+ * firebase.js (v2.0 - Corregido)
+ * Módulo de inicialización de Firebase.
+ * Exporta las instancias 'db' y 'auth'.
+ */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-// import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
-// --- Firebase Config ---
+// --- Configuración ---
 const firebaseConfig = {
   apiKey: "AIzaSyBrd-8qaBfSplBjj74MNuKP8UWYmr8RaJA",
   authDomain: "ephemerides-2005.firebaseapp.com",
@@ -18,11 +20,17 @@ const firebaseConfig = {
 };
 
 // --- Inicialización ---
+// Inicializamos Firebase aquí, al cargar el módulo.
 const app = initializeApp(firebaseConfig);
 
-// --- Exportaciones ---
-// Exportamos las instancias para que otros módulos las usen
+// Exportamos las instancias que otros módulos usarán
 export const db = getFirestore(app);
 export const auth = getAuth(app);
-// export const storage = getStorage(app);
+
+// CORRECCIÓN: Exportamos la función 'initFirebase' que main.js espera.
+// Ya no necesita hacer nada (la app se inicializa arriba),
+// pero su existencia evita el error de importación.
+export function initFirebase() {
+    console.log("Firebase module initialized.");
+}
 
