@@ -1,13 +1,12 @@
-/* style.css - v13.0 - Tema Lino Oscuro (Revertido) */
+/* style.css - v14.0 - v2.0 Beta: Lino Oscuro + Modales Beige + Banda Roja Hoy */
 
 body {
-    margin: 0; padding: 0 0 90px 0; /* Footer height */
-    /* ¡CAMBIO! Revertido al fondo de lino oscuro */
+    margin: 0; padding: 0 0 90px 0;
     background-image: url('plain-linen.jpeg');
-    background-color: #333; /* Fallback color oscuro */
+    background-color: #333;
     background-repeat: repeat;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    color: #eee; /* Texto claro por defecto */
+    color: #eee;
     font-size: 16px;
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
@@ -15,7 +14,7 @@ body {
 
 button, input, textarea, select { font-family: inherit; font-size: inherit; }
 
-header { /* Sin cambios */
+header {
     background: linear-gradient(to bottom, #bcc6d1 0%, #a4b0bd 50%, #909dad 51%, #a4b0bd 100%);
     border-bottom: 1px solid #6d6d6d; padding: 5px 10px; text-align: center;
     box-shadow: 0 1px 2px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 10;
@@ -31,16 +30,15 @@ header h1 { margin: 0; font-size: 20px; color: #ffffff; font-weight: bold; text-
 .header-login-btn { background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0; display: flex; align-items: center; justify-content: center; }
 .header-login-btn:hover { opacity: 1; } .header-login-btn svg { width: 18px; height: 18px; } .header-login-btn img { width: 24px; height: 24px; border-radius: 50%; }
 
-.month-nav { /* ¡CAMBIO! Adaptado a fondo oscuro */
+.month-nav {
     display: flex; justify-content: space-between; align-items: center;
     padding: 8px 15px; 
-    background-color: #444; /* Nav oscuro */
+    background-color: #444;
     border-bottom: 1px solid #222;
     position: sticky; top: 45px; z-index: 9;
 }
 #month-name-display { font-size: 17px; font-weight: bold; color: #fff; text-align: center; flex-grow: 1; }
 
-/* --- Aqua Button Style (Sin cambios) --- */
 .aqua-button {
     background: linear-gradient(to bottom, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%);
     border: 1px solid #3c82b1 !important; border-radius: 15px !important;
@@ -54,24 +52,22 @@ header h1 { margin: 0; font-size: 20px; color: #ffffff; font-weight: bold; text-
 .aqua-button:hover { background: linear-gradient(to bottom, #b8dcf4 0%, #8cc8ec 50%, #6fbde4 51%, #5fb9e2 100%) !important; }
 .aqua-button:active { background: linear-gradient(to top, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%) !important; box-shadow: inset 0 2px 3px rgba(0,0,0,0.3) !important; transform: translateY(1px); }
 
-/* --- Main Content Layout --- */
 main { 
     padding: 10px; 
     max-width: 600px;
     margin: 0 auto;
 }
 
-/* --- Spotlight "Today" (Adaptado a fondo oscuro) --- */
 #spotlight-date-header {
     font-size: 18px;
     font-weight: bold;
-    color: #eee; /* Texto claro */
+    color: #eee;
     text-align: center;
     margin: 10px 0 8px 0;
-    text-shadow: 0 1px 0 rgba(0,0,0,0.7); /* Sombra oscura */
+    text-shadow: 0 1px 0 rgba(0,0,0,0.7);
 }
 #today-memory-spotlight {
-    background-color: #555; /* Fondo oscuro */
+    background-color: #555;
     border: 1px solid #777;
     border-radius: 10px;
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.1);
@@ -81,7 +77,7 @@ main {
     display: none;
 }
 #today-memory-spotlight.has-memory {
-     background-color: #666; /* Un poco más claro */
+     background-color: #666;
 }
 
 .spotlight-slide { }
@@ -89,9 +85,9 @@ main {
     display: flex;
     align-items: center;
     padding: 10px 0;
-    border-bottom: 1px solid #444; /* Borde oscuro */
+    border-bottom: 1px solid #444;
     font-size: 14px;
-    color: #fff; /* Texto claro */
+    color: #fff;
 }
 .spotlight-memory-item:last-child {
     border-bottom: none;
@@ -115,7 +111,7 @@ main {
 }
 .no-memory-message {
     font-size: 14px;
-    color: #aaa; /* Texto gris claro */
+    color: #aaa;
     text-align: center;
     padding: 15px 0;
     font-style: italic;
@@ -130,7 +126,6 @@ main {
     padding-bottom: 20px;
 }
 .dia-btn {
-    /* Botones claros sobre fondo oscuro */
     background: #eee;
     border: 1px solid #999;
     border-radius: 6px;
@@ -138,7 +133,7 @@ main {
     text-align: center;
     cursor: pointer;
     box-shadow: 0 1px 1px rgba(0,0,0,0.1);
-    color: #333; /* Texto oscuro en botón claro */
+    color: #333;
     width: 100%;
     aspect-ratio: 1 / 1;
     display: flex;
@@ -147,13 +142,14 @@ main {
     align-items: center;
     position: relative;
     transition: background-color 0.1s;
+    overflow: hidden; /* Asegura que el ::before no se salga */
 }
 .dia-btn:active { 
     background-color: #ddd; 
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); 
 }
 .dia-btn.tiene-memorias {
-    background: #fff; /* Destaca más */
+    background: #fff;
     font-weight: bold;
 }
 .dia-btn.tiene-memorias::after {
@@ -172,16 +168,38 @@ main {
 .dia-numero {
     font-size: 28px;
     font-weight: 500;
-    color: #333; /* Texto oscuro en botón claro */
+    color: #333;
     line-height: 1;
+    transition: transform 0.1s ease-out, color 0.1s ease-out; /* Animación suave */
 }
 .dia-btn::before {
-    display: none;
+    display: none; /* Oculto por defecto */
 }
 .dia-btn .nombre-especial { display: none; }
 
+/* ¡NUEVO! Estilo para el día de HOY (Idea 4) */
+.dia-btn-today {
+    background: #fff; /* Fondo blanco para que destaque la banda */
+}
+.dia-btn-today::before {
+    /* ¡Recuperamos la banda roja SOLO para hoy! */
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 10px; /* Una banda más sutil */
+    background: linear-gradient(to bottom, #e57373 0%, #c62828 100%);
+    border-bottom: 1px solid #a00;
+    display: block; /* Asegurarse de que se muestra */
+}
+.dia-btn-today .dia-numero {
+    color: #c62828; /* Número en rojo */
+    font-weight: bold;
+    /* Mover el número un poco hacia abajo para que no choque con la banda */
+    transform: translateY(4px);
+}
 
-/* --- Modales (Adaptados a fondo oscuro) --- */
+
+/* --- Modales (Adaptados a fondo beige) --- */
 .modal-preview, .modal-edit {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
     display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; box-sizing: border-box;
@@ -190,10 +208,10 @@ main {
 .modal-preview.visible, .modal-edit.visible { display: flex; opacity: 1; transform: scale(1); }
 
 .modal-preview-content, .modal-edit .modal-content {
-    /* ¡CAMBIO! Revertido a lino oscuro */
-    background-image: url('plain-linen.jpeg');
-    background-color: #444; 
-    color: #fff; /* Texto claro en modales */
+    /* ¡CAMBIO! Fondo de papel beige */
+    background-image: url('beige-paper.jpg');
+    background-color: #f5f5dc; /* Fallback beige */
+    color: #333; /* Texto oscuro por defecto */
     padding: 0; border-radius: 10px; width: 100%;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #888;
     max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
@@ -207,7 +225,7 @@ main {
 }
 
 
-/* --- Modal Preview (Adaptado a fondo oscuro) --- */
+/* --- Modal Preview (Adaptado a fondo beige) --- */
 .modal-preview-content {
     max-width: 600px;
     min-height: 450px;
@@ -217,39 +235,39 @@ main {
 }
 .modal-preview-header {
     display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 1px solid rgba(255,255,255,0.2);
+    border-bottom: 1px solid rgba(0,0,0,0.2);
     padding: 15px 20px 10px 20px;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 0.4); /* Fondo claro semi-transparente */
 }
-.modal-preview-header h3 { margin: 0; font-size: 19px; font-weight: bold; color: #fff; text-align: left; flex-grow: 1; }
-#edit-from-preview-btn { background: none; border: none; padding: 5px; cursor: pointer; color: #ccc; line-height: 0; opacity: 0.8; }
-#edit-from-preview-btn:hover { opacity: 1; color: #fff; } #edit-from-preview-btn svg { width: 24px; height: 24px; }
+.modal-preview-header h3 { margin: 0; font-size: 19px; font-weight: bold; color: #333; text-align: left; flex-grow: 1; }
+#edit-from-preview-btn { background: none; border: none; padding: 5px; cursor: pointer; color: #555; line-height: 0; opacity: 0.8; }
+#edit-from-preview-btn:hover { opacity: 1; color: #000; } #edit-from-preview-btn svg { width: 24px; height: 24px; }
 .modal-preview-memorias {
     flex-grow: 1; overflow-y: auto; text-align: left;
     margin: 0; padding: 15px 20px;
 }
-.modal-preview-memorias h4 { margin: 0 0 10px 0; font-size: 17px; color: #eee; font-weight: bold; }
+.modal-preview-memorias h4 { margin: 0 0 10px 0; font-size: 17px; color: #444; font-weight: bold; }
 #preview-memorias-list {
-    background-color: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 5px; min-height: 40px;
+    background-color: rgba(255,255,255,0.7); /* Fondo de lista claro */
+    border: 1px solid rgba(0,0,0,0.1); padding: 10px; border-radius: 5px; min-height: 40px;
 }
 #close-preview-btn { margin: 15px 20px; align-self: center;}
 
 
-/* --- Unified Edit/Add Modal (Adaptado a fondo oscuro) --- */
+/* --- Unified Edit/Add Modal (Adaptado a fondo beige) --- */
 .modal-edit .modal-content { max-width: 480px; }
 .modal-section { 
     padding: 15px 20px; 
-    border-bottom: 1px solid rgba(255,255,255,0.15);
-    background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid rgba(0,0,0,0.15);
+    background: rgba(255,255,255,0.3); /* Fondo de sección claro */
 }
 .modal-section:first-child {
     padding-top: 20px;
 }
 .modal-section:last-child { border-bottom: none; padding-bottom: 20px; }
-.modal-edit .modal-content h3 { font-size: 18px; font-weight: bold; margin: 0 0 8px 0; text-align: center; color: #fff;}
-.modal-edit .modal-content p.section-description { font-size: 14px; margin: 0 0 10px 0; text-align: center; color: #ccc; }
-.modal-edit .modal-content label { display: block; font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 4px; color: #eee; text-align: left;}
+.modal-edit .modal-content h3 { font-size: 18px; font-weight: bold; margin: 0 0 8px 0; text-align: center; color: #333;}
+.modal-edit .modal-content p.section-description { font-size: 14px; margin: 0 0 10px 0; text-align: center; color: #555; }
+.modal-edit .modal-content label { display: block; font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 4px; color: #444; text-align: left;}
 
 .modal-edit .modal-content input[type="text"],
 .modal-edit .modal-content input[type="date"],
@@ -260,131 +278,130 @@ main {
 .modal-edit .modal-content textarea {
     width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #aaa; border-radius: 5px;
     box-sizing: border-box; font-size: 14px; 
-    background-color: #fff; /* Inputs claros */
-    color: #000; /* Texto oscuro en inputs */
+    background-color: #fff;
+    color: #000;
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); font-family: inherit;
     -webkit-appearance: none;
 }
 .modal-edit .modal-content textarea { height: 70px; resize: vertical; }
 .modal-section #save-name-btn { display: block; width: 100%; margin-top: 10px; }
 
-/* Main buttons container at bottom */
+/* Main buttons container at bottom (Adaptado a fondo claro) */
 .modal-main-buttons { 
     display: flex; 
-    border-top: 1px solid #555; 
-    background-color: #222; 
+    border-top: 1px solid #ababab; 
+    background-color: #f0f0f0; 
     margin-top: auto; flex-shrink: 0; 
 }
 .modal-main-buttons button { 
     flex: 1; background: transparent; border: none; 
-    border-left: 1px solid #555; 
+    border-left: 1px solid #ababab; 
     padding: 12px 10px; font-size: 16px; 
-    color: #009aff; /* Azul más brillante */
+    color: #007aff;
     cursor: pointer; margin: 0; border-radius: 0; 
     box-shadow: none; text-shadow: none; font-weight: bold; 
 }
 .modal-main-buttons button:first-child { border-left: none; }
-.modal-main-buttons button:active { background-color: #444; }
-.modal-main-buttons #close-edit-add-btn { color: #aaa; font-weight: normal; }
-.modal-main-buttons #close-edit-add-btn:active { color: #009aff; }
+.modal-main-buttons button:active { background-color: #d9d9d9; }
+.modal-main-buttons #close-edit-add-btn { color: #555; font-weight: normal; }
+.modal-main-buttons #close-edit-add-btn:active { color: #007aff; }
 
-/* Memory List and Form Styles (Adaptado a fondo oscuro) */
+/* Memory List and Form Styles (Adaptado a fondo beige) */
 #save-status, #memoria-status { font-size: 12px; margin-top: 8px; min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px; }
 .success { color: #4CAF50; } .error { color: #F44336; }
 .memorias-section { text-align: left; }
-.memorias-section h4 { margin: 0 0 10px 0; font-size: 16px; color: #ccc; }
+.memorias-section h4 { margin: 0 0 10px 0; font-size: 16px; color: #555; }
 #edit-memorias-list { 
     max-height: 180px; overflow-y: auto; margin-bottom: 15px; 
-    border: 1px solid #777; 
-    background-color: #222; /* Fondo de lista oscuro */
+    border: 1px solid #ccc; 
+    background-color: #fff;
     padding: 8px; border-radius: 5px; min-height: 40px; 
 }
 
 .memoria-item {
     font-size: 13px; padding: 10px 8px; 
-    border-bottom: 1px solid #444;
-    background-color: #333; /* Items oscuros */
+    border-bottom: 1px solid #eee;
+    background-color: #fff;
     display: flex; justify-content: space-between; align-items: center;
     border-radius: 3px; margin-bottom: 5px;
 }
 .memoria-item:last-child { border-bottom: none; margin-bottom: 0; }
 .memoria-item-content { flex-grow: 1; margin-right: 5px; }
-.memoria-item small { display: block; color: #ccc; margin-bottom: 3px; font-weight: bold; font-size: 11px; }
-.memoria-artwork { width: 35px; height: 35px; margin-right: 8px; border-radius: 3px; object-fit: cover; flex-shrink: 0; border: 1px solid #555; }
+.memoria-item small { display: block; color: #555; margin-bottom: 3px; font-weight: bold; font-size: 11px; }
+.memoria-artwork { width: 35px; height: 35px; margin-right: 8px; border-radius: 3px; object-fit: cover; flex-shrink: 0; border: 1px solid #ddd; }
 .memoria-actions { display: flex; }
-.memoria-actions button { background: none; border: none; padding: 3px 5px; margin-left: 4px; cursor: pointer; font-size: 16px; color: #aaa; line-height: 0; opacity: 0.8; }
+.memoria-actions button { background: none; border: none; padding: 3px 5px; margin-left: 4px; cursor: pointer; font-size: 16px; color: #555; line-height: 0; opacity: 0.8; }
 .memoria-actions button svg { width: 16px; height: 16px; }
-.memoria-actions button:hover { opacity: 1; color: #fff; }
-.delete-btn { color: #ff6b6b; } .delete-btn:hover { color: #ff4040; }
+.memoria-actions button:hover { opacity: 1; color: #000; }
+.delete-btn { color: #d15047; } .delete-btn:hover { color: #a00; }
 #memory-form { margin-top: 15px; }
 .add-memory-input-group { display: none; margin-bottom: 10px; }
 .add-memory-input-group label { margin-top: 8px; }
 #memory-form button.aqua-button { width: 100%; margin-top: 10px; }
-.list-placeholder { font-style: italic; color: #888; font-size: 13px; text-align: center; padding: 10px 0; }
+.list-placeholder { font-style: italic; color: #777; font-size: 13px; text-align: center; padding: 10px 0; }
 
 
-/* Confirmación de Borrado (Adaptado a fondo oscuro) */
+/* Confirmación de Borrado (Adaptado a fondo beige) */
 #confirm-delete-dialog { 
     position: absolute; 
-    background-color: rgba(50, 50, 50, 0.95); 
+    background-color: rgba(247, 247, 247, 0.95); 
     border: 1px solid #888; 
     border-radius: 8px; padding: 20px; 
     box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1002; 
     text-align: center; max-width: 90%; top: 50%; left: 50%; 
     transform: translate(-50%, -50%); display: none; 
 }
-#confirm-delete-dialog p { margin: 0 0 20px 0; font-size: 15px; color: #fff; }
+#confirm-delete-dialog p { margin: 0 0 20px 0; font-size: 15px; color: #333; }
 #confirm-delete-dialog button { margin: 0 15px; }
 #confirm-delete-yes { background: linear-gradient(to bottom, #ff8a80 0%, #ff5252 100%); border: 1px solid #c62828; color: white; text-shadow: 0 -1px 0 rgba(0,0,0,0.3); }
 #confirm-delete-yes:hover { background: linear-gradient(to bottom, #ff9e9e 0%, #ff6b6b 100%);}
 #confirm-delete-yes:active { background: linear-gradient(to top, #ff8a80 0%, #ff5252 100%);}
 
-/* Music/Place Results Styling (Adaptado a fondo oscuro) */
+/* Music/Place Results Styling (Adaptado a fondo beige) */
 #itunes-results, #place-results { 
     max-height: 150px; overflow-y: auto; 
-    border: 1px solid #777; 
+    border: 1px solid #ccc; 
     border-radius: 3px; margin-top: 8px; 
-    background: #333; 
+    background: white; 
     margin-bottom: 10px; 
 }
 .itunes-track, .place-result { 
     display: flex; align-items: center; padding: 8px; 
-    border-bottom: 1px solid #444; 
+    border-bottom: 1px solid #eee; 
     cursor: pointer; font-size: 13px; 
-    color: #fff;
+    color: #333;
 }
 .itunes-track:last-child, .place-result:last-child { border-bottom: none; }
-.itunes-track:hover, .place-result:hover { background-color: #444; }
+.itunes-track:hover, .place-result:hover { background-color: #f0f8ff; }
 .itunes-artwork { width: 45px; height: 45px; margin-right: 10px; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
 .itunes-track.no-artwork .itunes-artwork { display: none; }
 .itunes-track-info { flex-grow: 1; }
 .itunes-track-name { font-weight: bold; font-size: 13px; }
-.itunes-track-artist { color: #bbb; font-size: 12px; }
-.itunes-track-select { margin-left: auto; color: #777; font-size: 18px; padding: 0 5px; }
-.itunes-track.selected, .place-result.selected { background-color: #2a5036 !important; font-weight: bold; }
+.itunes-track-artist { color: #555; font-size: 12px; }
+.itunes-track-select { margin-left: auto; color: #ccc; font-size: 18px; padding: 0 5px; }
+.itunes-track.selected, .place-result.selected { background-color: #e6ffed !important; font-weight: bold; }
 .place-result { font-size: 13px; }
 
-/* Estilos para el Mapa Leaflet (Adaptado a fondo oscuro) */
+/* Estilos para el Mapa Leaflet (Adaptado a fondo beige) */
 #leaflet-map {
     height: 180px;
     width: 100%;
     margin-top: 10px;
     border-radius: 5px;
-    border: 1px solid #888;
+    border: 1px solid #aaa;
     display: none;
 }
-/* Arreglar popups de Leaflet en tema oscuro */
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-    background: #333;
-    color: #fff;
+    background: #fff;
+    color: #333;
     box-shadow: 0 3px 14px rgba(0,0,0,0.4);
 }
 .leaflet-popup-close-button {
-    color: #fff !important;
-    text-indent: -9999px; /* Ocultar la 'x' si se ve mal */
+    color: #333 !important;
+    text-indent: -9999px;
 }
 .leaflet-container a.leaflet-popup-close-button {
-    color: #fff;
+    color: #333;
 }
 
 
@@ -409,7 +426,7 @@ main {
 .dock-button span { font-size: 13px; text-shadow: 0 1px 1px rgba(0,0,0,0.6); }
 
 /* General Link styling */
-a { color: #4dabf7; text-decoration: none; } /* Azul más brillante para fondo oscuro */
+a { color: #007aff; text-decoration: none; } /* Azul estándar iOS */
 a:hover { text-decoration: underline; }
 
 /* Utility Classes */
