@@ -1,10 +1,10 @@
-/* app.js - v10.13 - Reverted Load Logic + End-of-Body Script */
+/* app.js - v10.14 - Simplified Spotlight Query (No Index Needed) */
 
 // Importaciones
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
     getFirestore, collection, getDocs, doc, updateDoc,
-    writeBatch, setDoc, deleteDoc, Timestamp, query, orderBy, addDoc
+    writeBatch, setDoc, deleteDoc, Timestamp, query, orderBy, addDoc, limit // Añadir limit
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import {
     getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
@@ -28,7 +28,6 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 
 // --- Global Variables & Constants ---
-// Volvemos a asignar al inicio, confiando en que el script está al final del body
 const appContent = document.getElementById("app-content");
 const monthNameDisplayEl = document.getElementById("month-name-display");
 
@@ -39,12 +38,12 @@ let allDaysData = [];
 let currentMonthIndex = new Date().getMonth();
 let currentMemories = [];
 let editingMemoryId = null;
-let currentlyOpenDay = null; // Holds the full day object for the currently open modal
+let currentlyOpenDay = null;
 let selectedMusicTrack = null;
 let selectedPlace = null;
 let currentUser = null;
-let map = null; // Para la instancia de Leaflet
-let mapMarker = null; // Para el marcador de Leaflet
+let map = null;
+let mapMarker = null;
 
 // --- SVG Icons ---
 const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/></svg>`;
@@ -60,9 +59,8 @@ async function handleLogout() { try { await signOut(auth); } catch (error) { con
 
 // --- Check/Repair DB ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v10.13..."); // Asegúrate que esta versión coincide
+    console.log("Starting Check/Repair v10.14..."); // Actualizar versión
 
-    // Chequeo inicial crítico
     if (!appContent || !monthNameDisplayEl) {
         console.error("Error crítico: #app-content o #month-name-display son null al inicio.");
         document.body.innerHTML = "<p style='color:red; padding:20px;'>Error: HTML elements missing. Cannot start app.</p>";
@@ -102,41 +100,45 @@ async function generateCleanDatabase() {
 }
 
 // --- Load/Draw Calendar ---
-// Volvemos a la lógica de v10.9 (la de los logs)
 async function loadDataAndDrawCalendar() {
-    console.log("Log 1: Entering loadDataAndDrawCalendar function...");
+    console.log("Entering loadDataAndDrawCalendar...");
     if (!appContent) { console.error("#app-content is null in loadDataAndDrawCalendar"); return; }
 
-    appContent.innerHTML = "<p>Loading calendar...</p>"; // <-- Mensaje que se queda
+    appContent.innerHTML = "<p>Loading calendar...</p>";
     try {
-        console.log("Log 2: Attempting to fetch 'Dias' collection from Firestore...");
+        console.log("Attempting to fetch 'Dias' collection...");
         const diasSnapshot = await getDocs(collection(db, "Dias"));
-        console.log(`Log 3: Firestore fetch successful. Received ${diasSnapshot.size} documents.`);
+        console.log(`Firestore fetch successful. Received ${diasSnapshot.size} documents.`);
 
         allDaysData = [];
         diasSnapshot.forEach((doc) => {
             if (doc.id?.length === 5 && doc.id.includes('-')) allDaysData.push({ id: doc.id, ...doc.data() });
         });
         if (allDaysData.length === 0) throw new Error("Database empty or invalid after loading.");
-        console.log(`Log 4: Processed ${allDaysData.length} valid day documents.`);
+        console.log(`Processed ${allDaysData.length} valid day documents.`);
 
         allDaysData.sort((a, b) => a.id.localeCompare(b.id));
-        console.log("Log 4.5: Data sorted.");
+        console.log("Data sorted.");
 
-        console.log("Log 5: Calling dibujarMesActual...");
+        console.log("Calling dibujarMesActual...");
         await dibujarMesActual();
-        console.log("Log 6: Returned from dibujarMesActual.");
+        console.log("Returned from dibujarMesActual.");
 
-        console.log("Log 7: Calling configurarNavegacion...");
+        console.log("Calling configurarNavegacion...");
         configurarNavegacion();
-         console.log("Log 8: Calling configurarFooter...");
+         console.log("Calling configurarFooter...");
         configurarFooter();
-        console.log("Log 9: loadDataAndDrawCalendar finished successfully.");
+        console.log("loadDataAndDrawCalendar finished successfully.");
 
     } catch (e) {
-        console.error("Log Error: Error occurred within loadDataAndDrawCalendar:", e);
+        console.error("Error occurred within loadDataAndDrawCalendar:", e);
         if (appContent) {
-             appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`;
+             // Mostrar el error específico de Firebase si existe
+             if (e.code && e.code.startsWith('failed-precondition')) { // Código común para error de índice
+                appContent.innerHTML = `<p class="error">Error loading calendar data: Missing Firestore index. Please check browser console (F12) for a link to create it.</p>`;
+             } else {
+                appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`;
+             }
         }
     }
 }
@@ -145,6 +147,7 @@ async function loadDataAndDrawCalendar() {
 // --- Configuración ---
 function configurarNavegacion() {
     console.log("Attempting to configure navigation...");
+    // ... (código sin cambios) ...
     try {
         const prevBtn = document.getElementById("prev-month");
         const nextBtn = document.getElementById("next-month");
@@ -153,14 +156,14 @@ function configurarNavegacion() {
             prevBtn.onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); };
             console.log("Prev month button configured.");
         } else {
-            console.error("#prev-month button not found!"); // <-- Esto salía en los logs anteriores
+            console.error("#prev-month button not found!");
         }
 
         if (nextBtn) {
             nextBtn.onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); };
             console.log("Next month button configured.");
         } else {
-            console.error("#next-month button not found!"); // <-- Esto salía en los logs anteriores
+            console.error("#next-month button not found!");
         }
     } catch (e) {
         console.error("Error configuring navigation:", e);
@@ -169,6 +172,7 @@ function configurarNavegacion() {
 
 function configurarFooter() {
     console.log("Attempting to configure footer...");
+    // ... (código sin cambios) ...
     try {
         const btnHoy = document.getElementById('btn-hoy');
         const btnBuscar = document.getElementById('btn-buscar');
@@ -178,22 +182,22 @@ function configurarFooter() {
         if (btnHoy) {
             btnHoy.onclick = () => { const today = new Date(); const todayMonth = today.getMonth(); const todayDay = today.getDate(); const todayId = `${(todayMonth + 1).toString().padStart(2, '0')}-${todayDay.toString().padStart(2, '0')}`; const todayDia = allDaysData.find(d => d.id === todayId); if (todayDia) { if (currentMonthIndex !== todayMonth) { currentMonthIndex = todayMonth; dibujarMesActual(); setTimeout(() => abrirModalPreview(todayDia), 50); } else { abrirModalPreview(todayDia); } window.scrollTo(0, 0); } else { alert("Error: Could not find data for today."); } };
             console.log("Today button configured.");
-        } else { console.error("#btn-hoy not found!"); } // <-- Esto salía en los logs anteriores
+        } else { console.error("#btn-hoy not found!"); }
 
         if (btnBuscar) {
             btnBuscar.onclick = () => { const searchTerm = prompt("Search memories:"); if (searchTerm?.trim()) { buscarMemorias(searchTerm.trim().toLowerCase()); } };
              console.log("Search button configured.");
-        } else { console.error("#btn-buscar not found!"); } // <-- Esto salía en los logs anteriores
+        } else { console.error("#btn-buscar not found!"); }
 
         if (btnShuffle) {
             btnShuffle.onclick = () => { if (allDaysData.length > 0) { const randomIndex = Math.floor(Math.random() * allDaysData.length); const randomDia = allDaysData[randomIndex]; const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1; if (currentMonthIndex !== randomMonthIndex) { currentMonthIndex = randomMonthIndex; dibujarMesActual(); setTimeout(() => abrirModalPreview(randomDia), 50); } else { abrirModalPreview(randomDia); } window.scrollTo(0, 0); } };
              console.log("Shuffle button configured.");
-        } else { console.error("#btn-shuffle not found!"); } // <-- Esto salía en los logs anteriores
+        } else { console.error("#btn-shuffle not found!"); }
 
         if (btnAddMemory) {
             btnAddMemory.onclick = () => { abrirModalEdicion(null); };
              console.log("Add Memory button configured.");
-        } else { console.error("#btn-add-memory not found!"); } // <-- Esto salía en los logs anteriores
+        } else { console.error("#btn-add-memory not found!"); }
 
     } catch (e) {
         console.error("Error configuring footer:", e);
@@ -215,11 +219,9 @@ async function dibujarMesActual() {
 
     appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div><div id="today-memory-spotlight"></div>`;
 
-    // SIN TIMEOUT - confiando en que el script al final del body es suficiente
     const grid = document.getElementById("grid-dias");
     if (!grid) {
         console.error("#grid-dias element not found immediately after setting innerHTML!");
-        // Si esto falla, el problema es más profundo que un simple timeout
         return;
     }
     if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; }
@@ -240,24 +242,21 @@ async function dibujarMesActual() {
     });
     console.log(`Rendered ${diasDelMes.length} day buttons.`);
 
-    await updateTodayMemorySpotlight();
+    // Llamar a updateTodayMemorySpotlight SIN await para que no bloquee el renderizado inicial
+    updateTodayMemorySpotlight(); // No esperamos aquí
 
-    // SIN TIMEOUT - Llamar directamente
-    console.log("Calling configuration functions directly from dibujarMesActual...");
-    // configurarNavegacion(); // Quitado de aquí, se llama en loadDataAndDrawCalendar
-    // configurarFooter(); // Quitado de aquí, se llama en loadDataAndDrawCalendar
     console.log("Finished dibujarMesActual.");
 }
 
-// --- Resto de funciones (Spotlight, Búsqueda, Modales, CRUD, etc.) ---
-// ... (Copiar el resto de funciones desde v10.12 sin cambios) ...
+
+// --- Spotlight ---
 async function updateTodayMemorySpotlight() {
     const spotlightDiv = document.getElementById('today-memory-spotlight');
     if (!spotlightDiv) {
         console.log("Spotlight div not found, skipping update.");
         return;
     }
-    // ... (resto de la función sin cambios)
+
     const today = new Date();
     const todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
     const todayDay = allDaysData.find(d => d.id === todayId);
@@ -267,39 +266,53 @@ async function updateTodayMemorySpotlight() {
         return;
     }
 
-    const todayMemoriesRef = collection(db, "Dias", todayDay.id, "Memorias");
-    const q = query(todayMemoriesRef, orderBy("Creado_En", "desc"), orderBy("Fecha_Original", "desc"));
-    const snapshot = await getDocs(q);
+    try {
+        const todayMemoriesRef = collection(db, "Dias", todayDay.id, "Memorias");
+        // ¡CAMBIO! Ordenar solo por Fecha_Original descendente y limitar a 1
+        const q = query(todayMemoriesRef, orderBy("Fecha_Original", "desc"), limit(1));
+        console.log("Querying for today's spotlight memory...");
+        const snapshot = await getDocs(q);
+        console.log(`Spotlight query returned ${snapshot.size} documents.`);
 
-    let contentHTML = `<h3>Today, ${todayDay.Nombre_Dia}</h3>`;
-    let memoryToShow = null;
+        let contentHTML = `<h3>Today, ${todayDay.Nombre_Dia}</h3>`;
+        let memoryToShow = null;
 
-    if (!snapshot.empty) {
-        memoryToShow = snapshot.docs[0].data();
-        let memoryText = memoryToShow.Descripcion || memoryToShow.LugarNombre || memoryToShow.CancionInfo || "A memory...";
-        let artwork = '';
-        if (memoryToShow.Tipo === 'Musica' && memoryToShow.CancionData?.artworkUrl60) {
-            artwork = `<img src="${memoryToShow.CancionData.artworkUrl60}" class="spotlight-artwork" alt="Artwork">`;
-        } else if (memoryToShow.Tipo === 'Imagen' && memoryToShow.ImagenURL) {
-            artwork = `<img src="${memoryToShow.ImagenURL}" class="spotlight-artwork" alt="Memory Image">`;
+        if (!snapshot.empty) {
+            memoryToShow = snapshot.docs[0].data();
+            let memoryText = memoryToShow.Descripcion || memoryToShow.LugarNombre || memoryToShow.CancionInfo || "A memory...";
+            let artwork = '';
+            if (memoryToShow.Tipo === 'Musica' && memoryToShow.CancionData?.artworkUrl60) {
+                artwork = `<img src="${memoryToShow.CancionData.artworkUrl60}" class="spotlight-artwork" alt="Artwork">`;
+            } else if (memoryToShow.Tipo === 'Imagen' && memoryToShow.ImagenURL) {
+                artwork = `<img src="${memoryToShow.ImagenURL}" class="spotlight-artwork" alt="Memory Image">`;
+            }
+
+            contentHTML += `
+                <div class="spotlight-memory">
+                    ${artwork}
+                    <p>${memoryText.length > 100 ? memoryText.substring(0, 97) + '...' : memoryText}</p>
+                </div>
+            `;
+            spotlightDiv.classList.add('has-memory');
+        } else {
+            contentHTML += `<p class="no-memory-message">Nothing to remember today... yet!</p>`;
+            spotlightDiv.classList.remove('has-memory');
         }
 
-        contentHTML += `
-            <div class="spotlight-memory">
-                ${artwork}
-                <p>${memoryText.length > 100 ? memoryText.substring(0, 97) + '...' : memoryText}</p>
-            </div>
-        `;
-        spotlightDiv.classList.add('has-memory');
-    } else {
-        contentHTML += `<p class="no-memory-message">Nothing to remember today... yet!</p>`;
-        spotlightDiv.classList.remove('has-memory');
-    }
+        spotlightDiv.innerHTML = `<div class="spotlight-content">${contentHTML}</div>`;
+        spotlightDiv.onclick = () => abrirModalPreview(todayDay);
+         console.log("Spotlight updated successfully.");
 
-    spotlightDiv.innerHTML = `<div class="spotlight-content">${contentHTML}</div>`;
-    spotlightDiv.onclick = () => abrirModalPreview(todayDay);
+    } catch (error) {
+        console.error("Error fetching or displaying spotlight memory:", error);
+        // Mostrar un mensaje de error en el spotlight si falla la consulta
+        spotlightDiv.innerHTML = `<div class="spotlight-content error"><p>Error loading today's memory.</p></div>`;
+    }
 }
 
+
+// --- Resto de funciones (Búsqueda, Modales, CRUD, etc.) ---
+// ... (Copiar el resto de funciones desde v10.13 sin cambios) ...
 
 async function buscarMemorias(term) {
     console.log("Searching:", term);
@@ -919,6 +932,17 @@ window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
 
 // --- Start App ---
-// Llamar a checkAndRunApp directamente, ya que el script está al final del body
 checkAndRunApp();
+```
+
+**Cambio Realizado (v10.14):**
+
+* Dentro de `updateTodayMemorySpotlight`, la línea que define la consulta `q` ha cambiado de:
+    ```javascript
+    const q = query(todayMemoriesRef, orderBy("Creado_En", "desc"), orderBy("Fecha_Original", "desc"));
+    ```
+    a:
+    ```javascript
+    const q = query(todayMemoriesRef, orderBy("Fecha_Original", "desc"), limit(1));
+    
 
