@@ -88,10 +88,13 @@ function initializeAppUI() {
     }
     console.log("main: Initializing UI...");
     try {
+        // --- ADDED: Specific Try/Catch for ui.init() ---
+        console.log("main: Calling ui.init()...");
         ui.init(getUICallbacks()); // Pass all necessary callbacks to UI
+        console.log("main: ui.init() completed successfully.");
         // Mark UI as ready ONLY after ui.init() completes successfully
         state.uiInitialized = true;
-        console.log("main: UI Initialized successfully.");
+        console.log("main: UI Initialized flag set to true.");
 
         // --- Draw initial state AFTER UI is initialized ---
         console.log("main: Performing initial draw (calendar and spotlight)...");
@@ -103,7 +106,7 @@ function initializeAppUI() {
 
     } catch (uiError) {
          // Catch errors specifically from ui.init()
-         console.error("Critical error during UI initialization:", uiError);
+         console.error("CRITICAL ERROR during UI initialization (ui.init failed):", uiError);
          state.uiInitialized = false; // Ensure flag remains false on error
          displayFatalError(`UI Init error: ${uiError.message}`);
     }
@@ -165,7 +168,7 @@ function drawCurrentMonth() {
      if (state.allDaysData.length === 0) {
          console.warn("main: Attempted to draw month but allDaysData is empty.");
          // Optionally, tell UI to show a specific loading/error state for the calendar
-         // ui.showCalendarLoading(); // Example
+         // ui.showCalendarError("Loading data..."); // Example
          return;
      }
      console.log(`main: Drawing month ${state.currentMonthIndex + 1}...`);
@@ -197,6 +200,8 @@ function drawCurrentMonth() {
  * Returns an object containing all callback functions needed by the UI module.
  */
 function getUICallbacks() {
+    // Log that callbacks are being generated
+    console.log("main: Generating UI callbacks...");
     return {
         // Core state/data access for UI
         isUserLoggedIn: () => !!state.currentUser,
@@ -232,6 +237,8 @@ function handleAuthStateChange(user) {
     // Update the UI only if it has been successfully initialized
     if (state.uiInitialized) {
         ui.updateLoginUI(user);
+    } else {
+        console.warn("main: Auth state changed, but UI not ready yet. Login UI update deferred.");
     }
     console.log("Authentication state changed:", user ? user.uid : "Logged out");
 
@@ -271,34 +278,35 @@ function handleEditFromPreview(dia, memories) {
  * @param {string} action - The action identifier ('add', 'store', 'shuffle').
  */
 function handleFooterAction(action) {
-     console.log(`main: Footer action received via callback: ${action}`); // Log the received action
+     // Log the specific action received from ui.js
+     console.log(`main: Footer action received via callback: '${action}'`);
     switch (action) {
         case 'add':
             // Check if calendar data is loaded before attempting to add
             if(state.allDaysData.length > 0) {
-                 console.log("main: Opening Add Memory modal via footer.");
+                 console.log("main: Handling 'add' action -> Opening Add Memory modal.");
                  // Open edit modal in 'add' mode (dia=null)
                  ui.openEditModal(null, [], state.allDaysData);
             } else {
-                console.error("main: Calendar data not loaded. Cannot add memory via footer.");
+                console.error("main: Calendar data not loaded. Cannot handle 'add' action.");
                 alert("Calendar data not loaded yet. Cannot add memory.");
             }
             break;
         case 'store':
-             console.log("main: Opening Store modal via footer.");
+             console.log("main: Handling 'store' action -> Opening Store modal.");
             ui.openStoreModal();
             break;
         case 'shuffle':
-             console.log("main: Triggering Shuffle via footer.");
+             console.log("main: Handling 'shuffle' action -> Triggering Shuffle.");
             handleShuffleClick();
             break;
-        // 'settings' is handled directly by ui.js, main.js ignores it
+        // 'settings' is explicitly handled by ui.js, so main.js should ignore it if received
         case 'settings':
-             console.log("main: 'Settings' action received, but handled by ui.js.");
+             console.log("main: 'Settings' action received, but ignored (handled by ui.js).");
              break;
         default:
             // Log any unexpected actions received
-            console.warn("main: Unknown footer action received:", action);
+            console.warn("main: Unknown or unhandled footer action received:", action);
     }
 }
 
@@ -694,6 +702,7 @@ async function handleStoreLoadMore() {
         } else {
             result = await getMemoriesByType(currentType, 10, lastVisible); // Page size 10, start after lastVisible
         }
+        // --- FIX: Log the correct variable ---
         console.log(`main: Store loaded ${result.items.length} more items for ${currentType}. Has more: ${result.hasMore}`);
 
         // Update pagination state
@@ -799,6 +808,7 @@ function displayFatalError(message) {
 // --- 6. Initial Execution ---
 // Ensure the script runs after the DOM is ready (though module scripts usually do)
 if (document.readyState === 'loading') {
+    // Use 'DOMContentLoaded' which fires earlier than 'load'
     document.addEventListener('DOMContentLoaded', checkAndRunApp);
 } else {
     checkAndRunApp(); // DOM is already ready
