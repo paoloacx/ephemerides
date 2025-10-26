@@ -185,7 +185,7 @@ main { padding: 10px; }
 .spotlight-memory-item {
     /* CHANGED: Use flex for alignment */
     display: flex;
-    align-items: center; /* Vertically align icon and text */
+    align-items: center; /* Vertically align year box, icon, and text */
     padding: 8px 5px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     color: #f0f0f0;
@@ -207,17 +207,23 @@ main { padding: 10px; }
     margin-right: 8px; /* Space between year and icon */
     white-space: nowrap; /* Prevent wrapping */
     line-height: 1.4; /* Adjust line height */
+    flex-shrink: 0; /* Prevent shrinking */
 }
 
 .spotlight-memory-item .material-icons-outlined {
     font-size: 18px; /* Slightly smaller icon */
     color: #ccc;
     margin-right: 8px; /* Space between icon and text */
+    flex-shrink: 0; /* Prevent shrinking */
 }
 .spotlight-memory-content {
     /* REMOVED: display: flex, flex-direction: column */
     line-height: 1.4; /* Adjust line height */
     flex-grow: 1; /* Take remaining space */
+    /* NEW: Prevent text wrapping */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 /* REMOVED: .spotlight-memory-content small (year is now in its own box) */
 .spotlight-memory-content span {
@@ -225,9 +231,7 @@ main { padding: 10px; }
     font-weight: 500;
 }
 /* Hide default icon if specific one is used */
-.spotlight-memory-content span .material-icons-outlined {
-    display: none;
-}
+/* .spotlight-memory-content span .material-icons-outlined { display: none; } */
 
 
 /* --- Calendar Grid --- */
