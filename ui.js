@@ -1,9 +1,7 @@
 /*
- * ui.js (v7.0)
- * - Input de fecha cambiado a solo Año.
- * - Añadido diálogo de "Settings".
- * - Modal de Preview ahora tiene botón "Edit" (si logueado).
- * - Corrige error de botón Settings.
+ * ui.js (v7.1)
+ * - Fixes Spotlight display (year only, correct icons)
+ * - Fixes Logout button overlap (avatar is now the logout trigger)
  */
 
 // --- Estado Interno del Módulo ---
@@ -23,17 +21,16 @@ const _modals = {
     store: null,
     storeList: null,
     search: null,
-    settings: null, // Dialogo de Settings
+    settings: null, 
 };
 
-// Guardamos los callbacks (funciones) que nos pasa main.js
 let _callbacks = {
-    // --- NUEVO callback ---
-    isUserLoggedIn: () => false, // Función para saber si hay usuario logueado
+    isUserLoggedIn: () => false, 
     onEditFromPreview: (dia, memories) => console.warn("onEditFromPreview no implementado"),
-    // --- Fin Nuevo ---
+    loadMemoriesForDay: async (diaId) => { console.warn("loadMemoriesForDay not implemented"); return []; }, // Add default
+    getAllDaysData: () => { console.warn("getAllDaysData not implemented"); return []; }, // Add default
     onMonthChange: (dir) => console.warn("onMonthChange no implementado"),
-    onDayClick: (dia) => console.warn("onDayClick no implementado"),
+    // REMOVED: onDayClick - now handled internally by _handleDayClick
     onFooterAction: (action) => console.warn("onFooterAction no implementado"),
     onLogin: () => console.warn("onLogin no implementado"),
     onLogout: () => console.warn("onLogout no implementado"),
@@ -78,6 +75,9 @@ function init(callbacks) {
     _setupHeader(); 
     _setupFooter();
     
+    // Initial UI update based on auth state (important!)
+    updateLoginUI(_callbacks.isUserLoggedIn() ? auth.currentUser : null); // Assumes 'auth' is globally accessible or passed in
+
     console.log("UI: Initialized and events connected.");
 }
 
@@ -87,20 +87,20 @@ function updateLoginUI(user) {
     if (!loginSection) return;
 
     if (user) {
+        // --- CHANGED: Avatar is now the logout trigger ---
         loginSection.innerHTML = `
-            <div id="user-info">
+            <div id="user-info" title="Logout"> 
                 <img id="user-img" src="${user.photoURL || 'https://placehold.co/30x30/ccc/fff?text=?'}" alt="Avatar">
                 <!-- Username hidden by CSS -->
                 <span id="user-name">${user.displayName || 'User'}</span> 
             </div>
-            <button id="login-btn" class="header-icon-btn" title="Logout">
-                <span class="material-icons-outlined">logout</span>
-            </button>
+            <!-- Logout button removed -->
         `;
-        const logoutBtn = document.getElementById('login-btn');
-        if (logoutBtn) logoutBtn.onclick = () => _callbacks.onLogout();
+        const userInfoDiv = document.getElementById('user-info');
+        if (userInfoDiv) userInfoDiv.onclick = () => _callbacks.onLogout(); 
         
     } else {
+        // --- Login button remains the same ---
         loginSection.innerHTML = `
             <button id="login-btn" class="header-icon-btn" title="Login with Google">
                 <span class="material-icons-outlined">login</span>
@@ -116,13 +116,16 @@ function updateLoginUI(user) {
 function drawCalendar(monthName, days, todayId) {
     _dom.monthNameDisplay.textContent = monthName;
     
-    if (!_dom.appContent) return;
+    if (!_dom.appContent) {
+        console.error("UI: app-content element not found, cannot draw calendar.");
+        return; // Exit if container doesn't exist
+    }
     _dom.appContent.innerHTML = ''; 
     
     const grid = document.createElement('div');
     grid.className = 'calendario-grid';
     
-    if (days.length === 0) {
+    if (!days || days.length === 0) {
         grid.innerHTML = "<p>No days found for this month.</p>";
         _dom.appContent.appendChild(grid);
         return;
@@ -144,7 +147,6 @@ function drawCalendar(monthName, days, todayId) {
         btn.innerHTML = `<span class="dia-numero">${parseInt(dia.id.substring(3), 10)}</span>`;
         btn.dataset.diaId = dia.id;
         
-        // --- CHANGED: Calls _handleDayClick ---
         btn.onclick = () => _handleDayClick(dia); 
         
         fragment.appendChild(btn);
@@ -162,8 +164,9 @@ function updateSpotlight(headerText, memories) {
     if (!_dom.spotlightList) return;
     
     _dom.spotlightList.innerHTML = '';
-    if (memories.length === 0) {
-        _dom.spotlightList.innerHTML = `<p class="list-placeholder">No recent memories found.</p>`;
+    // --- CHANGED: Use specific message ---
+    if (!memories || memories.length === 0) {
+        _dom.spotlightList.innerHTML = `<p class="list-placeholder">No memories for today.</p>`; 
         return;
     }
     
@@ -172,19 +175,22 @@ function updateSpotlight(headerText, memories) {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'spotlight-memory-item';
         
-        const diaId = mem.diaId;
-        if (diaId) {
-            itemDiv.dataset.diaId = diaId;
-        }
+        const diaId = mem.diaId; 
+        // Ensure diaId is set correctly, especially for spotlight which should always be today's ID
+        itemDiv.dataset.diaId = diaId || _callbacks.getTodayId(); // Need callback for todayId
 
-        itemDiv.innerHTML = _createMemoryItemHTML(mem, 'spotlight');
+        // --- CHANGED: Context 'spotlight' passed ---
+        itemDiv.innerHTML = _createMemoryItemHTML(mem, 'spotlight'); 
         
         itemDiv.onclick = () => {
-            if (diaId) {
-                 // --- CHANGED: Calls _handleDayClick ---
-                const dia = { id: diaId, Nombre_Dia: mem.Nombre_Dia || diaId }; // Simulate a day object
-                _handleDayClick(dia); 
-            }
+            // Reconstruct a minimal 'dia' object for _handleDayClick
+            const diaData = { 
+                id: itemDiv.dataset.diaId, 
+                // We don't necessarily have Nombre_Dia or Nombre_Especial here easily, 
+                // but _handleDayClick primarily needs the ID.
+                Nombre_Dia: itemDiv.dataset.diaId // Use ID as fallback name
+            };
+            _handleDayClick(diaData); 
         };
 
         fragment.appendChild(itemDiv);
@@ -216,11 +222,9 @@ function _setupFooter() {
         
         const action = button.dataset.action;
         if (action) {
-            // Acciones que main.js debe manejar
             if (action === 'add' || action === 'store' || action === 'shuffle') {
                 _callbacks.onFooterAction(action);
             }
-            // --- CHANGED: 'settings' ahora llama a openSettingsDialog ---
             else if (action === 'settings') {
                 openSettingsDialog(); 
             }
@@ -233,7 +237,7 @@ function _setupFooter() {
 // --- Modal de Preview ---
 function openPreviewModal(dia, memories) {
     _currentDay = dia;
-    _currentMemories = memories; // Guardar memorias para pasarlas a Edición
+    _currentMemories = memories; 
 
     if (!_modals.preview) {
         _modals.preview = _createPreviewModal();
@@ -244,7 +248,6 @@ function openPreviewModal(dia, memories) {
     
     title.textContent = `${dia.Nombre_Dia} ${dia.Nombre_Especial !== 'Unnamed Day' ? `(${dia.Nombre_Especial})` : ''}`;
     
-    // --- CHANGED: Show/Hide Edit button based on login state ---
     if (_callbacks.isUserLoggedIn()) {
         editBtn.classList.add('visible');
     } else {
@@ -260,18 +263,12 @@ function closePreviewModal() {
     if (_modals.preview) _modals.preview.classList.remove('visible');
 }
 
-// --- NUEVA función interna ---
-/**
- * Se llama al pulsar el botón "Edit" del modal de Preview.
- */
 function _handleEditFromPreview() {
     if (_currentDay && _callbacks.onEditFromPreview) {
         closePreviewModal();
-        // Le pasamos el día y las memorias que ya teníamos cargadas
         _callbacks.onEditFromPreview(_currentDay, _currentMemories);
     }
 }
-// --- Fin Nueva ---
 
 // --- Modal de Edición (Edit/Add) ---
 function openEditModal(dia, memories, allDays) {
@@ -281,10 +278,15 @@ function openEditModal(dia, memories, allDays) {
         const today = new Date();
         const todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
         _currentDay = allDays.find(d => d.id === todayId) || allDays[0];
+         if (!_currentDay) { // Safety check if allDays is empty
+            console.error("UI: Cannot open Add modal, no day data available.");
+            alert("Error: Calendar data not loaded.");
+            return;
+        }
         _currentMemories = [];
     } else {
         _currentDay = dia;
-        _currentMemories = memories;
+        _currentMemories = memories || []; // Ensure memories is an array
     }
     
     if (!_modals.edit) {
@@ -308,8 +310,8 @@ function openEditModal(dia, memories, allDays) {
     } else {
         daySelectionSection.style.display = 'none';
         dayNameSection.style.display = 'block';
-        titleEl.textContent = `Editing: ${dia.Nombre_Dia} (${dia.id})`;
-        nameInput.value = dia.Nombre_Especial === 'Unnamed Day' ? '' : dia.Nombre_Especial;
+        titleEl.textContent = `Editing: ${_currentDay.Nombre_Dia} (${_currentDay.id})`;
+        nameInput.value = _currentDay.Nombre_Especial === 'Unnamed Day' ? '' : _currentDay.Nombre_Especial;
     }
     
     _renderMemoryList('edit-memorias-list', _currentMemories);
@@ -333,12 +335,19 @@ function resetMemoryForm() {
     if (!form) return;
     
     form.reset();
-    document.getElementById('save-memoria-btn').textContent = 'Add Memory';
-    document.getElementById('itunes-results').innerHTML = '';
-    document.getElementById('place-results').innerHTML = '';
+    const saveBtn = document.getElementById('save-memoria-btn');
+    if(saveBtn) {
+        saveBtn.textContent = 'Add Memory';
+        delete saveBtn.dataset.editingId; // Clear editing ID
+    }
+    const itunesResults = document.getElementById('itunes-results');
+    const placeResults = document.getElementById('place-results');
+    if(itunesResults) itunesResults.innerHTML = '';
+    if(placeResults) placeResults.innerHTML = '';
     
     handleMemoryTypeChange(); 
 }
+
 
 function fillFormForEdit(memoria) {
     if (!_modals.edit) return;
@@ -355,6 +364,9 @@ function fillFormForEdit(memoria) {
     const imageDescInput = _modals.edit.querySelector('#memoria-image-desc');
     const saveButton = _modals.edit.querySelector('#save-memoria-btn');
     
+    // --- CHANGED: Save editing ID on the button ---
+    if(saveButton) saveButton.dataset.editingId = memoria.id;
+
     if (memoria.Fecha_Original?.toDate) {
         try {
             yearInput.value = memoria.Fecha_Original.toDate().getFullYear();
@@ -368,6 +380,12 @@ function fillFormForEdit(memoria) {
     typeSelect.value = memoria.Tipo || 'Text';
     handleMemoryTypeChange();
     
+    // Clear previous search results
+    const itunesResults = document.getElementById('itunes-results');
+    const placeResults = document.getElementById('place-results');
+    if(itunesResults) itunesResults.innerHTML = '';
+    if(placeResults) placeResults.innerHTML = '';
+
     switch (memoria.Tipo) {
         case 'Place':
             placeInput.value = memoria.LugarNombre || '';
@@ -454,98 +472,87 @@ function closeSearchModal() {
 }
 
 // --- Diálogo de "Settings" ---
-/**
- * Abre el diálogo de "Settings".
- */
 function openSettingsDialog() {
     if (!_modals.settings) {
-        // Usa el constructor genérico _createDialog
         _modals.settings = _createDialog(
             'settings-dialog', 
             'Settings', 
             'Settings is Coming Soon. Check back later!'
         );
     }
-    // Muestra el diálogo
     _modals.settings.classList.add('visible');
 }
 
 
 // --- 5. Lógica de UI interna (Helpers) ---
 
-/**
- * --- NUEVA función interna ---
- * Maneja el click en un día (del grid o del spotlight).
- * Decide si llamar a Preview o directamente a Edit.
- * @param {Object} dia - Objeto día {id, Nombre_Dia}
- */
 async function _handleDayClick(dia) {
-    // Si el usuario está logueado Y hace clic en un día normal (no spotlight),
-    // abrimos directamente el editor.
-    // Si no está logueado, o si hace clic en el spotlight, abrimos Preview.
-    
-    // TODO: Considerar si SIEMPRE queremos abrir Preview primero.
-    //       Por ahora, mantenemos la lógica original: logueado -> Edit.
+    // Always load memories first
+    const memories = await _callbacks.loadMemoriesForDay(dia.id); 
 
-    // Siempre cargamos las memorias primero
-    const memories = await _callbacks.loadMemoriesForDay(dia.id); // Necesitamos que main exponga esto
-
-    if (_callbacks.isUserLoggedIn()) {
-         openEditModal(dia, memories, _callbacks.getAllDaysData()); // Necesitamos que main exponga esto
-    } else {
-        openPreviewModal(dia, memories);
-    }
+    // Always open Preview modal first
+    openPreviewModal(dia, memories);
 }
-// --- Fin Nueva ---
 
 
 function _createMemoryItemHTML(memoria, context) {
     let contentHTML = '';
     let artworkHTML = '';
-    let fechaStr = 'Unknown Date';
+    // --- CHANGED: Use only year for spotlight/preview/edit ---
+    let fechaStr = 'Unknown Year'; 
     if (memoria.Fecha_Original?.toDate) {
         try {
-            // Mostrar solo año si es el contexto de edición/preview
-            if (context === 'edit-modal' || context === 'preview-modal') {
-                 fechaStr = memoria.Fecha_Original.toDate().getFullYear().toString();
-            } else { // Spotlight/Store
-                 fechaStr = memoria.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-            }
+            fechaStr = memoria.Fecha_Original.toDate().getFullYear().toString();
         } catch (e) { fechaStr = 'Invalid Date'; }
     } else if (memoria.Fecha_Original) {
-         fechaStr = memoria.Fecha_Original.toString(); 
+         // Attempt to parse if it's a string YYYY-MM-DD
+         if (typeof memoria.Fecha_Original === 'string' && memoria.Fecha_Original.length >= 4) {
+             fechaStr = memoria.Fecha_Original.substring(0, 4);
+         } else {
+             fechaStr = memoria.Fecha_Original.toString(); // Fallback
+         }
     }
 
-    contentHTML += `<small>${fechaStr}</small>`;
+    // --- CHANGED: Add year as small text ---
+    contentHTML += `<small>${fechaStr}</small>`; 
     
+    // --- CHANGED: Use correct icon based on type ---
+    let icon = 'notes'; // Default icon
+    switch (memoria.Tipo) {
+        case 'Place': icon = 'place'; break;
+        case 'Music': icon = 'music_note'; break;
+        case 'Image': icon = 'image'; break;
+    }
+    contentHTML += `<span><span class="material-icons-outlined">${icon}</span> `; // Add icon
+
+    // Add specific content based on type
     switch (memoria.Tipo) {
         case 'Place':
-            contentHTML += `<span><span class="material-icons-outlined">place</span> ${memoria.LugarNombre || 'Place'}</span>`;
+            contentHTML += `${memoria.LugarNombre || 'Place'}</span>`;
             break;
         case 'Music':
             if (memoria.CancionData?.trackName) {
-                contentHTML += `<span><span class="material-icons-outlined">music_note</span> <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}</span>`;
+                contentHTML += `<strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}</span>`;
                 if(memoria.CancionData.artworkUrl60) {
                     artworkHTML = `<img src="${memoria.CancionData.artworkUrl60}" class="memoria-artwork">`;
                 }
             } else {
-                contentHTML += `<span><span class="material-icons-outlined">music_note</span> ${memoria.CancionInfo || 'Music'}</span>`;
+                contentHTML += `${memoria.CancionInfo || 'Music'}</span>`;
             }
             break;
         case 'Image':
-            contentHTML += `<span><span class="material-icons-outlined">image</span> ${memoria.Descripcion || 'Image'}</span>`;
+            contentHTML += `${memoria.Descripcion || 'Image'}</span>`;
             if (memoria.ImagenURL) {
                 contentHTML += ` <small>(<a href="${memoria.ImagenURL}" target="_blank" rel="noopener">View Image</a>)</small>`;
             }
             break;
         case 'Text':
         default:
-            contentHTML += `<span><span class="material-icons-outlined">notes</span> ${memoria.Descripcion || 'Memory'}</span>`;
+            contentHTML += `${memoria.Descripcion || 'Memory'}</span>`;
             break;
     }
     
     let actionsHTML = '';
-    // Los botones solo están en el modal de edición
     if (context === 'edit-modal') { 
         actionsHTML = `
             <div class="memoria-actions">
@@ -576,7 +583,6 @@ function _renderMemoryList(listId, memories) {
     memories.forEach(mem => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'memoria-item';
-        // Determinar contexto basado en listId
         const context = (listId === 'preview-memorias-list') ? 'preview-modal' : 'edit-modal';
         itemDiv.innerHTML = _createMemoryItemHTML(mem, context);
         fragment.appendChild(itemDiv);
@@ -687,7 +693,6 @@ function _createPreviewModal() {
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
-                <!-- NEW: Edit button added -->
                 <button class="header-edit-btn" title="Edit Day">
                      <span class="material-icons-outlined">edit</span>
                 </button>
@@ -706,7 +711,6 @@ function _createPreviewModal() {
     `;
     
     modal.querySelector('.modal-close-btn').onclick = closePreviewModal;
-    // --- CHANGED: Connect Edit button ---
     modal.querySelector('.header-edit-btn').onclick = _handleEditFromPreview; 
     
     modal.onclick = (e) => {
@@ -752,7 +756,6 @@ function _createEditModal() {
                     <h5 id="memory-form-title">Add / Edit Memory</h5>
                     <form id="memory-form">
                         
-                        <!-- CHANGED: Input de Fecha a Año -->
                         <label for="memoria-fecha-year">Original Year:</label>
                         <input type="number" id="memoria-fecha-year" placeholder="YYYY" min="1800" max="${new Date().getFullYear() + 1}" required> 
                         
@@ -816,15 +819,18 @@ function _bindEditModalEvents() {
     
     _modals.edit.querySelector('#memoria-type').onchange = handleMemoryTypeChange;
     
-    // --- CHANGED: Use blur instead of change for better UX ---
     _modals.edit.querySelector('#memoria-place-search').onblur = (e) => {
         const term = e.target.value.trim();
-        // Only search if not currently selecting from results
-        if (term && !_selectedPlace) _callbacks.onSearchPlace(term);
+        // Prevent search if user just clicked a result
+        setTimeout(() => { 
+            if (term && !_selectedPlace) _callbacks.onSearchPlace(term);
+        }, 150); // Delay to allow click event on results
     };
     _modals.edit.querySelector('#memoria-music-search').onblur = (e) => {
         const term = e.target.value.trim();
-        if (term && !_selectedMusicTrack) _callbacks.onSearchMusic(term);
+        setTimeout(() => {
+            if (term && !_selectedMusicTrack) _callbacks.onSearchMusic(term);
+        }, 150);
     };
 
     _modals.edit.querySelector('#memory-form').onsubmit = (e) => {
@@ -835,7 +841,6 @@ function _bindEditModalEvents() {
         
         const yearInput = _modals.edit.querySelector('#memoria-fecha-year');
         const year = yearInput.value.trim();
-        // Determine the day ID: use select if adding, otherwise use currentDay
         const diaId = _modals.edit.querySelector('#day-selection-section').style.display !== 'none' 
                     ? _modals.edit.querySelector('#edit-mem-day').value 
                     : _currentDay.id;
@@ -847,13 +852,12 @@ function _bindEditModalEvents() {
             return;
         }
 
-        // --- CHANGED: Construct full date string ---
         const fechaStr = `${year}-${diaId}`; // Format: "YYYY-MM-DD"
 
         const type = _modals.edit.querySelector('#memoria-type').value;
         const memoryData = {
             id: _isEditingMemory ? document.getElementById('save-memoria-btn').dataset.editingId : null,
-            Fecha_Original: fechaStr, // Pass string, main.js converts
+            Fecha_Original: fechaStr, 
             Tipo: type,
             Descripcion: null, LugarNombre: null, LugarData: null,
             CancionInfo: null, CancionData: null, ImagenURL: null, file: null
@@ -884,7 +888,6 @@ function _bindEditModalEvents() {
                 break;
         }
 
-        // Recuperar ID si estamos editando
         if (_isEditingMemory) {
              memoryData.id = document.getElementById('save-memoria-btn').dataset.editingId;
         }
@@ -901,8 +904,7 @@ function _bindEditModalEvents() {
             const memId = editBtn.dataset.memoriaId;
             const memToEdit = _currentMemories.find(m => m.id === memId);
             if (memToEdit) {
-                document.getElementById('save-memoria-btn').dataset.editingId = memId;
-                fillFormForEdit(memToEdit);
+                fillFormForEdit(memToEdit); // Also sets dataset.editingId
             }
         }
         
@@ -945,14 +947,14 @@ function _showConfirmDelete(memoria) {
 
 function _populateDaySelect(allDays) {
     const select = document.getElementById('edit-mem-day');
-    if (!select) return;
+    if (!select || !allDays) return; // Add check for allDays
     
     select.innerHTML = '';
     const fragment = document.createDocumentFragment();
     allDays.forEach(dia => {
         const option = document.createElement('option');
         option.value = dia.id; 
-        option.textContent = dia.Nombre_Dia; // Now "Month Day"
+        option.textContent = dia.Nombre_Dia; 
         fragment.appendChild(option);
     });
     select.appendChild(fragment);
@@ -1038,7 +1040,7 @@ function _createStoreListItem(item) {
     if (item.type === 'Names') {
         icon = 'label';
         title = item.Nombre_Especial;
-        subtitle = item.Nombre_Dia; // Should be "Month Day" now
+        subtitle = item.Nombre_Dia; 
     } else {
         const date = item.Fecha_Original?.toDate();
         subtitle = date ? date.toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'}) : item.diaId;
@@ -1047,7 +1049,7 @@ function _createStoreListItem(item) {
             case 'Place': icon = 'place'; title = item.LugarNombre; break;
             case 'Music': icon = 'music_note'; title = item.CancionInfo || 'Music Track'; break;
             case 'Image': icon = 'image'; title = item.Descripcion || 'Image'; break;
-            case 'Text': default: icon = 'notes'; title = (item.Descripcion || 'Text Note').substring(0, 50) + '...'; break;
+            case 'Text': default: icon = 'notes'; title = (item.Descripcion || 'Text Note').substring(0, 50) + ( (item.Descripcion?.length || 0) > 50 ? '...' : '' ); break;
         }
     }
     
@@ -1109,17 +1111,10 @@ function _createSearchModal() {
 }
 
 
-/**
- * Crea un diálogo genérico estilo iOS.
- * @param {string} id - ID del elemento overlay.
- * @param {string} title - Título del diálogo.
- * @param {string} message - Mensaje del diálogo.
- * @returns {HTMLElement} - El elemento overlay del diálogo.
- */
 function _createDialog(id, title, message) {
     const dialogOverlay = document.createElement('div');
     dialogOverlay.id = id;
-    dialogOverlay.className = 'dialog-overlay'; // Usa estilos .dialog-overlay
+    dialogOverlay.className = 'dialog-overlay'; 
     dialogOverlay.innerHTML = `
         <div class="dialog-content">
             <h4>${title}</h4>
