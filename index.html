@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ephemerides</title>
-    <!-- ¡CAMBIO! Actualizado a v11 -->
-    <link rel="stylesheet" href="style.css?v=11">
+    <!-- ¡CAMBIO! Actualizado a v13 (Tema Lino Oscuro) -->
+    <link rel="stylesheet" href="style.css?v=13">
     
-    <!-- Leaflet CSS (necesario para el mapa en el modal) -->
+    <!-- Leaflet CSS (CORREGIDO) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
      xintegrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
      crossorigin=""/>
-    <!-- Leaflet JS (necesario para el mapa en el modal) -->
+    <!-- Leaflet JS (CORREGIDO) -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
      xintegrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
      crossorigin=""></script>
@@ -67,7 +67,7 @@
             <span>Today</span>
         </button>
         <button class="dock-button" id="btn-shuffle" title="Shuffle">
-             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M0 3.5A.5.5 0 0 1 .5 3H1c2.202 0 3.827 1.24 4.874 2.418.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 4.24 10.798 3 13 3h.5a.5.5 0 0 1 0 1H13c-1.798 0-3.173 1.01-4.126 2.082A9.6 9.6 0 0 0 7.556 8a9.6 9.6 0 0 0 1.317.918C9.828 9.99 11.204 11 13 11h.5a.5.5 0 0 1 0 1H13c-2.202 0-3.827-1.24-4.874-2.418A10.6 10.6 0 0 1 7 9.05c-.26.43-.636.98-1.126 1.532C4.827 11.76 3.202 13 1 13h-.5a.5.5 0 0 1 0-1H1c1.798 0 3.173-1.01 4.126-2.082A9.6 9.6 0 0 0 6.445 8a9.6 9.6 0 0 0-1.317-.918C4.172 6.01 2.796 5 1 5h-.5a.5.5 0 0 1 0-1z"/><path d="M13 5.466V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192zm0 9v-3.932a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192z"/></svg>
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M0 3.5A.5.5 0 0 1 .5 3H1c2.202 0 3.827 1.24 4.874 2.418.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 4.24 10.798 3 13 3h.5a.5.5 0 0 1 0 1H13c-1.798 0-3.173 1.01-4.126 2.082A9.6 9.6 0 0 0 7.556 8a9.6 9.6 0 0 0 1.317 .918C9.828 9.99 11.204 11 13 11h.5a.5.5 0 0 1 0 1H13c-2.202 0-3.827-1.24-4.874-2.418A10.6 10.6 0 0 1 7 9.05c-.26.43-.636.98-1.126 1.532C4.827 11.76 3.202 13 1 13h-.5a.5.5 0 0 1 0-1H1c1.798 0 3.173-1.01 4.126-2.082A9.6 9.6 0 0 0 6.445 8a9.6 9.6 0 0 0-1.317-.918C4.172 6.01 2.796 5 1 5h-.5a.5.5 0 0 1 0-1z"/><path d="M13 5.466V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192zm0 9v-3.932a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192z"/></svg>
              <span>Shuffle</span>
          </button>
          <button class="dock-button" id="btn-buscar" title="Search">
@@ -76,8 +76,9 @@
          </button>
     </footer>
 
-    <!-- ¡CAMBIO! Carga app.js como módulo. app.js importará firebase-config.js -->
+    <!-- Carga app.js como módulo -->
     <script type="module" src="app.js?v=23"></script>
 
 </body>
 </html>
+
