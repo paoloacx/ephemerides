@@ -1,10 +1,10 @@
-/* app.js - v10.14 - Simplified Spotlight Query (No Index Needed) */
+/* app.js - v10.15 - Syntax Fix + Reverted Load Logic + Simplified Spotlight Query */
 
 // Importaciones
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import {
     getFirestore, collection, getDocs, doc, updateDoc,
-    writeBatch, setDoc, deleteDoc, Timestamp, query, orderBy, addDoc, limit // Añadir limit
+    writeBatch, setDoc, deleteDoc, Timestamp, query, orderBy, addDoc, limit // Asegurarse que limit está importado
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import {
     getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
@@ -28,6 +28,7 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 
 // --- Global Variables & Constants ---
+// Asignar al inicio, confiando en que el script está al final del body
 const appContent = document.getElementById("app-content");
 const monthNameDisplayEl = document.getElementById("month-name-display");
 
@@ -59,8 +60,9 @@ async function handleLogout() { try { await signOut(auth); } catch (error) { con
 
 // --- Check/Repair DB ---
 async function checkAndRunApp() {
-    console.log("Starting Check/Repair v10.14..."); // Actualizar versión
+    console.log("Starting Check/Repair v10.15..."); // Asegúrate que esta versión coincide
 
+    // Chequeo inicial crítico
     if (!appContent || !monthNameDisplayEl) {
         console.error("Error crítico: #app-content o #month-name-display son null al inicio.");
         document.body.innerHTML = "<p style='color:red; padding:20px;'>Error: HTML elements missing. Cannot start app.</p>";
@@ -100,41 +102,41 @@ async function generateCleanDatabase() {
 }
 
 // --- Load/Draw Calendar ---
+// Volvemos a la lógica de v10.9 (la de los logs)
 async function loadDataAndDrawCalendar() {
-    console.log("Entering loadDataAndDrawCalendar...");
+    console.log("Log 1: Entering loadDataAndDrawCalendar function...");
     if (!appContent) { console.error("#app-content is null in loadDataAndDrawCalendar"); return; }
 
-    appContent.innerHTML = "<p>Loading calendar...</p>";
+    appContent.innerHTML = "<p>Loading calendar...</p>"; // <-- Mensaje que se queda
     try {
-        console.log("Attempting to fetch 'Dias' collection...");
+        console.log("Log 2: Attempting to fetch 'Dias' collection from Firestore...");
         const diasSnapshot = await getDocs(collection(db, "Dias"));
-        console.log(`Firestore fetch successful. Received ${diasSnapshot.size} documents.`);
+        console.log(`Log 3: Firestore fetch successful. Received ${diasSnapshot.size} documents.`);
 
         allDaysData = [];
         diasSnapshot.forEach((doc) => {
             if (doc.id?.length === 5 && doc.id.includes('-')) allDaysData.push({ id: doc.id, ...doc.data() });
         });
         if (allDaysData.length === 0) throw new Error("Database empty or invalid after loading.");
-        console.log(`Processed ${allDaysData.length} valid day documents.`);
+        console.log(`Log 4: Processed ${allDaysData.length} valid day documents.`);
 
         allDaysData.sort((a, b) => a.id.localeCompare(b.id));
-        console.log("Data sorted.");
+        console.log("Log 4.5: Data sorted.");
 
-        console.log("Calling dibujarMesActual...");
+        console.log("Log 5: Calling dibujarMesActual...");
         await dibujarMesActual();
-        console.log("Returned from dibujarMesActual.");
+        console.log("Log 6: Returned from dibujarMesActual.");
 
-        console.log("Calling configurarNavegacion...");
+        console.log("Log 7: Calling configurarNavegacion...");
         configurarNavegacion();
-         console.log("Calling configurarFooter...");
+         console.log("Log 8: Calling configurarFooter...");
         configurarFooter();
-        console.log("loadDataAndDrawCalendar finished successfully.");
+        console.log("Log 9: loadDataAndDrawCalendar finished successfully.");
 
     } catch (e) {
-        console.error("Error occurred within loadDataAndDrawCalendar:", e);
+        console.error("Log Error: Error occurred within loadDataAndDrawCalendar:", e);
         if (appContent) {
-             // Mostrar el error específico de Firebase si existe
-             if (e.code && e.code.startsWith('failed-precondition')) { // Código común para error de índice
+             if (e.code && e.code.startsWith('failed-precondition')) {
                 appContent.innerHTML = `<p class="error">Error loading calendar data: Missing Firestore index. Please check browser console (F12) for a link to create it.</p>`;
              } else {
                 appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`;
@@ -147,7 +149,6 @@ async function loadDataAndDrawCalendar() {
 // --- Configuración ---
 function configurarNavegacion() {
     console.log("Attempting to configure navigation...");
-    // ... (código sin cambios) ...
     try {
         const prevBtn = document.getElementById("prev-month");
         const nextBtn = document.getElementById("next-month");
@@ -172,7 +173,6 @@ function configurarNavegacion() {
 
 function configurarFooter() {
     console.log("Attempting to configure footer...");
-    // ... (código sin cambios) ...
     try {
         const btnHoy = document.getElementById('btn-hoy');
         const btnBuscar = document.getElementById('btn-buscar');
@@ -248,8 +248,8 @@ async function dibujarMesActual() {
     console.log("Finished dibujarMesActual.");
 }
 
-
 // --- Spotlight ---
+// Definición ASEGURADA de updateTodayMemorySpotlight
 async function updateTodayMemorySpotlight() {
     const spotlightDiv = document.getElementById('today-memory-spotlight');
     if (!spotlightDiv) {
@@ -268,7 +268,7 @@ async function updateTodayMemorySpotlight() {
 
     try {
         const todayMemoriesRef = collection(db, "Dias", todayDay.id, "Memorias");
-        // ¡CAMBIO! Ordenar solo por Fecha_Original descendente y limitar a 1
+        // Consulta simplificada (v10.14)
         const q = query(todayMemoriesRef, orderBy("Fecha_Original", "desc"), limit(1));
         console.log("Querying for today's spotlight memory...");
         const snapshot = await getDocs(q);
@@ -305,19 +305,17 @@ async function updateTodayMemorySpotlight() {
 
     } catch (error) {
         console.error("Error fetching or displaying spotlight memory:", error);
-        // Mostrar un mensaje de error en el spotlight si falla la consulta
         spotlightDiv.innerHTML = `<div class="spotlight-content error"><p>Error loading today's memory.</p></div>`;
     }
 }
 
 
 // --- Resto de funciones (Búsqueda, Modales, CRUD, etc.) ---
-// ... (Copiar el resto de funciones desde v10.13 sin cambios) ...
+// Asegurarse de que todas las definiciones están aquí y son correctas
 
 async function buscarMemorias(term) {
     console.log("Searching:", term);
-    // appContent ya debería ser global
-    if (!appContent) return;
+    if (!appContent) { console.error("appContent is null in buscarMemorias"); return; }
 
     appContent.innerHTML = `<p>Searching for "${term}"...</p>`; let results = []; try { for (const dia of allDaysData) { const memSnapshot = await getDocs(collection(db, "Dias", dia.id, "Memorias")); memSnapshot.forEach(memDoc => { const memoria = { diaId: dia.id, diaNombre: dia.Nombre_Dia, id: memDoc.id, ...memDoc.data() }; let searchableText = memoria.Descripcion || ''; if(memoria.LugarNombre) searchableText += ' ' + memoria.LugarNombre; if(memoria.CancionInfo) searchableText += ' ' + memoria.CancionInfo; if (searchableText.toLowerCase().includes(term)) { results.push(memoria); } }); } if (results.length === 0) { appContent.innerHTML = `<p>No results for "${term}".</p>`; } else { console.log(`Found ${results.length}.`); results.sort((a, b) => (b.Fecha_Original?.toDate() ?? 0) - (a.Fecha_Original?.toDate() ?? 0)); appContent.innerHTML = `<h3>Results for "${term}" (${results.length}):</h3>`; const resultsList = document.createElement('div'); resultsList.id = 'search-results-list'; results.forEach(mem => { const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item search-result'; let fechaStr = 'Unknown date'; if (mem.Fecha_Original?.toDate) { try { fechaStr = mem.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) { /* fallback */ } } let contentHTML = `<small><b>${mem.diaNombre} (${mem.diaId})</b> - ${fechaStr}</small>`; switch (mem.Tipo) { case 'Lugar': contentHTML += `📍 ${memoria.LugarNombre || 'Place'}`; break; case 'Musica': if (memoria.CancionData?.trackName) contentHTML += `🎵 <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`; else contentHTML += `🎵 ${memoria.CancionInfo || 'Music'}`; break; case 'Imagen': contentHTML += `🖼️ Image`; if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank">View</a>)`; if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`; break; default: contentHTML += memoria.Descripcion || ''; break; } itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>`; itemDiv.style.cursor = 'pointer'; itemDiv.onclick = () => { const monthIndex = parseInt(mem.diaId.substring(0, 2), 10) - 1; if (monthIndex >= 0) { currentMonthIndex = monthIndex; dibujarMesActual(); const targetDia = allDaysData.find(d => d.id === mem.diaId); if(targetDia) setTimeout(() => abrirModalPreview(targetDia), 50); window.scrollTo(0, 0); } }; resultsList.appendChild(itemDiv); }); appContent.appendChild(resultsList); } } catch (e) { if (appContent) appContent.innerHTML = `<p class="error">Search error: ${e.message}</p>`; console.error(e); }
 }
@@ -342,15 +340,18 @@ async function abrirModalPreview(dia) {
 
     const editBtn = document.getElementById('edit-from-preview-btn');
     if (editBtn) {
-        // Clonar y reemplazar para asegurar que el listener antiguo se elimina
-        const diaToEdit = dia; // Capturar el 'dia' actual
+        const diaToEdit = dia;
         const newEditBtn = editBtn.cloneNode(true);
-        editBtn.parentNode.replaceChild(newEditBtn, editBtn); // Reemplazar nodo
+        if (editBtn.parentNode) { // Check if parent exists before replacing
+           editBtn.parentNode.replaceChild(newEditBtn, editBtn);
+        } else {
+           console.error("Parent node of edit button not found");
+        }
 
         newEditBtn.addEventListener('click', () => {
              console.log("Preview edit button clicked for:", diaToEdit.id);
              cerrarModalPreview();
-             setTimeout(() => abrirModalEdicion(diaToEdit), 250); // Pasar el 'dia' capturado
+             setTimeout(() => abrirModalEdicion(diaToEdit), 250);
         });
     } else {
         console.error("Edit button not found in preview modal.");
@@ -932,17 +933,5 @@ window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
 
 // --- Start App ---
-checkAndRunApp();
-```
-
-**Cambio Realizado (v10.14):**
-
-* Dentro de `updateTodayMemorySpotlight`, la línea que define la consulta `q` ha cambiado de:
-    ```javascript
-    const q = query(todayMemoriesRef, orderBy("Creado_En", "desc"), orderBy("Fecha_Original", "desc"));
-    ```
-    a:
-    ```javascript
-    const q = query(todayMemoriesRef, orderBy("Fecha_Original", "desc"), limit(1));
-    
+checkAndRunApp(); // Llamar directamente
 
