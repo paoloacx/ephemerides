@@ -22,7 +22,7 @@ import {
     getNamedDays,
     findMemoryById // Asumiendo que store.js tiene esta función
 } from './store.js';
-import { api, searchiTunes, searchNominatim } from './api.js';
+import { searchiTunes, searchNominatim } from './api.js';
 import { ui } from './ui.js';
 
 // --- Estado Global de la App ---
