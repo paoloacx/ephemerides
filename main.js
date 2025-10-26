@@ -58,7 +58,7 @@ async function checkAndRunApp() {
         ui.setLoading("Verificando base de datos...", true);
 
         // Inicializar Firebase (esto es síncrono)
-        initFirebase();
+        initFirebase(); // <-- Esta línea ahora funciona
         
         // Configurar el listener de autenticación
         initAuthListener(handleAuthStateChange);
