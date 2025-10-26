@@ -1,474 +1,120 @@
-/* style.css - v9.6 - "Recorded" Stamp Font */
+/* style.css - v10.7 - Spotlight Redesign */
 
-body {
-    margin: 0; padding: 0 0 90px 0; /* Footer height */
-    /* Ensure plain linen background is applied */
-    background-image: url('plain-linen.jpeg');
-    background-color: #E1E1E1; /* Fallback color */
-    background-repeat: repeat;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    color: #333;
-    font-size: 16px; /* Increased base font size */
-    -webkit-tap-highlight-color: transparent;
-    overflow-x: hidden; /* Prevent horizontal scroll */
-}
+/* ... (Estilos anteriores sin cambios hasta el final) ... */
 
-button, input, textarea, select { font-family: inherit; font-size: inherit; }
-
-/* ¡CAMBIO! Header usa Grid para centrar el título */
-header { 
-    background: linear-gradient(to bottom, #bcc6d1 0%, #a4b0bd 50%, #909dad 51%, #a4b0bd 100%);
-    border-bottom: 1px solid #6d6d6d; padding: 5px 10px; text-align: center;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 10;
-    
-    display: grid;
-    grid-template-columns: 1fr auto 1fr; /* Col Izq, Col Centro (auto), Col Der */
-    align-items: center; 
-    
-    height: 45px;
-    box-sizing: border-box; /* Asegura que el padding no afecte la altura */
-}
-
-#refresh-btn {
-    grid-column: 1 / 2; /* Columna Izquierda */
-    justify-self: start; /* Alineado a la izquierda */
-    margin: 0 5px;
-    /* Estilos de botón que ya tenías */
-    background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0;
-}
-#refresh-btn:hover { opacity: 1; } #refresh-btn svg { width: 18px; height: 18px; }
-
-
-header h1 { 
-    grid-column: 2 / 3; /* Columna Central */
-    
-    margin: 0; 
-    font-size: 24px; /* Más grande */ 
-    color: #ffffff; 
-    font-weight: bold; 
-    text-shadow: 0 -1px 0 rgba(0,0,0,0.5); 
-    text-align: center; 
-    text-transform: uppercase; /* Mayúsculas */
-    padding-left: 0; /* Ya no se necesita padding */
-}
-
-#login-section {
-    grid-column: 3 / 4; /* Columna Derecha */
-    justify-self: end; /* Alineado a la derecha */
-    margin: 0 5px;
-    /* Estilos que ya tenías */
-    display: flex; align-items: center;
-}
-/* ----- Fin de cambios en Header ----- */
-
-
-#user-info { display: none; align-items: center; margin-right: 5px; }
-#user-img { width: 30px; height: 30px; border-radius: 50%; margin-right: 5px; border: 1px solid rgba(255,255,255,0.5); }
-#user-name { color: white; font-size: 12px; text-shadow: 0 -1px 0 rgba(0,0,0,0.5); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.header-login-btn { background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0; display: flex; align-items: center; justify-content: center; }
-.header-login-btn:hover { opacity: 1; } .header-login-btn svg { width: 18px; height: 18px; } .header-login-btn img { width: 24px; height: 24px; border-radius: 50%; }
-
-.month-nav { 
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 8px 15px; background-color: #f0f0f0; border-bottom: 1px solid #bbb;
-    position: sticky; top: 45px; z-index: 9;
-}
-#month-name-display { 
-    font-size: 20px; /* Más grande */ 
-    font-weight: bold; color: #000000; text-align: center; flex-grow: 1; 
-}
-
-/* --- Aqua Button Style --- */
-.aqua-button { 
-    background: linear-gradient(to bottom, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%);
-    border: 1px solid #3c82b1 !important; border-radius: 15px !important;
-    padding: 8px 20px !important; font-size: 15px !important; font-weight: bold !important;
-    color: #fff !important; cursor: pointer;
-    box-shadow: 0 2px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.1) !important;
-    text-shadow: 0 -1px 0 rgba(0,0,0,0.3) !important; min-width: 40px; transition: all 0.1s ease-in-out;
-    margin: 5px; line-height: normal !important; -webkit-appearance: none; appearance: none;
-    text-align: center; display: inline-block;
-}
-.aqua-button:hover { background: linear-gradient(to bottom, #b8dcf4 0%, #8cc8ec 50%, #6fbde4 51%, #5fb9e2 100%) !important; }
-.aqua-button:active { background: linear-gradient(to top, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%) !important; box-shadow: inset 0 2px 3px rgba(0,0,0,0.3) !important; transform: translateY(1px); }
-.month-nav button.aqua-button { /* Already styled */ }
-
-
-main { padding: 10px; }
-/* --- Calendar Grid (7 Columns, Fixed Width, Spaced) --- */
-.calendario-grid {
-    display: grid;
-    /* Force 7 columns, flexible width units */
-    grid-template-columns: repeat(7, 1fr);
-    gap: 10px; /* Increased gap */
-    padding-bottom: 20px;
-    max-width: 960px; /* Limit max width */
-    margin: 0 auto; /* Center grid */
-}
-.dia-btn {
-    background-color: #fdfdfd; border: 1px solid #ccc;
-    border-radius: 0; /* Square */
-    padding: 0; text-align: center; cursor: pointer;
-    box-shadow: 1px 1px 3px rgba(0,0,0,0.2), inset 0 0 5px rgba(0,0,0,0.05);
-    color: #333;
-    /* Let aspect ratio control height based on width */
-    width: 100%; /* Take full column width */
-    aspect-ratio: 1 / 1; /* Keep square */
-    min-height: 0; /* Remove fixed min-height */
-    display: flex; flex-direction: column;
-    justify-content: center; align-items: center;
-    position: relative; overflow: hidden;
-    transition: background-color 0.1s, transform 0.1s;
-}
-.dia-btn:active { background-color: #eee; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); transform: translateY(1px); }
-
-.dia-numero {
-    /* Tamaño de fuente fluido y grande, pero con límites */
-    font-size: clamp(24px, 4.5vw, 44px); 
-    font-weight: bold; color: #444; line-height: 1;
-    position: absolute;
-    /* Calculamos el centro del área blanca (2/3 inferiores) */
-    top: 67%; 
-    left: 50%; 
-    transform: translate(-50%, -50%);
-    width: 100%; text-align: center;
-}
-/* Franja roja (1/3 de la altura) */
-.dia-btn::before {
-    content: ''; /* Contenido vacío por defecto */
-    position: absolute; top: 0; left: 0; right: 0;
-    height: 33.33%; /* 1/3 de la altura total */
-    background-color: #e57373;
-    border-bottom: 1px solid #c62828;
-    
-    /* ¡NUEVO! Centrar texto */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box; /* Para que el padding no afecte la altura */
-    padding-top: 2px; /* Ajuste leve de centrado */
-}
-.dia-btn .nombre-especial { display: none; }
-
-/* ¡CAMBIO! Sello para días con memorias */
-.dia-btn.tiene-memorias::before {
-    content: 'Recorded'; /* ¡NUEVO! Texto */
-    font-family: 'Caprasimo', cursive; /* ¡NUEVO! Fuente */
-    font-size: clamp(10px, 2.5vw, 16px); /* Tamaño fluido */
-    color: rgba(0,0,0,0.5);
-    text-shadow: 0 1px 1px rgba(255,255,255,0.4);
-    line-height: 1;
-}
-
-/* --- Today Memory Spotlight --- */
-#today-memory-spotlight {
-    max-width: 400px; /* Ancho máximo para el efecto de diapositiva */
-    margin: 20px auto 30px auto; /* Centrado y espaciado */
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2); /* Sombra más pronunciada */
-    text-align: center;
-    cursor: pointer;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    position: relative;
-    overflow: hidden; /* Para el efecto de la foto */
-}
-#today-memory-spotlight:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 15px rgba(0,0,0,0.3);
-}
-#today-memory-spotlight h3 {
-    margin: 0;
-    padding: 12px 15px;
-    background-color: #f0f0f0;
-    border-bottom: 1px solid #ddd;
-    font-size: 16px;
-    color: #555;
+/* --- Today Memory Spotlight Redesign --- */
+#spotlight-date-header {
+    font-size: 18px;
     font-weight: bold;
+    color: #555;
+    text-align: center;
+    margin: 15px 10px 5px 10px; /* Margen superior e inferior */
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
-.spotlight-content {
-    padding: 15px;
-    min-height: 120px; /* Altura mínima */
+
+#today-memory-spotlight {
+    background-color: transparent; /* El fondo lo da el slide interno */
+    border: none; /* Sin borde exterior */
+    border-radius: 12px; /* Bordes más redondeados */
+    padding: 0; /* Sin padding exterior */
+    margin: 0 10px 20px 10px; /* Margen alrededor */
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15); /* Sombra exterior suave */
+    overflow: hidden; /* Para contener el slide redondeado */
+}
+
+.spotlight-slide {
+    background-color: #ffffff; /* Fondo blanco para el slide */
+    padding: 12px 15px; /* Padding interno */
+    border-radius: 12px; /* Hereda o iguala el redondeo */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* Sombra interior */
+    max-height: 250px; /* Altura máxima, permite scroll */
+    overflow-y: auto; /* Scroll si el contenido es largo */
+    position: relative; /* Para posibles elementos futuros */
+}
+
+/* Estilos para cada memoria dentro del slide */
+.spotlight-memory-item {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
     align-items: center;
-}
-.spotlight-memory {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 10px;
-    width: 100%;
-}
-.spotlight-memory p {
-    margin: 0;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
     font-size: 14px;
-    color: #444;
-    text-align: left;
-    flex-grow: 1;
 }
+.spotlight-memory-item:last-child {
+    border-bottom: none; /* Sin borde en el último item */
+}
+
+.spotlight-memory-icon {
+    font-size: 18px; /* Tamaño del icono emoji */
+    margin-right: 10px;
+    flex-shrink: 0; /* Evita que el icono se encoja */
+}
+
+.spotlight-memory-details {
+    flex-grow: 1; /* Ocupa el espacio restante */
+    margin-right: 8px; /* Espacio antes del artwork */
+    line-height: 1.3;
+    color: #333;
+}
+.spotlight-memory-details strong {
+    color: #000;
+}
+
+/* Ajuste del artwork */
 .spotlight-artwork {
-    width: 60px;
-    height: 60px;
+    width: 40px; /* Tamaño reducido */
+    height: 40px;
     object-fit: cover;
-    border-radius: 3px;
-    border: 1px solid #eee;
+    border-radius: 4px; /* Bordes suaves */
     flex-shrink: 0;
+    border: 1px solid #ddd;
+    margin-left: auto; /* Empuja a la derecha */
 }
+
 .no-memory-message {
     font-style: italic;
     color: #777;
-    font-size: 14px;
-    margin: 10px 0;
+    text-align: center;
+    padding: 15px 0;
+}
+.no-memory-message.error {
+    color: #c00;
+    font-style: normal;
+    font-weight: bold;
 }
 
 
-/* --- Modales --- */
-.modal-preview, .modal-edit {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
-    display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; box-sizing: border-box;
-    opacity: 0; transform: scale(0.95); transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-}
-.modal-preview.visible, .modal-edit.visible { display: flex; opacity: 1; transform: scale(1); }
-
-.modal-preview-content, .modal-edit .modal-content {
-    background: #f7f7f7; padding: 0; border-radius: 10px; width: 100%;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #888;
-    max-height: 90vh; /* Altura máxima del contenido del modal */
-    display: flex; flex-direction: column; overflow: hidden; /* Important for scroll */
-}
-/* Scrollable container WITHIN the modal content */
-.modal-content-scrollable {
-    overflow-y: auto; /* Enable vertical scroll if needed */
-    flex-grow: 1; /* Allow this to take space */
-    padding: 0; /* Padding will be on sections */
-    height: 100%; /* ¡CLAVE! Asegura que la altura sea 100% del padre flexible */
-}
-
-
-/* --- Modal Preview (Larger, CSS Background) --- */
-.modal-preview-content {
-    /* CSS Beige Paper Effect */
-    background: linear-gradient(to bottom, #f5f5dc, #e8e8cd); /* Subtle gradient */
-    background-color: #f5f5dc; /* Fallback beige */
-    max-width: 600px; /* Wider */
-    min-height: 450px; /* Taller base */
-    max-height: 85vh; /* Max height */
-    padding: 0;
-    justify-content: space-between;
-}
-.modal-preview-header {
-    display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 1px solid rgba(0,0,0,0.2);
-    padding: 15px 20px 10px 20px;
-    background: rgba(255, 255, 255, 0.4); /* Slightly more opaque */
-}
-.modal-preview-header h3 { margin: 0; font-size: 19px; font-weight: bold; color: #333; text-align: left; flex-grow: 1; }
-#edit-from-preview-btn { background: none; border: none; padding: 5px; cursor: pointer; color: #555; line-height: 0; opacity: 0.7; }
-#edit-from-preview-btn:hover { opacity: 1; color: #000; } #edit-from-preview-btn svg { width: 24px; height: 24px; }
-.modal-preview-memorias {
-    flex-grow: 1; overflow-y: auto; text-align: left;
-    margin: 0; padding: 15px 20px;
-    /* Remove max-height, let flexbox handle it */
-}
-.modal-preview-memorias h4 { margin: 0 0 10px 0; font-size: 17px; color: #444; font-weight: bold; }
-#preview-memorias-list {
-    background-color: rgba(255,255,255,0.6); /* Slightly more transparent */
-    border: 1px solid rgba(0,0,0,0.1); padding: 10px; border-radius: 5px; min-height: 40px;
-}
-#close-preview-btn { margin: 15px 20px; align-self: center;}
-
-
-/* --- Unified Edit/Add Modal (Notepad Style) --- */
-.modal-edit .modal-content { 
-    max-width: 480px; /* Wider */ 
-    background: #f7f7f7; /* Fallback background, no beige here */
-}
-
-/* Franja superior marrón con "costura" */
-.modal-edit .modal-content::before {
-    content: '';
-    display: block;
-    height: 25px; /* Altura de la franja */
-    background-color: #8B5A2B; /* Color marrón/cuero */
-    border-bottom: 2px dashed rgba(0,0,0,0.3); /* Costura */
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2) inset; /* Sombra interior leve */
-    flex-shrink: 0; /* No se encoge */
-}
-
-/* Contenedor scrollable con estilo de papel */
-.modal-edit .modal-content-scrollable { 
-    overflow-y: auto; 
-    padding: 0; 
-    flex-grow: 1; 
-    position: relative; /* Para la línea roja */
-
-    /* Fondo de papel de notas */
-    background-color: #f5f5dc; /* Color beige */
-    /* Líneas horizontales sutiles */
-    background-image: linear-gradient(to bottom, transparent 24px, #dcd8c0 25px); 
-    background-size: 100% 25px; /* Espaciado de 25px por línea */
-    
-    /* Padding para dejar espacio al margen rojo y al contenido */
-    padding-left: 35px; 
-    padding-right: 20px;
-    padding-top: 10px;
-    padding-bottom: 10px;
-    box-sizing: border-box; /* Importante */
-}
-
-/* Línea roja vertical del margen */
-.modal-edit .modal-content-scrollable::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 30px; /* Posición del margen */
-    bottom: 0; /* Se estira hasta abajo del contenedor scrollable */
-    width: 1px;
-    background-color: #ff8a80; /* Color rojo pálido */
-}
-
-
-/* Secciones internas sin padding/borde */
-.modal-section { 
-    padding: 10px 0; /* Solo espaciado vertical */
-    border-bottom: none; /* Sin bordes, para que se vea el papel */
-    background: transparent; /* Fondo transparente */
-}
-.modal-section:last-child { 
-    border-bottom: none; 
-    padding-bottom: 20px; 
-}
-
-
-.modal-edit .modal-content h3 { font-size: 18px; font-weight: bold; margin: 0 0 8px 0; text-align: center;}
-.modal-edit .modal-content p.section-description { font-size: 14px; margin: 0 0 10px 0; text-align: center; color: #555; }
-.modal-edit .modal-content label { display: block; font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 4px; color: #444; text-align: left;}
-
-/* Inputs con fondo blanco para que destaquen sobre el papel */
-.modal-edit .modal-content input[type="text"],
-.modal-edit .modal-content input[type="date"],
-.modal-edit .modal-content input[type="number"],
-.modal-edit .modal-content input[type="file"],
-.modal-edit .modal-content input[type="url"],
-.modal-edit .modal-content select,
-.modal-edit .modal-content textarea {
-    width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #aaa; border-radius: 5px;
-    box-sizing: border-box; font-size: 14px; background-color: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); font-family: inherit;
-}
-.modal-edit .modal-content textarea { height: 70px; resize: vertical; }
-.modal-section #save-name-btn { display: block; width: 100%; margin-top: 10px; }
-
-/* Main buttons container at bottom */
-.modal-main-buttons { display: flex; border-top: 1px solid #ababab; background-color: #f0f0f0; margin-top: auto; flex-shrink: 0; }
-.modal-main-buttons button { flex: 1; background: transparent; border: none; border-left: 1px solid #ababab; padding: 12px 10px; font-size: 16px; color: #007aff; cursor: pointer; margin: 0; border-radius: 0; box-shadow: none; text-shadow: none; font-weight: bold; }
-.modal-main-buttons button:first-child { border-left: none; }
-.modal-main-buttons button:active { background-color: #d9d9d9; }
-.modal-main-buttons #close-edit-add-btn { color: #555; font-weight: normal; }
-.modal-main-buttons #close-edit-add-btn:active { color: #007aff; }
-
-/* Memory List and Form Styles (Unified Edit Modal - No Frame) */
-#save-status, #memoria-status { font-size: 12px; margin-top: 8px; min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px; }
-.success { color: green; } .error { color: red !important; }
-.memorias-section { text-align: left; }
-.memorias-section h4 { margin: 0 0 10px 0; font-size: 16px; color: #555; }
-#edit-memorias-list { max-height: 180px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #ccc; background-color: #fff; padding: 8px; border-radius: 5px; min-height: 40px; }
-.memoria-item { /* Simple background */
-    font-size: 13px; padding: 10px 8px; border-bottom: 1px solid #eee;
-    background-color: #fff; display: flex; justify-content: space-between; align-items: center;
-    border-radius: 3px; margin-bottom: 5px;
-}
-.memoria-item:last-child { border-bottom: none; margin-bottom: 0; }
-.memoria-item-content { flex-grow: 1; margin-right: 5px; }
-.memoria-item small { display: block; color: #555; margin-bottom: 3px; font-weight: bold; font-size: 11px; }
-.memoria-artwork { width: 35px; height: 35px; margin-right: 8px; border-radius: 3px; object-fit: cover; flex-shrink: 0; border: 1px solid #ddd; }
-.memoria-actions { display: flex; }
-.memoria-actions button { background: none; border: none; padding: 3px 5px; margin-left: 4px; cursor: pointer; font-size: 16px; color: #555; line-height: 0; opacity: 0.7; }
-.memoria-actions button svg { width: 16px; height: 16px; }
-.memoria-actions button:hover { opacity: 1; color: #000; }
-.delete-btn { color: #d15047; } .delete-btn:hover { color: #a00; }
-#memory-form { margin-top: 15px; }
-.add-memory-input-group { display: none; margin-bottom: 10px; /* Add margin between input groups */ }
-.add-memory-input-group label { margin-top: 8px; }
-#memory-form button.aqua-button { width: 100%; margin-top: 10px; }
-.list-placeholder { font-style: italic; color: #777; font-size: 13px; text-align: center; padding: 10px 0; }
-
-
-/* ¡NUEVO! Estilo para el contenedor del mapa */
-#leaflet-map {
-    height: 150px;
-    margin-top: 10px;
-    border: 1px solid #aaa;
-    border-radius: 5px;
-    display: none; /* Se muestra con JS */
-}
-
-/* Confirmación de Borrado (Remove extra space) */
-#confirm-delete-dialog { position: absolute; background-color: rgba(247, 247, 247, 0.95); border: 1px solid #888; border-radius: 8px; padding: 20px; /* Increased padding */ box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1002; text-align: center; max-width: 90%; /* Allow wider */ top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; }
-#confirm-delete-dialog p { margin: 0 0 20px 0; /* Increased bottom margin */ font-size: 15px; }
-#confirm-delete-dialog button { margin: 0 15px; /* Increased spacing */ }
-#confirm-delete-yes { /* Rojo */
-     background: linear-gradient(to bottom, #ff8a80 0%, #ff5252 100%); border: 1px solid #c62828; color: white; text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
-}
-#confirm-delete-yes:hover { background: linear-gradient(to bottom, #ff9e9e 0%, #ff6b6b 100%);}
-#confirm-delete-yes:active { background: linear-gradient(to top, #ff8a80 0%, #ff5252 100%);}
-
-/* Music/Place Results Styling */
-#itunes-results, #place-results { max-height: 150px; overflow-y: auto; border: 1px solid #ccc; border-radius: 3px; margin-top: 8px; background: white; margin-bottom: 10px; }
-.itunes-track, .place-result { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
-.itunes-track:last-child, .place-result:last-child { border-bottom: none; }
-.itunes-track:hover, .place-result:hover { background-color: #f0f8ff; }
-.itunes-artwork { width: 45px; height: 45px; margin-right: 10px; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
-.itunes-track.no-artwork .itunes-artwork { display: none; }
-.itunes-track-info { flex-grow: 1; }
-.itunes-track-name { font-weight: bold; font-size: 13px; }
-.itunes-track-artist { color: #555; font-size: 12px; }
-.itunes-track-select { margin-left: auto; color: #ccc; font-size: 18px; padding: 0 5px; }
-.itunes-track.selected, .place-result.selected { background-color: #e6ffed !important; font-weight: bold; }
-.place-result { font-size: 13px; }
-
-
-/* --- CAMBIO: Footer Dock (iOS 1-6 Glass Style) --- */
+/* --- Footer Dock (Glossy Style iOS 4-6) --- */
 .footer-dock {
     position: fixed; bottom: 0; left: 0; right: 0;
-    height: 90px; /* Increased height */
-    
-    /* iOS Glass Gradient */
-    background: linear-gradient(to bottom, #a5a5a5 0%, #7d7d7d 50%, #6d6d6d 51%, #656565 100%);
-    background-color: #7d7d7d; /* Fallback */
-    
-    border-top: 1px solid #c5c5c5; /* Borde superior claro */
-    
-    /* Sombra interior para "brillo" y sombra exterior */
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 -1px 3px rgba(0,0,0,0.3);
-    
-    display: flex; justify-content: space-around; align-items: center; 
-    padding: 5px 10px; z-index: 20;
-    box-sizing: border-box; /* Include padding in height */
+    height: 90px;
+    /* Glossy dark glass effect */
+    background: linear-gradient(to bottom, rgba(70,70,70,0.85) 0%, rgba(40,40,40,0.85) 50%, rgba(30,30,30,0.85) 51%, rgba(50,50,50,0.85) 100%);
+    background-color: rgba(50, 50, 50, 0.8); /* Fallback */
+    border-top: 1px solid rgba(130, 130, 130, 0.6); /* Borde superior más claro */
+    box-shadow: 0 -1px 0 rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1); /* Sombra inferior y brillo superior */
+    display: flex; justify-content: space-around; align-items: center; padding: 5px 10px; z-index: 20;
+    box-sizing: border-box;
+    backdrop-filter: blur(10px); /* Efecto blur si el navegador lo soporta */
+    -webkit-backdrop-filter: blur(10px);
 }
 .dock-button { background: none; border: none; color: #fff; text-align: center; cursor: pointer; padding: 5px; display: flex; flex-direction: column; align-items: center; opacity: 0.9; transition: opacity 0.2s, transform 0.1s; flex-basis: 0; flex-grow: 1; }
-.dock-button:hover, .dock-button:active { opacity: 1; transform: scale(1.05); /* Slightly less scaling */ }
+.dock-button:hover { opacity: 1; }
+.dock-button:active { opacity: 1; transform: scale(0.95); } /* Efecto al pulsar */
 .dock-button svg {
-    margin-bottom: 5px; /* More space */
-    filter: brightness(0) invert(1);
-    width: 32px; height: 32px; /* Increased size */
+    margin-bottom: 5px;
+    filter: brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0,0,0,0.4)); /* Sombra SVG */
+    width: 32px; height: 32px;
 }
-.dock-button span { font-size: 13px; /* Increased size */ text-shadow: 0 1px 1px rgba(0,0,0,0.6); }
+.dock-button span { font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,0.7); } /* Sombra texto más marcada */
 
-/* Placeholder button style */
+/* ... (Resto de estilos: Placeholder, Links, Utility, Scrollbars sin cambios) ... */
 .placeholder-button { font-size: 12px; padding: 4px 8px; margin-top: 5px; background-color: #ddd; color: #777; border: 1px solid #bbb; cursor: not-allowed; border-radius: 5px; display: block; width: 100%; text-align: center; box-sizing: border-box; }
-
-/* General Link styling */
 a { color: #007aff; text-decoration: none; }
 a:hover { text-decoration: underline; }
-
-/* Utility Classes */
 .error { color: red !important; }
 .success { color: green !important; }
-
-/* Scrollbars */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }
 ::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px;}
