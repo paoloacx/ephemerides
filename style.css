@@ -1,5 +1,7 @@
 /*
- * style.css (v17)
+ * style.css (v18)
+ * - Removes main loader styles
+ * - Restores spotlight background
  * - Adds Playfair Display font for H1
  * - Makes month nav bar thinner
  * - Hides username
@@ -49,12 +51,10 @@ header h1 {
     color: #ffffff;
     font-weight: bold;
     text-shadow: 0 -1px 0 rgba(0,0,0,0.5);
-    
-    /* --- NEW FONT CHANGES --- */
     font-family: 'Playfair Display', serif;
     text-transform: uppercase;
     font-weight: 700;
-    font-size: 22px; /* Slightly larger */
+    font-size: 22px;
     letter-spacing: 1px;
 }
 .header-icon-btn {
@@ -72,7 +72,7 @@ header h1 {
 .header-icon-btn .material-icons-outlined { font-size: 24px; }
 
 #refresh-btn { 
-    position: absolute; /* Position over h1 padding */
+    position: absolute;
     left: 5px; 
     top: 50%;
     transform: translateY(-50%);
@@ -82,7 +82,7 @@ header h1 {
     margin-right: 5px; 
     display: flex;
     align-items: center;
-    position: absolute; /* Absolute position right */
+    position: absolute;
     right: 5px;
     top: 50%;
     transform: translateY(-50%);
@@ -90,10 +90,9 @@ header h1 {
 #user-info {
     display: flex;
     align-items: center;
-    /* --- NEW: Clickable --- */
     cursor: pointer;
     padding: 2px;
-    border-radius: 50px; /* Rounded */
+    border-radius: 50px;
     transition: background-color 0.2s;
 }
 #user-info:hover {
@@ -106,9 +105,9 @@ header h1 {
     border: 1px solid rgba(255,255,255,0.5);
 }
 #user-name {
-    /* --- NEW: Hidden --- */
-    display: none; 
-    color: white;
+    display: none; /* Hidden */
+    /* styles for when it was visible */
+    /* color: white;
     font-size: 12px;
     text-shadow: 0 -1px 0 rgba(0,0,0,0.5);
     max-width: 80px;
@@ -116,7 +115,7 @@ header h1 {
     text-overflow: ellipsis;
     white-space: nowrap;
     margin-left: 5px;
-    margin-right: 5px;
+    margin-right: 5px; */
 }
 
 /* --- Month Nav --- */
@@ -124,13 +123,12 @@ header h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    /* --- NEW: Thinner --- */
-    padding: 4px 15px; 
-    background-color: rgba(0,0,0,0.1); /* Slightly transparent */
+    padding: 4px 15px; /* Thinner */
+    background-color: rgba(0,0,0,0.1); 
     border-bottom: 1px solid #6d6d6d;
     box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     position: sticky;
-    top: 45px; /* Header height */
+    top: 45px; 
     z-index: 9;
 }
 #month-name-display {
@@ -146,8 +144,8 @@ header h1 {
 .aqua-button {
     background: linear-gradient(to bottom, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%);
     border: 1px solid #3c82b1;
-    border-radius: 8px; /* Less rounded */
-    padding: 6px 12px; /* Smaller */
+    border-radius: 8px; 
+    padding: 6px 12px; 
     font-size: 15px;
     font-weight: bold;
     color: #fff;
@@ -181,7 +179,8 @@ main { padding: 10px; }
 
 /* --- Spotlight Widget --- */
 #today-spotlight-container {
-    background-color: rgba(255, 255, 255, 0.1);
+    /* --- RESTORED BACKGROUND --- */
+    background-color: rgba(255, 255, 255, 0.1); 
     border-radius: 10px;
     padding: 12px;
     margin: 10px auto;
@@ -196,7 +195,8 @@ main { padding: 10px; }
     text-shadow: 0 1px 1px rgba(0,0,0,0.3);
 }
 #today-memory-spotlight {
-    background-color: rgba(0,0,0,0.1);
+    /* --- RESTORED BACKGROUND --- */
+    background-color: rgba(0,0,0,0.1); 
     border-radius: 8px;
     padding: 5px 8px;
     min-height: 40px;
@@ -240,19 +240,19 @@ main { padding: 10px; }
     gap: 10px;
     padding-bottom: 20px;
     max-width: 960px;
-    margin: 20px auto 0 auto; /* More space above */
+    margin: 20px auto 0 auto; 
 }
 .dia-btn {
     background-color: #fdfdfd; 
     border: 1px solid #ccc;
-    border-radius: 8px; /* Rounded corners */
+    border-radius: 8px; 
     padding: 0; 
     text-align: center; 
     cursor: pointer;
     box-shadow: 1px 1px 3px rgba(0,0,0,0.2), inset 0 0 5px rgba(0,0,0,0.05);
     color: #333;
     width: 100%;
-    aspect-ratio: 1 / 1; /* Square */
+    aspect-ratio: 1 / 1; 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -267,14 +267,14 @@ main { padding: 10px; }
 }
 .dia-numero {
     font-size: 24px;
-    font-weight: 500; /* Slightly thinner */
+    font-weight: 500; 
     color: #444;
     line-height: 1;
 }
 
 /* --- Day Modifiers --- */
 .dia-btn-today {
-    background-color: #e57373; /* Soft red */
+    background-color: #e57373; 
     border-color: #c62828;
 }
 .dia-btn-today .dia-numero {
@@ -291,91 +291,61 @@ main { padding: 10px; }
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background-color: #4aa2d8; /* Blue */
+    background-color: #4aa2d8; 
     box-shadow: 0 0 2px rgba(0,0,0,0.3);
 }
 .dia-btn-today.tiene-memorias::after {
-    background-color: #fff; /* White dot on red day */
+    background-color: #fff; 
 }
 
 
-/* --- Main Loader --- */
-#main-loader {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background-color: rgba(0,0,0,0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9998;
-    opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none; /* Don't block clicks */
-}
-#main-loader.visible {
-    opacity: 1;
-    pointer-events: auto; /* Block clicks */
-}
-#main-loader span {
-    background-color: rgba(0,0,0,0.8);
-    color: white;
-    padding: 15px 25px;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: 500;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-}
+/* --- Main Loader REMOVED --- */
+/* Rules for #main-loader and #main-loader span are gone */
 
 
 /* --- Modals --- */
 .modal-overlay {
-    /* --- POSITION FIX --- */
     position: fixed; 
     top: 0; left: 0;
     width: 100%; 
     height: 100%;
-    
     background-color: rgba(0,0,0,0.5);
-    display: flex; /* Use flex for centering */
+    display: flex; 
     justify-content: center;
     align-items: center;
     z-index: 1000;
     padding: 15px;
     box-sizing: border-box;
-    
     opacity: 0;
     transform: scale(0.95);
     transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-    display: none; /* Start hidden */
+    display: none; 
 }
 .modal-overlay.visible {
     opacity: 1;
     transform: scale(1);
-    display: flex; /* Show */
+    display: flex; 
 }
 
 .modal-content {
     width: 100%;
     max-width: 500px;
-    border-radius: 12px; /* More rounded */
+    border-radius: 12px; 
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     border: 1px solid #888;
-    max-height: 90vh; /* Max height */
+    max-height: 90vh; 
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Key */
-    
-    /* --- NEW: Notebook Background --- */
-    background-color: #fdfdfa; /* Off-white */
+    overflow: hidden; 
+    background-color: #fdfdfa; 
     background-image: 
-        linear-gradient(to right, rgba(255,0,0,0.15) 1px, transparent 1px), /* Vertical red line (margin) */
-        linear-gradient(to bottom, rgba(0,0,255,0.1) 1px, transparent 1px); /* Horizontal blue lines */
-    background-position: 40px 0, 0 0; /* Margin position */
-    background-size: 1px 100%, 100% 2.5em; /* Line sizes */
+        linear-gradient(to right, rgba(255,0,0,0.15) 1px, transparent 1px), 
+        linear-gradient(to bottom, rgba(0,0,255,0.1) 1px, transparent 1px); 
+    background-position: 40px 0, 0 0; 
+    background-size: 1px 100%, 100% 2.5em; 
     background-repeat: repeat-y, repeat;
-    line-height: 2.5em; /* Match line height */
-    color: #333; /* Dark text for light background */
+    line-height: 2.5em; 
+    color: #333; 
 }
 
 .modal-header {
@@ -384,14 +354,14 @@ main { padding: 10px; }
     align-items: center;
     padding: 12px 15px;
     border-bottom: 1px solid #ccc;
-    background-color: rgba(255, 255, 255, 0.7); /* Translucent white background */
+    background-color: rgba(255, 255, 255, 0.7); 
 }
 .modal-header h3 {
     margin: 0;
     font-size: 18px;
     font-weight: bold;
     color: #333;
-    line-height: 1.2; /* Adjust */
+    line-height: 1.2; 
 }
 .modal-close-btn {
     background: none;
@@ -407,8 +377,7 @@ main { padding: 10px; }
 .modal-content-scrollable {
     overflow-y: auto;
     flex-grow: 1;
-    padding: 15px 20px 15px 50px; /* Add left padding for margin line */
-    /* Adjust line-height for content */
+    padding: 15px 20px 15px 50px; 
     line-height: 1.5; 
 }
 .modal-section {
@@ -436,7 +405,7 @@ main { padding: 10px; }
     border-left: 1px solid #ababab;
     padding: 12px 10px;
     font-size: 16px;
-    color: #007aff; /* iOS Blue */
+    color: #007aff; 
     cursor: pointer;
     margin: 0;
     border-radius: 0;
@@ -477,12 +446,12 @@ main { padding: 10px; }
     font-size: 14px;
     background-color: #fff;
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-    line-height: normal; /* Reset line-height */
+    line-height: normal; 
 }
 .modal-content textarea {
     height: 70px;
     resize: vertical;
-    line-height: 1.4; /* Adjust for textarea */
+    line-height: 1.4; 
 }
 .modal-content h4 {
     font-size: 16px;
