@@ -447,14 +447,6 @@ async function handleSaveMemorySubmit() {
     }
 }
 
-
-// --- 7. Exponer funciones globales (si es necesario) ---
-// (Minimizar esto. Idealmente, todo se maneja con addEventListener)
-window.handleMemoryTypeChangeUnified = ui.handleMemoryTypeChange;
-window.cerrarModalPreview = ui.closePreviewModal;
-window.cerrarModalEdicion = ui.closeEditModal;
-
-
 // --- Arrancar la Aplicación ---
 checkAndRunApp();
 
