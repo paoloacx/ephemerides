@@ -82,12 +82,14 @@ async function checkAndRunApp() {
  */
 async function loadTodaySpotlight() {
     const today = new Date();
-    const dateString = `Hoy, ${today.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`;
+    // CORRECCIÓN IDIOMA: Cambiar 'es-ES' a 'en-US' (o el locale deseado)
+    const dateString = `Today, ${today.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}`; 
     
     const spotlightData = await getTodaySpotlight(state.todayId);
     
     if (spotlightData) {
-        const fullDateString = `${dateString} ${spotlightData.dayName !== 'Unnamed Day' ? `(${spotlightData.dayName})` : ''}`;
+        // CORRECCIÓN IDIOMA: Cambiar 'Unnamed Day' si se traduce
+        const fullDateString = `${dateString} ${spotlightData.dayName !== 'Unnamed Day' ? `(${spotlightData.dayName})` : ''}`; 
         ui.updateSpotlight(fullDateString, spotlightData.memories);
     }
 }
@@ -96,7 +98,8 @@ async function loadTodaySpotlight() {
  * Dibuja el mes actual en el calendario.
  */
 function drawCurrentMonth() {
-    const monthName = new Date(2024, state.currentMonthIndex, 1).toLocaleDateString('es-ES', { month: 'long' });
+    // CORRECCIÓN IDIOMA: Cambiar 'es-ES' a 'en-US'
+    const monthName = new Date(2024, state.currentMonthIndex, 1).toLocaleDateString('en-US', { month: 'long' }); 
     const monthNumber = state.currentMonthIndex + 1;
     
     const diasDelMes = state.allDaysData.filter(dia => 
@@ -138,7 +141,7 @@ function getUICallbacks() {
         onStoreLoadMore: handleStoreLoadMore,
         onStoreItemClick: handleStoreItemClick,
 
-        // ¡NUEVO! Acción del Modal "Buscar"
+        // Acción del Modal "Buscar"
         onSearchSubmit: handleSearchSubmit, 
     };
 }
@@ -150,7 +153,8 @@ function getUICallbacks() {
 function handleAuthStateChange(user) {
     state.currentUser = user;
     ui.updateLoginUI(user);
-    console.log("Estado de autenticación cambiado:", user ? user.uid : "Logged out");
+    // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+    console.log("Authentication state changed:", user ? user.uid : "Logged out"); 
 }
 
 /**
@@ -171,7 +175,8 @@ function handleMonthChange(direction) {
  * @param {Object} dia - El objeto de día clicado.
  */
 async function handleDayClick(dia) {
-    // ui.setLoading("Cargando memorias...", true); // Loader en modal es mejor
+    // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+    // ui.setLoading("Loading memories...", true); 
     const memories = await loadMemoriesForDay(dia.id);
     // ui.setLoading(null, false);
     
@@ -204,7 +209,8 @@ function handleFooterAction(action) {
         // 'search' ya no se maneja aquí
             
         default:
-            console.warn("Acción de footer desconocida:", action);
+            // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+            console.warn("Unknown footer action:", action); 
     }
 }
 
@@ -231,25 +237,23 @@ function handleShuffleClick() {
 }
 
 /**
- * ¡NUEVO! Maneja el envío del formulario de búsqueda (desde ui.js).
+ * Maneja el envío del formulario de búsqueda (desde ui.js).
  * @param {string} term - Término de búsqueda.
  */
 async function handleSearchSubmit(term) {
-    console.log("Buscando término:", term);
+    // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+    console.log("Searching for term:", term); 
     
-    // ui.js ya ha deshabilitado el botón
-    
-    // Llamar a la búsqueda (lenta) de store.js
     const results = await searchMemories(term.toLowerCase());
     
-    // Cerrar el modal de búsqueda
     ui.closeSearchModal();
     
-    // Mostrar resultados en el Spotlight
     if (results.length === 0) {
-        ui.updateSpotlight(`No hay resultados para "${term}"`, []);
+        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+        ui.updateSpotlight(`No results found for "${term}"`, []); 
     } else {
-        ui.updateSpotlight(`Resultados para "${term}" (${results.length})`, results);
+        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+        ui.updateSpotlight(`Results for "${term}" (${results.length})`, results); 
     }
 }
 
@@ -263,20 +267,23 @@ async function handleSearchSubmit(term) {
  */
 async function handleSaveDayName(diaId, newName) {
     try {
-        await saveDayName(diaId, newName);
+        // CORRECCIÓN IDIOMA: Cambiar 'Unnamed Day' si se traduce
+        await saveDayName(diaId, newName || "Unnamed Day"); 
         
-        // Actualizar estado local
         const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
         if (dayIndex !== -1) {
-            state.allDaysData[dayIndex].Nombre_Especial = newName || "Unnamed Day";
+            // CORRECCIÓN IDIOMA: Cambiar 'Unnamed Day' si se traduce
+            state.allDaysData[dayIndex].Nombre_Especial = newName || "Unnamed Day"; 
         }
         
-        ui.showModalStatus('save-status', 'Nombre guardado', false);
-        drawCurrentMonth(); // Redibujar por si el nombre cambió
+        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+        ui.showModalStatus('save-status', 'Name saved', false); 
+        drawCurrentMonth(); 
         
     } catch (err) {
-        console.error("Error guardando nombre:", err);
-        ui.showModalStatus('save-status', `Error: ${err.message}`, true);
+        console.error("Error saving name:", err);
+        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+        ui.showModalStatus('save-status', `Error: ${err.message}`, true); 
     }
 }
 
@@ -293,18 +300,18 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
         try {
             const dateParts = memoryData.Fecha_Original.split('-'); // YYYY-MM-DD
             const utcDate = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2])));
-            if (isNaN(utcDate.getTime())) throw new Error('Fecha inválida');
-            memoryData.Fecha_Original = utcDate; // store.js lo convertirá a Timestamp
+            // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+            if (isNaN(utcDate.getTime())) throw new Error('Invalid date'); 
+            memoryData.Fecha_Original = utcDate; 
         } catch (e) {
-            throw new Error('Formato de fecha original inválido.');
+            // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+            throw new Error('Invalid original date format.'); 
         }
         
         // 2. Lógica de subida de imagen (TODO)
         if (memoryData.Tipo === 'Imagen' && memoryData.file) {
-            // ... lógica de subida ...
-            // memoryData.ImagenURL = await uploadImage(memoryData.file);
-            console.warn("Subida de imagen aún no implementada.");
-            // Por ahora, borramos el 'file' para que no intente guardarlo en Firestore
+            // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+            console.warn("Image upload not yet implemented."); 
             delete memoryData.file;
         }
 
@@ -313,12 +320,12 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
         await saveMemory(diaId, memoryData, memoryId);
         
         // 4. Actualizar UI
-        ui.showModalStatus('memoria-status', isEditing ? 'Memoria actualizada' : 'Memoria guardada', false);
+        // CORRECCIÓN IDIOMA: Cambiar mensajes si se traducen
+        ui.showModalStatus('memoria-status', isEditing ? 'Memory updated' : 'Memory saved', false); 
         ui.resetMemoryForm();
         
         // 5. Recargar la lista de memorias en el modal
         const updatedMemories = await loadMemoriesForDay(diaId);
-        // Volver a abrir/refrescar el modal de edición con los datos actualizados
         ui.openEditModal(
             state.allDaysData.find(d => d.id === diaId),
             updatedMemories,
@@ -338,9 +345,9 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
         }
         
     } catch (err) {
-        console.error("Error guardando memoria:", err);
-        ui.showModalStatus('memoria-status', `Error: ${err.message}`, true);
-        // Reactivar el botón si falla (ui.js debería hacer esto)
+        console.error("Error saving memory:", err);
+        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+        ui.showModalStatus('memoria-status', `Error: ${err.message}`, true); 
     }
 }
 
@@ -352,18 +359,17 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
 async function handleDeleteMemory(diaId, memId) {
     try {
         await deleteMemory(diaId, memId);
-        ui.showModalStatus('memoria-status', 'Memoria borrada', false);
+        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+        ui.showModalStatus('memoria-status', 'Memory deleted', false); 
         
         const updatedMemories = await loadMemoriesForDay(diaId);
         
-        // Refrescar el modal de edición
         ui.openEditModal(
             state.allDaysData.find(d => d.id === diaId),
             updatedMemories,
             state.allDaysData
         );
 
-        // Comprobar si era la última memoria y actualizar el grid
         if (updatedMemories.length === 0) {
             const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
             if (dayIndex !== -1) {
@@ -372,14 +378,14 @@ async function handleDeleteMemory(diaId, memId) {
             }
         }
 
-        // Recargar el spotlight si estábamos editando el día de hoy
         if (diaId === state.todayId) {
             loadTodaySpotlight();
         }
         
     } catch (err) {
-        console.error("Error borrando memoria:", err);
-        ui.showModalStatus('memoria-status', `Error: ${err.message}`, true);
+        console.error("Error deleting memory:", err);
+        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+        ui.showModalStatus('memoria-status', `Error: ${err.message}`, true); 
     }
 }
 
@@ -395,8 +401,9 @@ async function handleMusicSearch(term) {
         const tracks = await searchiTunes(term);
         ui.showMusicResults(tracks);
     } catch (err) {
-        console.error("Error en búsqueda de iTunes:", err);
-        ui.showModalStatus('memoria-status', 'Error buscando música', true);
+        console.error("Error searching iTunes:", err);
+        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+        ui.showModalStatus('memoria-status', 'Error searching music', true); 
     }
 }
 
@@ -409,8 +416,9 @@ async function handlePlaceSearch(term) {
         const places = await searchNominatim(term);
         ui.showPlaceResults(places);
     } catch (err) {
-        console.error("Error en búsqueda de Nominatim:", err);
-        ui.showModalStatus('memoria-status', 'Error buscando lugares', true);
+        console.error("Error searching Nominatim:", err);
+        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+        ui.showModalStatus('memoria-status', 'Error searching places', true); 
     }
 }
 
@@ -421,14 +429,15 @@ async function handlePlaceSearch(term) {
  * @param {string} type - 'Nombres', 'Lugar', 'Musica', 'Texto', 'Imagen'
  */
 async function handleStoreCategoryClick(type) {
-    console.log("Cargando Almacén para:", type);
+    // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+    console.log("Loading Store for:", type); 
     
-    // Resetear estado de paginación
     state.store.currentType = type;
     state.store.lastVisible = null;
     state.store.isLoading = true;
     
-    const title = `Almacén: ${type}`;
+    // CORRECCIÓN IDIOMA: Cambiar título si se traduce
+    const title = `Store: ${type}`; 
     ui.openStoreListModal(title);
     
     try {
@@ -445,11 +454,12 @@ async function handleStoreCategoryClick(type) {
         ui.updateStoreList(result.items, false, result.hasMore);
         
     } catch (err) {
-        console.error(`Error cargando categoría ${type}:`, err);
+        console.error(`Error loading category ${type}:`, err);
         ui.updateStoreList([], false, false);
         if (err.code === 'failed-precondition') {
-            console.error("¡ÍNDICE DE FIREBASE REQUERIDO!", err.message);
-            alert("Error de Firebase: Se requiere un índice. Revisa la consola (F12) para ver el enlace de creación.");
+            console.error("FIREBASE INDEX REQUIRED!", err.message);
+            // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+            alert("Firebase Error: An index is required. Check the console (F12) for the creation link."); 
         }
     }
 }
@@ -461,7 +471,8 @@ async function handleStoreLoadMore() {
     const { currentType, lastVisible, isLoading } = state.store;
     if (isLoading || !currentType || !lastVisible) return;
     
-    console.log("Cargando más...", currentType);
+    // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+    console.log("Loading more...", currentType); 
     state.store.isLoading = true;
     
     try {
@@ -478,7 +489,7 @@ async function handleStoreLoadMore() {
         ui.updateStoreList(result.items, true, result.hasMore);
         
     } catch (err) {
-        console.error(`Error cargando más ${currentType}:`, err);
+        console.error(`Error loading more ${currentType}:`, err);
         state.store.isLoading = false;
     }
 }
@@ -490,7 +501,8 @@ async function handleStoreLoadMore() {
 function handleStoreItemClick(diaId) {
     const dia = state.allDaysData.find(d => d.id === diaId);
     if (!dia) {
-        console.error("No se encontró el día:", diaId);
+        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
+        console.error("Day not found:", diaId); 
         return;
     }
     
