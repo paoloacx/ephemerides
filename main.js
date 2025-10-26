@@ -1,6 +1,8 @@
 /*
- * main.js (v4.5 - Header Search, Footer Settings)
- * Main app controller.
+ * main.js (v4.6 - Connects UI v7.0 changes)
+ * - Adds isUserLoggedIn and onEditFromPreview callbacks
+ * - Simplifies day click logic (UI decides modal)
+ * - Exposes helper functions needed by UI
  */
 
 // --- Module Imports ---
@@ -10,7 +12,7 @@ import {
     checkAndRunApp as storeCheckAndRun,
     migrateDayNamesToEnglish,
     loadAllDaysData,
-    loadMemoriesForDay,
+    loadMemoriesForDay, // Keep this import
     saveDayName,
     saveMemory,
     deleteMemory,
@@ -24,7 +26,6 @@ import { ui } from './ui.js';
 
 // --- Global App State ---
 let state = {
-    // ... (state remains the same)
     allDaysData: [],
     currentMonthIndex: new Date().getMonth(),
     currentUser: null,
@@ -38,11 +39,8 @@ let state = {
 
 // --- 1. App Initialization ---
 
-/**
- * Main function to start the application.
- */
 async function checkAndRunApp() {
-    console.log("Starting Ephemerides v4.5 (Modular)...");
+    console.log("Starting Ephemerides v4.6 (Modular)...");
     
     try {
         initFirebase();
@@ -60,7 +58,8 @@ async function checkAndRunApp() {
         const today = new Date();
         state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
         
-        ui.init(getUICallbacks());
+        // Pass all necessary callbacks to UI
+        ui.init(getUICallbacks()); 
         
         drawCurrentMonth();
         loadTodaySpotlight();
@@ -76,11 +75,9 @@ async function checkAndRunApp() {
     }
 }
 
-/**
- * Loads the "Spotlight" data for today.
- */
 async function loadTodaySpotlight() {
     const today = new Date();
+    // Use 'en-US' locale for spotlight date formatting
     const dateString = `Today, ${today.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}`; 
     
     const spotlightData = await getTodaySpotlight(state.todayId);
@@ -91,10 +88,8 @@ async function loadTodaySpotlight() {
     }
 }
 
-/**
- * Draws the current month's calendar grid.
- */
 function drawCurrentMonth() {
+    // Use 'en-US' locale for month name formatting
     const monthName = new Date(2024, state.currentMonthIndex, 1).toLocaleDateString('en-US', { month: 'long' }); 
     const monthNumber = state.currentMonthIndex + 1;
     
@@ -114,9 +109,22 @@ function drawCurrentMonth() {
  */
 function getUICallbacks() {
     return {
+        // --- NEW Callbacks needed by ui.js ---
+        isUserLoggedIn: () => !!state.currentUser, // Checks if user exists
+        loadMemoriesForDay: loadMemoriesForDay, // Pass the function directly
+        getAllDaysData: () => state.allDaysData, // Pass a function to get current data
+        onEditFromPreview: handleEditFromPreview, // Handle edit button click in preview
+        // --- End New ---
+
         // Nav & Footer
         onMonthChange: handleMonthChange,
-        onDayClick: handleDayClick,
+        // --- CHANGED: onDayClick now just passes the day object ---
+        onDayClick: (dia) => { 
+            // ui.js's _handleDayClick will now decide which modal to open
+            // based on isUserLoggedIn()
+            // We just need to make sure ui.js has the functions it needs
+            console.log("Day clicked in main:", dia.id); 
+        }, 
         onFooterAction: handleFooterAction,
         
         // Auth
@@ -137,25 +145,20 @@ function getUICallbacks() {
         onStoreLoadMore: handleStoreLoadMore,
         onStoreItemClick: handleStoreItemClick,
 
-        // Search Modal Action (Called by header search now)
+        // Search Modal Action
         onSearchSubmit: handleSearchSubmit, 
     };
 }
 
-/**
- * Called when authentication state changes.
- * @param {Object} user - Firebase user object or null.
- */
 function handleAuthStateChange(user) {
     state.currentUser = user;
-    ui.updateLoginUI(user);
+    ui.updateLoginUI(user); // UI updates login button/avatar
     console.log("Authentication state changed:", user ? user.uid : "Logged out"); 
+    // If needed, redraw calendar or update modals if login affects visibility
+    // Example: If preview modal is open, update its edit button visibility
+    // (We might need a direct function in ui.js for this)
 }
 
-/**
- * Handles month navigation clicks.
- * @param {string} direction - 'prev' or 'next'.
- */
 function handleMonthChange(direction) {
     if (direction === 'prev') {
         state.currentMonthIndex = (state.currentMonthIndex - 1 + 12) % 12;
@@ -165,26 +168,24 @@ function handleMonthChange(direction) {
     drawCurrentMonth();
 }
 
-/**
- * Handles clicks on a calendar day.
- * @param {Object} dia - The clicked day object.
- */
-async function handleDayClick(dia) {
-    const memories = await loadMemoriesForDay(dia.id);
-    
-    if (state.currentUser) {
-        ui.openEditModal(dia, memories, state.allDaysData);
-    } else {
-        ui.openPreviewModal(dia, memories);
-    }
-}
+// --- REMOVED: handleDayClick logic moved to ui.js's _handleDayClick ---
+// async function handleDayClick(dia) { ... } 
 
+// --- NEW Function ---
 /**
- * Handles footer button clicks (Add, Store, Shuffle).
- * @param {string} action - 'add', 'store', 'shuffle'.
+ * Handles the callback when the Edit button is clicked in the Preview modal.
+ * @param {Object} dia - The day data from the preview modal.
+ * @param {Array} memories - The memories already loaded for that day.
  */
+function handleEditFromPreview(dia, memories) {
+    console.log("Switching from Preview to Edit for day:", dia.id);
+    // Directly open the edit modal, passing the already loaded data
+    ui.openEditModal(dia, memories, state.allDaysData);
+}
+// --- End New ---
+
+
 function handleFooterAction(action) {
-    // CHANGED: Removed 'search' case. 'settings' is handled by ui.js
     switch (action) {
         case 'add':
             ui.openEditModal(null, [], state.allDaysData);
@@ -195,15 +196,12 @@ function handleFooterAction(action) {
         case 'shuffle':
             handleShuffleClick();
             break;
-        // 'settings' action is now handled directly in ui.js
+        // 'settings' action is handled directly in ui.js
         default:
             console.warn("Unknown footer action passed to main.js:", action); 
     }
 }
 
-/**
- * Navigates to a random day.
- */
 function handleShuffleClick() {
     if (state.allDaysData.length === 0) return;
     
@@ -217,22 +215,22 @@ function handleShuffleClick() {
     }
     
     setTimeout(() => {
-        handleDayClick(randomDia);
+        // --- CHANGED: Call ui.js's internal handler ---
+        // This will now correctly open Preview or Edit based on login state
+        const dayButton = document.querySelector(`.dia-btn[data-dia-id="${randomDia.id}"]`);
+        if(dayButton) dayButton.click(); // Simulate click
+        else console.error("Could not find button for shuffled day:", randomDia.id);
     }, 100);
     
     window.scrollTo(0, 0);
 }
 
-/**
- * Handles the submission from the search modal (triggered by UI).
- * @param {string} term - Search term.
- */
 async function handleSearchSubmit(term) {
     console.log("Searching for term:", term); 
     
     const results = await searchMemories(term.toLowerCase());
     
-    ui.closeSearchModal(); // Tell UI to close the modal
+    ui.closeSearchModal(); 
     
     if (results.length === 0) {
         ui.updateSpotlight(`No results found for "${term}"`, []); 
@@ -244,11 +242,6 @@ async function handleSearchSubmit(term) {
 
 // --- 3. Modal Logic (Controller) ---
 
-/**
- * Saves the special name for a day.
- * @param {string} diaId - The day ID (e.g., "01-01").
- * @param {string} newName - The new name.
- */
 async function handleSaveDayName(diaId, newName) {
     try {
         await saveDayName(diaId, newName || "Unnamed Day"); 
@@ -261,27 +254,26 @@ async function handleSaveDayName(diaId, newName) {
         ui.showModalStatus('save-status', 'Name saved', false); 
         drawCurrentMonth(); 
         
+        // Also update spotlight if today's name changed
+        if (diaId === state.todayId) {
+            loadTodaySpotlight();
+        }
+        
     } catch (err) {
         console.error("Error saving name:", err);
         ui.showModalStatus('save-status', `Error: ${err.message}`, true); 
     }
 }
 
-/**
- * Receives memory form data from ui.js and saves it.
- * @param {string} diaId - The day ID.
- * @param {Object} memoryData - Form data (Fecha_Original is YYYY-MM-DD string).
- * @param {boolean} isEditing - True if updating.
- */
 async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
     
     try {
-        // 1. Convert date string (YYYY-MM-DD from year input + diaId) to Date object
+        // 1. Convert date string (YYYY-MM-DD) to Date object
         try {
-            const dateParts = memoryData.Fecha_Original.split('-'); // YYYY-MM-DD
+            const dateParts = memoryData.Fecha_Original.split('-'); 
             const utcDate = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2])));
             if (isNaN(utcDate.getTime())) throw new Error('Invalid date constructed'); 
-            memoryData.Fecha_Original = utcDate; // Pass Date object to store.js
+            memoryData.Fecha_Original = utcDate; 
         } catch (e) {
             throw new Error('Invalid original date format constructed.'); 
         }
@@ -302,8 +294,9 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
         
         // 5. Reload memory list in modal
         const updatedMemories = await loadMemoriesForDay(diaId);
-        const currentDayData = state.allDaysData.find(d => d.id === diaId); // Get current day data
-        ui.openEditModal(currentDayData, updatedMemories, state.allDaysData);
+        const currentDayData = state.allDaysData.find(d => d.id === diaId); 
+        // Re-open modal to refresh list and reset form state
+        ui.openEditModal(currentDayData, updatedMemories, state.allDaysData); 
         
         // 6. Update grid (for blue dot)
         const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
@@ -323,29 +316,27 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
     }
 }
 
-/**
- * Deletes a memory.
- * @param {string} diaId - The day ID.
- * @param {string} memId - The memory ID.
- */
 async function handleDeleteMemory(diaId, memId) {
     try {
         await deleteMemory(diaId, memId);
         ui.showModalStatus('memoria-status', 'Memory deleted', false); 
         
         const updatedMemories = await loadMemoriesForDay(diaId);
-        const currentDayData = state.allDaysData.find(d => d.id === diaId); // Get current day data
+        const currentDayData = state.allDaysData.find(d => d.id === diaId); 
         
-        ui.openEditModal(currentDayData, updatedMemories, state.allDaysData);
+        // Re-open modal to refresh list
+        ui.openEditModal(currentDayData, updatedMemories, state.allDaysData); 
 
+        // Check if it was the last memory for the day
         if (updatedMemories.length === 0) {
             const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
             if (dayIndex !== -1) {
                 state.allDaysData[dayIndex].tieneMemorias = false;
-                drawCurrentMonth();
+                drawCurrentMonth(); // Update grid to remove dot
             }
         }
 
+        // Reload spotlight if today was edited
         if (diaId === state.todayId) {
             loadTodaySpotlight();
         }
@@ -359,10 +350,6 @@ async function handleDeleteMemory(diaId, memId) {
 
 // --- 4. External API Logic (Controller) ---
 
-/**
- * Calls API module to search iTunes and passes results to UI.
- * @param {string} term - Search term.
- */
 async function handleMusicSearch(term) {
     try {
         const tracks = await searchiTunes(term);
@@ -373,10 +360,6 @@ async function handleMusicSearch(term) {
     }
 }
 
-/**
- * Calls API module to search places and passes results to UI.
- * @param {string} term - Search term.
- */
 async function handlePlaceSearch(term) {
     try {
         const places = await searchNominatim(term);
@@ -389,10 +372,6 @@ async function handlePlaceSearch(term) {
 
 // --- 5. "Store" Modal Logic (Controller) ---
 
-/**
- * Handles click on a Store category.
- * @param {string} type - 'Names', 'Place', 'Music', 'Text', 'Image'
- */
 async function handleStoreCategoryClick(type) {
     console.log("Loading Store for:", type); 
     
@@ -422,13 +401,12 @@ async function handleStoreCategoryClick(type) {
         if (err.code === 'failed-precondition') {
             console.error("FIREBASE INDEX REQUIRED!", err.message);
             alert("Firebase Error: An index is required. Check the console (F12) for the creation link."); 
+        } else {
+            alert(`Error loading store: ${err.message}`);
         }
     }
 }
 
-/**
- * Loads the next page of results in the Store.
- */
 async function handleStoreLoadMore() {
     const { currentType, lastVisible, isLoading } = state.store;
     if (isLoading || !currentType || !lastVisible) return;
@@ -452,13 +430,10 @@ async function handleStoreLoadMore() {
     } catch (err) {
         console.error(`Error loading more ${currentType}:`, err);
         state.store.isLoading = false;
+        alert(`Error loading more items: ${err.message}`);
     }
 }
 
-/**
- * Handles click on a Store list item (navigates to that day).
- * @param {string} diaId - The day ID (e.g., "05-14").
- */
 function handleStoreItemClick(diaId) {
     const dia = state.allDaysData.find(d => d.id === diaId);
     if (!dia) {
@@ -476,7 +451,10 @@ function handleStoreItemClick(diaId) {
     }
     
     setTimeout(() => {
-        handleDayClick(dia);
+        // --- CHANGED: Call ui.js's internal handler ---
+        const dayButton = document.querySelector(`.dia-btn[data-dia-id="${dia.id}"]`);
+        if(dayButton) dayButton.click(); 
+        else console.error("Could not find button for store item day:", dia.id);
     }, 100);
     
     window.scrollTo(0, 0);
