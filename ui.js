@@ -461,13 +461,14 @@ async function _handleDayClick(dia) {
         console.log(`[ui.js] _handleDayClick: Loading memories for ${dia.id}...`);
         // Use the callback provided by main.js
         const memories = await _callbacks.loadMemoriesForDay(dia.id);
-        console.log(`[ui.js] _handleDayClick: Memories loaded for ${dia.id}. Calling openPreviewModal...`);
+        console.log(`[ui.js] _handleDayClick: Memories loaded for ${dia.id} (${memories ? memories.length : 0}). Calling openPreviewModal...`);
 
         // Ensure 'dia' object has Nombre_Dia for the preview title
         if (!dia.Nombre_Dia) {
              const allDays = _callbacks.getAllDaysData();
              const dayData = allDays.find(d => d.id === dia.id);
              dia.Nombre_Dia = dayData ? dayData.Nombre_Dia : dia.id; // Use name or fallback to ID
+             console.log(`[ui.js] _handleDayClick: Added Nombre_Dia '${dia.Nombre_Dia}' to day object.`);
         }
         openPreviewModal(dia, memories); // Always open Preview first
 
@@ -607,7 +608,6 @@ function _createPreviewModal() {
         modal.className = 'modal-overlay';
         console.log("[ui.js] _createPreviewModal: Base div created.");
         try {
-            // Added type="button"
             modal.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">
@@ -630,37 +630,24 @@ function _createPreviewModal() {
             console.log("[ui.js] _createPreviewModal: innerHTML OK.");
         } catch (htmlError) {
              console.error("[ui.js] FATAL ERROR setting innerHTML for Preview modal:", htmlError);
-             throw htmlError; // Re-throw to be caught by outer try/catch
+             throw htmlError;
         }
 
-        // Safely attach listeners AFTER innerHTML is set
         const closeBtn = modal.querySelector('.modal-close-btn');
         const editBtn = modal.querySelector('.header-edit-btn');
-        if (closeBtn) {
-             closeBtn.onclick = closePreviewModal;
-             console.log("[ui.js] _createPreviewModal: Close button listener attached.");
-        } else {
-             console.warn("[ui.js] _createPreviewModal: Close button not found in generated HTML!");
-        }
-        if (editBtn) {
-             editBtn.onclick = _handleEditFromPreview;
-             console.log("[ui.js] _createPreviewModal: Edit button listener attached.");
-         } else {
-             console.warn("[ui.js] _createPreviewModal: Edit button not found in generated HTML!");
-         }
-
-
-        modal.onclick = (e) => { if (e.target === modal) closePreviewModal(); }; // Close on overlay click
+        if (closeBtn) { closeBtn.onclick = closePreviewModal; console.log("[ui.js] _createPreviewModal: Close button listener attached."); }
+        else { console.warn("[ui.js] _createPreviewModal: Close button not found!"); }
+        if (editBtn) { editBtn.onclick = _handleEditFromPreview; console.log("[ui.js] _createPreviewModal: Edit button listener attached."); }
+        else { console.warn("[ui.js] _createPreviewModal: Edit button not found!"); }
+        modal.onclick = (e) => { if (e.target === modal) closePreviewModal(); };
 
         document.body.appendChild(modal);
-        console.log("[ui.js] _createPreviewModal: Element created and appended successfully.");
-        return modal; // Return the created element
+        console.log("[ui.js] _createPreviewModal: Success.");
+        return modal;
     } catch (e) {
         console.error("[ui.js] CRITICAL ERROR in _createPreviewModal:", e);
-        if (modal && modal.parentElement === document.body) {
-             try { document.body.removeChild(modal); } catch (removeError) { console.error("Error removing partial preview modal:", removeError); }
-        }
-        return null; // Return null on failure
+        if (modal?.parentElement) document.body.removeChild(modal);
+        return null; // IMPORTANT: Return null on failure
     }
 }
 
@@ -743,7 +730,7 @@ function _bindEditModalEvents() {
     console.log("[ui.js] Binding Edit modal events...");
     if (!_modals.edit) {
         console.error("[ui.js] Cannot bind events, Edit modal does not exist.");
-        return;
+        return; // Exit if modal wasn't created
     }
     try {
         // --- Corrected selector ---
@@ -751,9 +738,10 @@ function _bindEditModalEvents() {
         console.log("[ui.js] Attempting to find close button #close-edit-add-btn:", closeBtn);
         if (closeBtn) {
             console.log("[ui.js] Attaching close event to #close-edit-add-btn...");
-            closeBtn.onclick = closeEditModal; // Assign function directly
+            // --- THE FIX: Assign the function correctly ---
+            closeBtn.onclick = closeEditModal;
+            console.log("[ui.js] Close button event attached.");
         } else {
-            // Log clearly if button not found
             console.error("[ui.js] ERROR: Close button #close-edit-add-btn not found! Close will not work.");
         }
 
