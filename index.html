@@ -21,8 +21,8 @@
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
     
-    <!-- App Stylesheet (v17) -->
-    <link rel="stylesheet" href="style.css?v=17">
+    <!-- App Stylesheet (v18) -->
+    <link rel="stylesheet" href="style.css?v=18">
     
     <style>
         body, button, input, textarea, select {
@@ -42,7 +42,6 @@
 <body>
 
     <header>
-        <!-- Título ahora usa la nueva fuente -->
         <h1>EPHEMERIDES</h1>
         
         <button id="refresh-btn" class="header-icon-btn" title="Refresh Page">
@@ -79,11 +78,8 @@
         </div>
     </main>
     
-    <!-- Loader Principal (oculto por defecto) -->
-    <div id="main-loader">
-        <span>Loading...</span>
-    </div>
-
+    <!-- REMOVED: Loader Element Removed -->
+    
     <footer class="footer-dock">
          <button class="dock-button" data-action="add" title="Add Memory">
             <span class="material-icons-outlined">add_circle_outline</span>
@@ -103,9 +99,8 @@
          </button>
     </footer>
 
-    <!-- App Scripts (v4.3) -->
-    <!-- ¡ESTO ARREGLA EL LOADER ATASCADO! -->
-    <script type="module" src="main.js?v=4.3"></script>
+    <!-- App Scripts (v4.4 - No Loader Calls) -->
+    <script type="module" src="main.js?v=4.4"></script>
 
 </body>
 </html>
