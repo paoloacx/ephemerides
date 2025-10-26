@@ -1,16 +1,16 @@
 /*
- * main.js (v4.7 - Fix Calendar Load Order)
+ * main.js (v4.8 - Definite Fix for Init Order & Footer)
  * Main app controller.
  */
 
 // --- Module Imports ---
-import { initFirebase, db, auth } from './firebase.js'; 
+import { initFirebase, db, auth } from './firebase.js';
 import { initAuthListener, handleLogin, handleLogout } from './auth.js';
-import { 
+import {
     checkAndRunApp as storeCheckAndRun,
     migrateDayNamesToEnglish,
     loadAllDaysData,
-    loadMemoriesForDay, 
+    loadMemoriesForDay,
     saveDayName,
     saveMemory,
     deleteMemory,
@@ -32,72 +32,90 @@ let state = {
         currentType: null,
         isLoading: false,
         lastVisible: null,
-    }
+    },
+    // NEW: Flag to track if UI is initialized
+    uiInitialized: false
 };
 
 // --- 1. App Initialization ---
 
+/**
+ * Main function to start the application. Loads data first, then initializes UI.
+ */
 async function checkAndRunApp() {
-    console.log("Starting Ephemerides v4.7 (Modular)...");
-    
-    try {
-        initFirebase();
-        initAuthListener(handleAuthStateChange);
-        
-        // Run checks and migrations first
-        await storeCheckAndRun(console.log); 
-        await migrateDayNamesToEnglish(console.log); 
+    console.log("Starting Ephemerides v4.8 (Modular)...");
 
-        // Load essential data
+    try {
+        initFirebase(); // Initialize Firebase services
+        initAuthListener(handleAuthStateChange); // Set up auth listener immediately
+
+        // Run checks and migrations first, report progress via console
+        await storeCheckAndRun(console.log);
+        await migrateDayNamesToEnglish(console.log);
+
+        // Load essential calendar data
+        console.log("main: Loading all days data...");
         state.allDaysData = await loadAllDaysData();
+        console.log(`main: Loaded ${state.allDaysData.length} days.`);
 
         if (state.allDaysData.length === 0) {
             throw new Error("Database is empty after verification.");
         }
-        
+
         // Calculate today's ID
         const today = new Date();
         state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-        
-        // --- MOVED ---
-        // Initialize UI only AFTER data is loaded and todayId is known
-        ui.init(getUICallbacks()); 
-        
-        // --- MOVED ---
-        // Draw initial state AFTER UI is initialized
-        drawCurrentMonth();
-        loadTodaySpotlight();
-        // --- End Moved ---
-        
-        console.log("App initialized successfully.");
-        
+
+        // --- CHANGED: Initialize UI only AFTER data is loaded ---
+        initializeAppUI();
+
     } catch (err) {
         console.error("Critical error during startup:", err);
-        // Try to display error in UI if possible
-        const appContent = document.getElementById('app-content');
-        if (appContent) { // Check if appContent exists before using it
-            appContent.innerHTML = `<p style="color: red; padding: 20px;">Critical error: ${err.message}. Please reload.</p>`;
-        } else {
-             // Fallback if UI hasn't even loaded the basic structure
-             document.body.innerHTML = `<p style="color: red; padding: 20px;">Critical error: ${err.message}. Please reload.</p>`;
-        }
+        // Display error directly in body if UI might not be ready
+        document.body.innerHTML = `<p style="color: red; padding: 20px;">Critical error: ${err.message}. Please reload.</p>`;
     }
 }
 
-async function loadTodaySpotlight() {
-    const today = new Date();
-    const dateString = `Today, ${today.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}`; 
-    
-    // Ensure todayId is set before calling getTodaySpotlight
-    if (!state.todayId) {
-         console.error("main: todayId not set before loading spotlight.");
-         state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+/**
+ * NEW: Initializes the UI module and performs the initial draw.
+ */
+function initializeAppUI() {
+    if (state.uiInitialized) {
+        console.warn("main: Attempted to initialize UI twice.");
+        return;
     }
+    console.log("main: Initializing UI...");
+    try {
+        ui.init(getUICallbacks()); // Pass all necessary callbacks to UI
+        state.uiInitialized = true;
+        console.log("main: UI Initialized. Performing initial draw...");
+
+        // --- Draw initial state AFTER UI is initialized ---
+        drawCurrentMonth();
+        loadTodaySpotlight();
+        // --- End Initial Draw ---
+
+        console.log("App initialized successfully.");
+
+    } catch (uiError) {
+         console.error("Critical error during UI initialization:", uiError);
+         document.body.innerHTML = `<p style="color: red; padding: 20px;">Critical UI error: ${uiError.message}. Please reload.</p>`;
+    }
+}
+
+
+async function loadTodaySpotlight() {
+    // Ensure UI is ready before trying to update it
+    if (!state.uiInitialized) {
+         console.warn("main: UI not ready, skipping spotlight load.");
+         return;
+    }
+    const today = new Date();
+    const dateString = `Today, ${today.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}`;
 
     const spotlightData = await getTodaySpotlight(state.todayId);
-    
+
     if (spotlightData) {
-        // Add Nombre_Dia to spotlight memories for UI context if missing
         spotlightData.memories.forEach(mem => {
              if (!mem.Nombre_Dia) {
                  const dayData = state.allDaysData.find(d => d.id === state.todayId);
@@ -105,33 +123,34 @@ async function loadTodaySpotlight() {
              }
         });
 
-        const fullDateString = `${dateString} ${spotlightData.dayName && spotlightData.dayName !== 'Unnamed Day' ? `(${spotlightData.dayName})` : ''}`; 
+        const fullDateString = `${dateString} ${spotlightData.dayName && spotlightData.dayName !== 'Unnamed Day' ? `(${spotlightData.dayName})` : ''}`;
         ui.updateSpotlight(fullDateString, spotlightData.memories);
     }
 }
 
 
 function drawCurrentMonth() {
-     // Ensure state is ready before drawing
+     if (!state.uiInitialized) {
+         console.warn("main: UI not ready, skipping month draw.");
+         return;
+     }
      if (state.allDaysData.length === 0) {
          console.warn("main: Attempted to draw month before allDaysData was loaded.");
-         return; 
+         return;
      }
 
-    const monthName = new Date(2024, state.currentMonthIndex, 1).toLocaleDateString('en-US', { month: 'long' }); 
+    const monthName = new Date(2024, state.currentMonthIndex, 1).toLocaleDateString('en-US', { month: 'long' });
     const monthNumber = state.currentMonthIndex + 1;
-    
-    const diasDelMes = state.allDaysData.filter(dia => 
+
+    const diasDelMes = state.allDaysData.filter(dia =>
         parseInt(dia.id.substring(0, 2), 10) === monthNumber
     );
-    
-    // Ensure todayId is available for ui.drawCalendar
+
     if (!state.todayId) {
         const today = new Date();
         state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-        console.warn("main: todayId was not set, calculating now for drawCalendar.");
     }
-    
+
     ui.drawCalendar(monthName, diasDelMes, state.todayId);
 }
 
@@ -140,13 +159,12 @@ function drawCurrentMonth() {
 
 function getUICallbacks() {
     return {
-        isUserLoggedIn: () => !!state.currentUser, 
-        loadMemoriesForDay: loadMemoriesForDay, 
-        getAllDaysData: () => state.allDaysData, 
-        getTodayId: () => state.todayId, 
-        onEditFromPreview: handleEditFromPreview, 
+        isUserLoggedIn: () => !!state.currentUser,
+        loadMemoriesForDay: loadMemoriesForDay,
+        getAllDaysData: () => state.allDaysData,
+        getTodayId: () => state.todayId,
+        onEditFromPreview: handleEditFromPreview,
         onMonthChange: handleMonthChange,
-        // onDayClick is now handled internally by ui.js calling _handleDayClick
         onFooterAction: handleFooterAction,
         onLogin: handleLogin,
         onLogout: handleLogout,
@@ -158,15 +176,18 @@ function getUICallbacks() {
         onStoreCategoryClick: handleStoreCategoryClick,
         onStoreLoadMore: handleStoreLoadMore,
         onStoreItemClick: handleStoreItemClick,
-        onSearchSubmit: handleSearchSubmit, 
+        onSearchSubmit: handleSearchSubmit,
     };
 }
 
 function handleAuthStateChange(user) {
     const wasLoggedIn = !!state.currentUser;
     state.currentUser = user;
-    ui.updateLoginUI(user); 
-    console.log("Authentication state changed:", user ? user.uid : "Logged out"); 
+    // Ensure UI is initialized before updating login status
+    if (state.uiInitialized) {
+        ui.updateLoginUI(user);
+    }
+    console.log("Authentication state changed:", user ? user.uid : "Logged out");
 }
 
 function handleMonthChange(direction) {
@@ -185,6 +206,7 @@ function handleEditFromPreview(dia, memories) {
 
 
 function handleFooterAction(action) {
+     console.log(`main: Footer action received: ${action}`); // Add log
     switch (action) {
         case 'add':
             if(state.allDaysData.length > 0) {
@@ -200,58 +222,54 @@ function handleFooterAction(action) {
             handleShuffleClick();
             break;
         default:
-            console.warn("Unknown footer action passed to main.js:", action); 
+            console.warn("Unknown footer action passed to main.js:", action);
     }
 }
 
 function handleShuffleClick() {
     if (state.allDaysData.length === 0) return;
-    
+
     const randomIndex = Math.floor(Math.random() * state.allDaysData.length);
     const randomDia = state.allDaysData[randomIndex];
-    // --- FIX: Correct month index calculation ---
-    const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1; 
-    
+    const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1;
+
     if (state.currentMonthIndex !== randomMonthIndex) {
         state.currentMonthIndex = randomMonthIndex;
         drawCurrentMonth();
     }
-    
+
     setTimeout(() => {
-        // Find the button and trigger its click event, which calls ui.js's _handleDayClick
+        // Find button and simulate click - UI handles the rest
         const dayButton = document.querySelector(`.dia-btn[data-dia-id="${randomDia.id}"]`);
         if(dayButton) {
              console.log("Simulating click on shuffled day:", randomDia.id);
-             dayButton.click(); 
+             dayButton.click();
         } else {
              console.error("Could not find button for shuffled day:", randomDia.id);
-             // Fallback: Manually call the internal handler (less ideal)
-             // ui._handleDayClick(randomDia); // This assumes _handleDayClick is exposed or accessible
         }
-    }, 100); // Increased delay slightly
-    
+    }, 150);
+
     window.scrollTo(0, 0);
 }
 
 
 async function handleSearchSubmit(term) {
-    console.log("Searching for term:", term); 
-    
+    console.log("Searching for term:", term);
+
     const results = await searchMemories(term.toLowerCase());
-    
-    ui.closeSearchModal(); 
-    
+
+    ui.closeSearchModal();
+
     if (results.length === 0) {
-        ui.updateSpotlight(`No results found for "${term}"`, []); 
+        ui.updateSpotlight(`No results found for "${term}"`, []);
     } else {
-         // Add Nombre_Dia to results for UI context
         results.forEach(mem => {
              if (!mem.Nombre_Dia) {
                  const dayData = state.allDaysData.find(d => d.id === mem.diaId);
                  mem.Nombre_Dia = dayData ? dayData.Nombre_Dia : mem.diaId;
              }
         });
-        ui.updateSpotlight(`Results for "${term}" (${results.length})`, results); 
+        ui.updateSpotlight(`Results for "${term}" (${results.length})`, results);
     }
 }
 
@@ -260,75 +278,74 @@ async function handleSearchSubmit(term) {
 
 async function handleSaveDayName(diaId, newName) {
     try {
-        await saveDayName(diaId, newName || "Unnamed Day"); 
-        
+        await saveDayName(diaId, newName || "Unnamed Day");
+
         const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
         if (dayIndex !== -1) {
-            state.allDaysData[dayIndex].Nombre_Especial = newName || "Unnamed Day"; 
+            state.allDaysData[dayIndex].Nombre_Especial = newName || "Unnamed Day";
         }
-        
-        ui.showModalStatus('save-status', 'Name saved', false); 
-        drawCurrentMonth(); 
-        
+
+        ui.showModalStatus('save-status', 'Name saved', false);
+        drawCurrentMonth();
+
         if (diaId === state.todayId) {
             loadTodaySpotlight();
         }
-        
+
     } catch (err) {
         console.error("Error saving name:", err);
-        ui.showModalStatus('save-status', `Error: ${err.message}`, true); 
+        ui.showModalStatus('save-status', `Error: ${err.message}`, true);
     }
 }
 
 async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
-    
+
     try {
-        // 1. Convert date string (YYYY-MM-DD) to Date object
+        // Convert date string (YYYY-MM-DD) to Date object
         try {
-            const dateParts = memoryData.Fecha_Original.split('-'); 
+            const dateParts = memoryData.Fecha_Original.split('-');
             const utcDate = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2])));
-            if (isNaN(utcDate.getTime())) throw new Error('Invalid date constructed'); 
-            memoryData.Fecha_Original = utcDate; 
+            if (isNaN(utcDate.getTime())) throw new Error('Invalid date constructed');
+            memoryData.Fecha_Original = utcDate;
         } catch (e) {
-            throw new Error('Invalid original date format constructed.'); 
+            throw new Error('Invalid original date format constructed.');
         }
-        
-        // 2. Image upload logic (TODO)
+
+        // Image upload logic (TODO)
         if (memoryData.Tipo === 'Image' && memoryData.file) {
-            console.warn("Image upload not yet implemented."); 
+            console.warn("Image upload not yet implemented.");
             delete memoryData.file;
         }
 
-        // 3. Save to Firestore
+        // Save to Firestore
         const memoryId = isEditing ? memoryData.id : null;
         await saveMemory(diaId, memoryData, memoryId);
-        
-        // 4. Update UI
-        ui.showModalStatus('memoria-status', isEditing ? 'Memory updated' : 'Memory saved', false); 
-        // Do NOT reset form here, let UI handle it after re-opening modal below
 
-        // 5. Reload memory list by re-opening the edit modal
-        const updatedMemories = await loadMemoriesForDay(diaId);
-        const currentDayData = state.allDaysData.find(d => d.id === diaId); 
-        ui.openEditModal(currentDayData, updatedMemories, state.allDaysData); // This also resets the form via its own logic
+        // Update UI status
+        ui.showModalStatus('memoria-status', isEditing ? 'Memory updated' : 'Memory saved', false);
         
-        // 6. Update grid (for blue dot)
+        // Reload memory list by re-opening the edit modal
+        // This ensures the list is fresh and form is reset cleanly
+        const updatedMemories = await loadMemoriesForDay(diaId);
+        const currentDayData = state.allDaysData.find(d => d.id === diaId);
+        ui.openEditModal(currentDayData, updatedMemories, state.allDaysData);
+
+        // Update grid (for blue dot) if status changed
         const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
-        // Only redraw if the status *changed* from false to true
-        if (dayIndex !== -1 && !state.allDaysData[dayIndex].tieneMemorias) { 
+        if (dayIndex !== -1 && !state.allDaysData[dayIndex].tieneMemorias) {
             state.allDaysData[dayIndex].tieneMemorias = true;
             drawCurrentMonth();
         }
-        
-        // 7. Reload spotlight if today was edited
+
+        // Reload spotlight if today was edited
         if (diaId === state.todayId) {
             loadTodaySpotlight();
         }
-        
+
     } catch (err) {
         console.error("Error saving memory:", err);
-        ui.showModalStatus('memoria-status', `Error: ${err.message}`, true); 
-         // Re-enable button on error
+        ui.showModalStatus('memoria-status', `Error: ${err.message}`, true);
+        // Re-enable button on error
         const saveBtn = document.getElementById('save-memoria-btn');
         if (saveBtn) {
             saveBtn.disabled = false;
@@ -341,21 +358,20 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
 async function handleDeleteMemory(diaId, memId) {
     try {
         await deleteMemory(diaId, memId);
-        ui.showModalStatus('memoria-status', 'Memory deleted', false); 
-        
-        const updatedMemories = await loadMemoriesForDay(diaId);
-        const currentDayData = state.allDaysData.find(d => d.id === diaId); 
-        
-        // Re-open modal to refresh list
-        ui.openEditModal(currentDayData, updatedMemories, state.allDaysData); 
+        ui.showModalStatus('memoria-status', 'Memory deleted', false);
 
-        // Check if it was the last memory for the day
+        const updatedMemories = await loadMemoriesForDay(diaId);
+        const currentDayData = state.allDaysData.find(d => d.id === diaId);
+
+        // Re-open modal to refresh list
+        ui.openEditModal(currentDayData, updatedMemories, state.allDaysData);
+
+        // Check if it was the last memory for the day and update grid if status changed
         if (updatedMemories.length === 0) {
             const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
-             // Only redraw if the status *changed* from true to false
-            if (dayIndex !== -1 && state.allDaysData[dayIndex].tieneMemorias) { 
+            if (dayIndex !== -1 && state.allDaysData[dayIndex].tieneMemorias) {
                 state.allDaysData[dayIndex].tieneMemorias = false;
-                drawCurrentMonth(); 
+                drawCurrentMonth();
             }
         }
 
@@ -363,10 +379,10 @@ async function handleDeleteMemory(diaId, memId) {
         if (diaId === state.todayId) {
             loadTodaySpotlight();
         }
-        
+
     } catch (err) {
         console.error("Error deleting memory:", err);
-        ui.showModalStatus('memoria-status', `Error: ${err.message}`, true); 
+        ui.showModalStatus('memoria-status', `Error: ${err.message}`, true);
     }
 }
 
@@ -375,40 +391,42 @@ async function handleDeleteMemory(diaId, memId) {
 
 async function handleMusicSearch(term) {
     try {
-        // Show loading state?
+        ui.showModalStatus('memoria-status', 'Searching music...', false); // Indicate loading
         const tracks = await searchiTunes(term);
         ui.showMusicResults(tracks);
+        ui.showModalStatus('memoria-status', '', false); // Clear status
     } catch (err) {
         console.error("Error searching iTunes:", err);
-        ui.showModalStatus('memoria-status', 'Error searching music', true); 
-        ui.showMusicResults([]); // Clear results on error
+        ui.showModalStatus('memoria-status', 'Error searching music', true);
+        ui.showMusicResults([]);
     }
 }
 
 async function handlePlaceSearch(term) {
     try {
-        // Show loading state?
+        ui.showModalStatus('memoria-status', 'Searching places...', false); // Indicate loading
         const places = await searchNominatim(term);
         ui.showPlaceResults(places);
+        ui.showModalStatus('memoria-status', '', false); // Clear status
     } catch (err) {
         console.error("Error searching Nominatim:", err);
-        ui.showModalStatus('memoria-status', 'Error searching places', true); 
-        ui.showPlaceResults([]); // Clear results on error
+        ui.showModalStatus('memoria-status', 'Error searching places', true);
+        ui.showPlaceResults([]);
     }
 }
 
 // --- 5. "Store" Modal Logic (Controller) ---
 
 async function handleStoreCategoryClick(type) {
-    console.log("Loading Store for:", type); 
-    
+    console.log("Loading Store for:", type);
+
     state.store.currentType = type;
     state.store.lastVisible = null;
     state.store.isLoading = true;
-    
-    const title = `Store: ${type}`; 
-    ui.openStoreListModal(title); // Opens modal with "Loading..." placeholder
-    
+
+    const title = `Store: ${type}`;
+    ui.openStoreListModal(title); // Opens modal with "Loading..."
+
     try {
         let result;
         if (type === 'Names') {
@@ -416,24 +434,22 @@ async function handleStoreCategoryClick(type) {
         } else {
             result = await getMemoriesByType(type, 10);
         }
-        
+
         state.store.lastVisible = result.lastVisible;
         state.store.isLoading = false;
-        
+
         ui.updateStoreList(result.items, false, result.hasMore);
-        
+
     } catch (err) {
         console.error(`Error loading category ${type}:`, err);
-        state.store.isLoading = false; // Ensure loading is stopped
-        ui.updateStoreList([], false, false); // Clear list
+        state.store.isLoading = false;
+        ui.updateStoreList([], false, false); // Show empty list on error
         if (err.code === 'failed-precondition') {
             console.error("FIREBASE INDEX REQUIRED!", err.message);
-            alert("Firebase Error: An index is required. Check the console (F12) for the creation link."); 
+            alert("Firebase Error: An index is required. Check the console (F12) for the creation link.");
         } else {
             alert(`Error loading store: ${err.message}`);
         }
-         // Maybe close the list modal on error? Or show error inside?
-         // ui.closeStoreListModal(); 
     }
 }
 
@@ -441,11 +457,11 @@ async function handleStoreCategoryClick(type) {
 async function handleStoreLoadMore() {
     const { currentType, lastVisible, isLoading } = state.store;
     if (isLoading || !currentType || !lastVisible) return;
-    
-    console.log("Loading more...", currentType); 
+
+    console.log("Loading more...", currentType);
     state.store.isLoading = true;
-    // Disable button in UI? ui.setStoreLoading(true);
-    
+    ui.updateStoreList([], true, true); // Show loading indicator? Or disable button?
+
     try {
         let result;
         if (currentType === 'Names') {
@@ -453,51 +469,49 @@ async function handleStoreLoadMore() {
         } else {
             result = await getMemoriesByType(currentType, 10, lastVisible);
         }
-        
+
         state.store.lastVisible = result.lastVisible;
         state.store.isLoading = false;
-        
+
         ui.updateStoreList(result.items, true, result.hasMore); // Append results
-        // ui.setStoreLoading(false);
-        
+
     } catch (err) {
         console.error(`Error loading more ${currentType}:`, err);
         state.store.isLoading = false;
-        // ui.setStoreLoading(false);
         alert(`Error loading more items: ${err.message}`);
+        ui.updateStoreList([], true, false); // Hide loading button on error?
     }
 }
 
 function handleStoreItemClick(diaId) {
     const dia = state.allDaysData.find(d => d.id === diaId);
     if (!dia) {
-        console.error("Day not found in state:", diaId); 
+        console.error("Day not found in state:", diaId);
         alert("Error: Could not find the selected day's data.");
         return;
     }
-    
+
     ui.closeStoreListModal();
     ui.closeStoreModal();
-    
-     // --- FIX: Correct month index calculation ---
-    const monthIndex = parseInt(dia.id.substring(0, 2), 10) - 1; 
-    
+
+    const monthIndex = parseInt(dia.id.substring(0, 2), 10) - 1;
+
     if (state.currentMonthIndex !== monthIndex) {
         state.currentMonthIndex = monthIndex;
-        drawCurrentMonth();
+        drawCurrentMonth(); // Draw the new month first
     }
-    
+
+    // Use a slightly longer delay to ensure the DOM is ready
     setTimeout(() => {
-        // Simulate click using ui.js's internal handler
         const dayButton = document.querySelector(`.dia-btn[data-dia-id="${dia.id}"]`);
         if(dayButton) {
              console.log("Simulating click on store item day:", dia.id);
-             dayButton.click(); 
+             dayButton.click();
         } else {
              console.error("Could not find button for store item day:", dia.id);
         }
-    }, 150); // Slightly longer delay might help rendering
-    
+    }, 200); // Increased delay
+
     window.scrollTo(0, 0);
 }
 
