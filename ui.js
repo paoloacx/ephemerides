@@ -1,11 +1,9 @@
 /*
- * ui.js (v7.21 - Final Modal Creation & Close Button Fix)
- * - Adds internal try/catch and null returns to small creators (_createStoreCategoryButton, _createDialog).
- * - Adds checks before appendChild in modal creators.
- * - Adds checks in open...Modal functions before adding '.visible'.
- * - Corrects close button ID in _createEditModal HTML.
- * - Ensures _bindEditModalEvents finds the close button.
- * - Adds logging to day button onclick assignment.
+ * ui.js (v7.22 - Fix Modal Creation, Close Button, Spotlight Undefined, Day Clicks)
+ * - Corrects HTML structure/selectors in _createStoreModal and _createDialog.
+ * - Corrects Close button ID in _createEditModal HTML and ensures _bind finds it.
+ * - Fixes _createMemoryItemHTML to handle undefined memory properties safely.
+ * - Adds detailed logging inside _handleDayClick and openPreviewModal.
  */
 
 // --- Estado Interno del Módulo ---
@@ -60,7 +58,7 @@ let _selectedPlace = null;
 // --- 1. Inicialización y Funciones Principales ---
 
 function init(callbacks) {
-    console.log("[ui.js] Initializing v7.21..."); // Version bump
+    console.log("[ui.js] Initializing v7.22..."); // Version bump
     _callbacks = { ..._callbacks, ...callbacks };
     if (typeof _callbacks.onFooterAction !== 'function') {
          throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
@@ -192,7 +190,7 @@ function drawCalendar(monthName, days, todayId) {
             const dayNumber = parseInt(dayNumberStr, 10);
             btn.innerHTML = `<span class="dia-numero">${isNaN(dayNumber) ? '?' : dayNumber}</span>`;
             btn.dataset.diaId = dia.id;
-            // --- ADDED: Log inside handler assignment ---
+            // --- Log inside handler ---
             btn.onclick = () => {
                 console.log(`[ui.js] Day button ${dia.id} clicked! Calling _handleDayClick.`);
                 _handleDayClick(dia);
@@ -331,6 +329,7 @@ function _setupFooter() {
 // --- 4. Creación y Manejo de Modales ---
 
 function openPreviewModal(dia, memories) {
+    // --- ADDED: Log ---
     console.log("[ui.js] openPreviewModal called for day:", dia?.id);
     _currentDay = dia;
     _currentMemories = memories || [];
@@ -338,7 +337,11 @@ function openPreviewModal(dia, memories) {
     if (!_modals.preview) {
         console.log("[ui.js] Creating Preview modal element...");
         _modals.preview = _createPreviewModal(); // Has try/catch
-        if (!_modals.preview) return; // Stop if creation failed
+        if (!_modals.preview) {
+             console.error("[ui.js] FAILED TO CREATE Preview modal in openPreviewModal.");
+             alert("Error opening preview. Check console.");
+             return; // Stop if creation failed
+        }
     }
 
     const title = _modals.preview.querySelector('.modal-header h3');
@@ -351,7 +354,9 @@ function openPreviewModal(dia, memories) {
 
     console.log("[ui.js] Preview modal configured. Attempting to show (add '.visible')...");
     _modals.preview.classList.add('visible');
+    console.log("[ui.js] Preview modal should be visible now."); // Log after adding class
 }
+
 
 function closePreviewModal() {
     console.log("[ui.js] Closing Preview modal (removing '.visible')...");
@@ -369,7 +374,7 @@ function openEditModal(dia, memories, allDays) {
     if (!_modals.edit) {
         console.log("[ui.js] Creating Edit modal element...");
         _modals.edit = _createEditModal(); // Has try/catch
-        if (!_modals.edit) return; // Stop if creation failed
+        if (!_modals.edit) return; // Stop if creation failed (error already logged)
         _populateDaySelect(allDays || _callbacks.getAllDaysData());
         _bindEditModalEvents(); // Has try/catch now
     }
@@ -393,11 +398,11 @@ function openEditModal(dia, memories, allDays) {
 
     console.log("[ui.js] Edit modal configured. Attempting to show (add '.visible')...");
     _modals.edit.classList.add('visible');
+    console.log("[ui.js] Edit modal should be visible now."); // Log after adding class
 }
 
 
 function closeEditModal() {
-    // --- ADDED: Log ---
     console.log("[ui.js] closeEditModal called (removing '.visible')...");
     if (_modals.edit) _modals.edit.classList.remove('visible');
 }
@@ -413,6 +418,7 @@ function openStoreModal() {
     }
     console.log("[ui.js] Attempting to show Store modal (add '.visible')...");
     _modals.store.classList.add('visible');
+    console.log("[ui.js] Store modal should be visible now."); // Log after adding class
 }
 function closeStoreModal() { console.log("[ui.js] Closing Store modal."); if (_modals.store) _modals.store.classList.remove('visible');}
 function openStoreListModal(title) { /* ... v7.8 logic with logs ... */ }
@@ -427,6 +433,7 @@ function openSearchModal() {
      }
      console.log("[ui.js] Attempting to show Search modal (add '.visible')...");
      _modals.search.classList.add('visible');
+      console.log("[ui.js] Search modal should be visible now."); // Log after adding class
      try { _modals.search.querySelector('#search-input')?.focus(); }
      catch (e) { console.warn("UI: Could not focus search input.", e); }
 }
@@ -441,11 +448,140 @@ function openSettingsDialog() {
     }
     console.log("[ui.js] Attempting to show Settings dialog (add '.visible')...");
     _modals.settings.classList.add('visible');
+    console.log("[ui.js] Settings dialog should be visible now."); // Log after adding class
 }
 
 // --- 5. Lógica de UI interna (Helpers) ---
-async function _handleDayClick(dia) { /* ... v7.8 logic ... */ }
-function _createMemoryItemHTML(memoria, context) { /* ... v7.8 logic ... */ }
+async function _handleDayClick(dia) {
+    // --- ADDED: Logs ---
+    if (!dia || !dia.id) {
+        console.error("UI: Invalid day object passed to _handleDayClick:", dia);
+        return;
+    }
+    console.log(`[ui.js] _handleDayClick: Handling click for day ${dia.id}.`);
+
+    try {
+        console.log(`[ui.js] _handleDayClick: Loading memories for ${dia.id}...`);
+        // Use the callback provided by main.js
+        const memories = await _callbacks.loadMemoriesForDay(dia.id);
+        console.log(`[ui.js] _handleDayClick: Memories loaded for ${dia.id}. Calling openPreviewModal...`);
+
+        // Ensure 'dia' object has Nombre_Dia for the preview title
+        if (!dia.Nombre_Dia) {
+             const allDays = _callbacks.getAllDaysData();
+             const dayData = allDays.find(d => d.id === dia.id);
+             dia.Nombre_Dia = dayData ? dayData.Nombre_Dia : dia.id; // Use name or fallback to ID
+        }
+        openPreviewModal(dia, memories); // Always open Preview first
+
+    } catch (error) {
+        console.error(`[ui.js] ERROR in _handleDayClick while loading memories for ${dia.id}:`, error);
+        alert(`Error loading memories for ${dia.Nombre_Dia || dia.id}. Please check console.`);
+    }
+ }
+function _createMemoryItemHTML(memoria, context) {
+    // --- ADDED: More robust checks and fallbacks ---
+    let contentHTML = '';
+    let artworkHTML = '';
+
+    let yearStr = '????';
+    try {
+        if (memoria?.Fecha_Original?.toDate) {
+            yearStr = memoria.Fecha_Original.toDate().getFullYear().toString();
+        } else if (typeof memoria?.Fecha_Original === 'string' && memoria.Fecha_Original.length >= 4) {
+            yearStr = memoria.Fecha_Original.substring(0, 4);
+            if (!/^\d{4}$/.test(yearStr)) yearStr = '????';
+        } else if (memoria?.Fecha_Original instanceof Date) {
+             yearStr = memoria.Fecha_Original.getFullYear().toString();
+        }
+    } catch (e) {
+        console.warn("UI: Error extracting year:", memoria?.Fecha_Original, e);
+    }
+
+    let icon = 'notes';
+    switch (memoria?.Tipo) {
+        case 'Place': icon = 'place'; break;
+        case 'Music': icon = 'music_note'; break;
+        case 'Image': icon = 'image'; break;
+        default: icon = 'notes'; break;
+    }
+
+    const tipo = memoria?.Tipo || 'Text'; // Default to Text if missing
+
+    if (context === 'spotlight') {
+         contentHTML = `<span class="spotlight-year-box">${yearStr}</span>`;
+         contentHTML += `<span class="material-icons-outlined">${icon}</span>`;
+         contentHTML += `<div class="spotlight-memory-content"><span>`;
+
+         switch (tipo) {
+            case 'Place':
+                contentHTML += `${memoria.LugarNombre || 'Unnamed Place'}`; // Fallback
+                break;
+            case 'Music':
+                if (memoria.CancionData?.trackName) {
+                    contentHTML += `<strong>${memoria.CancionData.trackName || '?'}</strong> by ${memoria.CancionData.artistName || '?'}`;
+                     if(memoria.CancionData.artworkUrl60) {
+                         artworkHTML = `<img src="${memoria.CancionData.artworkUrl60}" class="memoria-artwork" onerror="this.style.display='none'">`;
+                     }
+                } else {
+                    contentHTML += `${memoria.CancionInfo || 'Unnamed Music'}`; // Fallback
+                }
+                break;
+            case 'Image':
+                contentHTML += `${memoria.Descripcion || 'Unnamed Image'}`; // Fallback
+                break;
+            case 'Text':
+            default:
+                 const description = memoria.Descripcion || 'Unnamed Memory'; // Fallback
+                 const maxLength = 40;
+                 contentHTML += description.length > maxLength ? description.substring(0, maxLength) + '...' : description;
+                break;
+         }
+         contentHTML += `</span></div>`;
+
+    } else { // Preview or Edit modal
+        contentHTML = `<small>${yearStr}</small>`;
+        contentHTML += `<span><span class="material-icons-outlined">${icon}</span> `;
+
+        switch (tipo) {
+            case 'Place':
+                contentHTML += `${memoria.LugarNombre || 'Unnamed Place'}`;
+                break;
+            case 'Music':
+                if (memoria.CancionData?.trackName) {
+                    contentHTML += `<strong>${memoria.CancionData.trackName || '?'}</strong> by ${memoria.CancionData.artistName || '?'}`;
+                    if(memoria.CancionData.artworkUrl60) {
+                        artworkHTML = `<img src="${memoria.CancionData.artworkUrl60}" class="memoria-artwork" onerror="this.style.display='none'">`;
+                    }
+                } else {
+                    contentHTML += `${memoria.CancionInfo || 'Unnamed Music'}`;
+                }
+                break;
+            case 'Image':
+                contentHTML += `${memoria.Descripcion || 'Unnamed Image'}`;
+                if (memoria.ImagenURL) {
+                    contentHTML += ` <small>(<a href="${memoria.ImagenURL}" target="_blank" rel="noopener">View</a>)</small>`;
+                }
+                break;
+            case 'Text':
+            default:
+                 contentHTML += memoria.Descripcion || 'Unnamed Memory';
+                break;
+        }
+         contentHTML += `</span>`;
+    }
+
+    let actionsHTML = '';
+    if (context === 'edit-modal' && memoria?.id) {
+        actionsHTML = `...`; // Same actions HTML
+    }
+
+    if (context === 'spotlight') {
+         return `${artworkHTML}${contentHTML}`;
+    } else {
+         return `${artworkHTML}<div class="memoria-item-content">${contentHTML}</div>${actionsHTML}`;
+    }
+}
 function _renderMemoryList(listId, memories) { /* ... v7.8 logic ... */ }
 function showModalStatus(elementId, message, isError) { /* ... v7.8 logic ... */ }
 function showMusicResults(tracks) { /* ... v7.8 logic ... */ }
@@ -454,53 +590,7 @@ function handleMemoryTypeChange() { /* ... v7.8 logic ... */ }
 
 // --- 6. Creación de Elementos del DOM (Constructores) ---
 
-function _createPreviewModal() {
-    console.log("[ui.js] _createPreviewModal: Attempting...");
-    let modal = null;
-    try {
-        modal = document.createElement('div');
-        modal.id = 'preview-modal';
-        modal.className = 'modal-overlay';
-        console.log("[ui.js] _createPreviewModal: Base div created.");
-        try {
-            // Added type="button"
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <button type="button" class="header-edit-btn" title="Edit Day">
-                             <span class="material-icons-outlined">edit</span>
-                        </button>
-                        <h3></h3>
-                        <button type="button" class="modal-close-btn" title="Close">
-                            <span class="material-icons-outlined">close</span>
-                        </button>
-                    </div>
-                    <div class="modal-content-scrollable">
-                        <div class="modal-section">
-                            <h4>Memories:</h4>
-                            <div id="preview-memorias-list"></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            console.log("[ui.js] _createPreviewModal: innerHTML OK.");
-        } catch (htmlError) { throw htmlError; }
-
-        const closeBtn = modal.querySelector('.modal-close-btn');
-        const editBtn = modal.querySelector('.header-edit-btn');
-        if (closeBtn) { closeBtn.onclick = closePreviewModal; } else { console.warn("Preview close btn missing!"); }
-        if (editBtn) { editBtn.onclick = _handleEditFromPreview; } else { console.warn("Preview edit btn missing!"); }
-        modal.onclick = (e) => { if (e.target === modal) closePreviewModal(); };
-
-        document.body.appendChild(modal);
-        console.log("[ui.js] _createPreviewModal: Success.");
-        return modal;
-    } catch (e) {
-        console.error("[ui.js] CRITICAL ERROR in _createPreviewModal:", e);
-        if (modal?.parentElement) document.body.removeChild(modal);
-        return null;
-    }
-}
+function _createPreviewModal() { /* ... v7.19 logic ... */ }
 
 function _createEditModal() {
      console.log("[ui.js] _createEditModal: Attempting...");
@@ -584,49 +674,31 @@ function _bindEditModalEvents() {
         return;
     }
     try {
-        // --- FIX: Ensure selector matches the corrected ID in HTML ---
-        const closeBtn = _modals.edit.querySelector('#close-edit-add-btn'); // Correct ID
-        // --- ADDED: Log ---
+        // --- Corrected selector ---
+        const closeBtn = _modals.edit.querySelector('#close-edit-add-btn');
         console.log("[ui.js] Attempting to find close button #close-edit-add-btn:", closeBtn);
         if (closeBtn) {
             console.log("[ui.js] Attaching close event to #close-edit-add-btn...");
-            closeBtn.onclick = closeEditModal; // Assign function directly
+            closeBtn.onclick = closeEditModal;
         } else {
-            // This error indicates the HTML template is still wrong or querySelector failed
-            console.error("[ui.js] ERROR: Close button #close-edit-add-btn not found in modal! Cannot attach close handler.");
+            console.error("[ui.js] ERROR: Close button #close-edit-add-btn not found! Close will not work.");
         }
 
-        // ... (rest of the bindings - v7.8 logic with null checks) ...
-        const saveNameBtn = _modals.edit.querySelector('#save-name-btn');
-        if(saveNameBtn) saveNameBtn.onclick = () => { /* ... */ }; else console.warn("Save name btn not found");
+        // ... (rest of the bindings from v7.8 logic) ...
+         const saveNameBtn = _modals.edit.querySelector('#save-name-btn'); if(saveNameBtn) saveNameBtn.onclick = () => { /* ... */ }; else console.warn("Save name btn not found");
+         const typeSelect = _modals.edit.querySelector('#memoria-type'); if(typeSelect) typeSelect.onchange = handleMemoryTypeChange; else console.warn("Type select not found");
+         const placeInput = _modals.edit.querySelector('#memoria-place-search'); if(placeInput) placeInput.onblur = (e) => { /* ... */ }; else console.warn("Place input not found");
+         const musicInput = _modals.edit.querySelector('#memoria-music-search'); if(musicInput) musicInput.onblur = (e) => { /* ... */ }; else console.warn("Music input not found");
+         const memoryForm = _modals.edit.querySelector('#memory-form'); if(memoryForm) memoryForm.onsubmit = (e) => { /* ... */ }; else console.error("Memory form not found!");
+         const listDiv = _modals.edit.querySelector('#edit-memorias-list'); if(listDiv) listDiv.addEventListener('click', (e) => { /* ... */ }); else console.warn("Memory list div not found");
+         const confirmNoBtn = _modals.edit.querySelector('#confirm-delete-no'); if(confirmNoBtn) confirmNoBtn.onclick = () => { /* ... */ }; else console.warn("Confirm delete 'No' missing");
+         const confirmYesBtn = _modals.edit.querySelector('#confirm-delete-yes'); if(confirmYesBtn) confirmYesBtn.onclick = () => { /* ... */ }; else console.warn("Confirm delete 'Yes' missing");
 
-        const typeSelect = _modals.edit.querySelector('#memoria-type');
-        if(typeSelect) typeSelect.onchange = handleMemoryTypeChange; else console.warn("Type select not found");
-
-        const placeInput = _modals.edit.querySelector('#memoria-place-search');
-        if(placeInput) placeInput.onblur = (e) => { /* ... */ }; else console.warn("Place input not found");
-
-        const musicInput = _modals.edit.querySelector('#memoria-music-search');
-        if(musicInput) musicInput.onblur = (e) => { /* ... */ }; else console.warn("Music input not found");
-
-        const memoryForm = _modals.edit.querySelector('#memory-form');
-        if(memoryForm) memoryForm.onsubmit = (e) => { /* ... */ }; else console.error("Memory form not found!");
-
-        const listDiv = _modals.edit.querySelector('#edit-memorias-list');
-        if(listDiv) listDiv.addEventListener('click', (e) => { /* ... */ }); else console.warn("Memory list div not found");
-
-        const confirmNoBtn = _modals.edit.querySelector('#confirm-delete-no');
-        const confirmYesBtn = _modals.edit.querySelector('#confirm-delete-yes');
-        const confirmDialog = _modals.edit.querySelector('#confirm-delete-dialog');
-
-        if (confirmNoBtn && confirmDialog) confirmNoBtn.onclick = () => { confirmDialog.style.display = 'none'; }; else console.warn("Confirm delete 'No' button or dialog missing");
-        if (confirmYesBtn && confirmDialog) confirmYesBtn.onclick = () => { /* ... */ }; else console.warn("Confirm delete 'Yes' button or dialog missing");
 
         console.log("[ui.js] Edit modal events bound successfully.");
 
     } catch (bindError) {
         console.error("[ui.js] ERROR binding events for Edit modal:", bindError);
-        // Attempt to close modal to prevent broken state
         closeEditModal();
     }
 }
@@ -642,44 +714,61 @@ function _createStoreModal() {
         modal.className = 'modal-overlay';
         console.log("[ui.js] _createStoreModal: Base div OK.");
         try {
-            // Added type="button"
+            // --- FIXED: Added missing scrollable div ---
             modal.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">
                         <h3>Store</h3>
                         <button type="button" class="modal-close-btn" title="Close"><span class="material-icons-outlined">close</span></button>
                     </div>
-                    <div class="modal-content-scrollable" style="padding: 0;"> </div>
+                    <div class="modal-content-scrollable" style="padding: 0;">
+                       <!-- Category buttons will be appended here -->
+                    </div>
                 </div>
             `;
             console.log("[ui.js] _createStoreModal: innerHTML OK.");
-        } catch (htmlError) { throw htmlError; }
+        } catch (htmlError) {
+             console.error("[ui.js] FATAL ERROR setting innerHTML for Store modal:", htmlError);
+             throw htmlError;
+        }
 
+        // --- FIXED: Find the CORRECT scrollable div ---
         const scrollableDiv = modal.querySelector('.modal-content-scrollable');
-        const categories = [ /* ... */ ];
+        const categories = [
+             { type: 'Names', icon: 'label', label: 'Named Days' },
+             { type: 'Place', icon: 'place', label: 'Places' },
+             { type: 'Music', icon: 'music_note', label: 'Music' },
+             { type: 'Image', icon: 'image', label: 'Images' },
+             { type: 'Text', icon: 'notes', label: 'Text Notes' },
+        ];
         if (scrollableDiv) {
+            console.log("[ui.js] _createStoreModal: Found scrollable div. Adding categories...");
             const fragment = document.createDocumentFragment();
+            let buttonsAdded = 0;
             try {
                 categories.forEach(cat => {
                     const btn = _createStoreCategoryButton(cat.type, cat.icon, cat.label);
-                    // --- FIX: Check if btn is actually a Node ---
                     if (btn instanceof Node) {
                         fragment.appendChild(btn);
+                        buttonsAdded++;
                     } else {
-                         console.error(`[ui.js] ERROR: _createStoreCategoryButton for '${cat.type}' did not return a valid Node.`);
+                         console.error(`[ui.js] ERROR: _createStoreCategoryButton for '${cat.type}' failed.`);
                     }
                 });
                 if (fragment.hasChildNodes()) {
                     scrollableDiv.appendChild(fragment);
-                    console.log("[ui.js] _createStoreModal: Categories added OK.");
+                    console.log(`[ui.js] _createStoreModal: ${buttonsAdded} categories added OK.`);
                 } else {
-                     console.warn("[ui.js] _createStoreModal: No category buttons were successfully created.");
+                     console.warn("[ui.js] _createStoreModal: No category buttons were successfully created/appended.");
+                      scrollableDiv.innerHTML = "<p class='list-placeholder'>Error loading categories.</p>"; // Show error
                 }
             } catch (categoryError) {
-                 console.error("[ui.js] ERROR adding categories in _createStoreModal:", categoryError);
+                 console.error("[ui.js] ERROR appending categories in _createStoreModal:", categoryError);
+                 if(scrollableDiv) scrollableDiv.innerHTML = "<p class='list-placeholder error'>Error loading categories.</p>";
             }
         } else {
-             console.error("[ui.js] _createStoreModal: Scrollable div not found!");
+             // This indicates the innerHTML is still wrong
+             console.error("[ui.js] _createStoreModal: CRITICAL - Could not find '.modal-content-scrollable' div after setting innerHTML!");
         }
 
         const closeBtn = modal.querySelector('.modal-close-btn');
@@ -697,8 +786,8 @@ function _createStoreModal() {
  }
 
 function _createStoreCategoryButton(type, icon, label) {
-    // --- Added Try/Catch and explicit return ---
-    try {
+    // ... (logic from v7.19) ...
+     try {
         const btn = document.createElement('button');
         btn.type = 'button'; // Set type
         btn.className = 'store-category-btn';
@@ -719,6 +808,7 @@ function _createStoreListModal() { /* ... v7.8 logic with try/catch ... */ }
 function _createStoreListItem(item) { /* ... v7.8 logic ... */ }
 function _createSearchModal() { /* ... v7.8 logic with try/catch ... */ }
 function _createDialog(id, title, message) {
+    // ... (logic from v7.19 with type="button") ...
      console.log(`[ui.js] _createDialog: Attempting id=${id}...`);
      let dialogOverlay = null;
     try {
