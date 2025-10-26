@@ -2,6 +2,7 @@
  * ui.js (v7.19 - Fix Modal Creation Errors & Add Logs)
  * - Adds specific try/catch around innerHTML assignments in modal creators.
  * - Adds logs to pinpoint modal creation failures.
+ * - Adds type="button" to relevant modal buttons.
  * - Includes previous fixes.
  */
 
@@ -333,7 +334,7 @@ function openPreviewModal(dia, memories) {
         _modals.preview = _createPreviewModal();
         if (!_modals.preview) {
              console.error("[ui.js] Failed to create Preview modal in openPreviewModal.");
-             return; // Stop if creation failed
+             return;
         }
     }
 
@@ -366,7 +367,7 @@ function openEditModal(dia, memories, allDays) {
         console.log("[ui.js] Creating Edit modal element...");
         _modals.edit = _createEditModal(); // This function now has try/catch
         if (!_modals.edit) {
-             console.error("[ui.js] Failed to create Edit modal in openEditModal.");
+             // Error already logged in _createEditModal
              alert("Error displaying editor. Please check console."); // Inform user
              return; // Stop if creation failed
         }
@@ -409,7 +410,7 @@ function openStoreModal() {
         console.log("[ui.js] Creating Store modal element...");
         _modals.store = _createStoreModal(); // Has try/catch now
         if (!_modals.store) {
-            console.error("[ui.js] Failed to create Store modal.");
+            // Error logged in _createStoreModal
             alert("Error displaying store. Please check console.");
             return;
         }
@@ -471,21 +472,22 @@ function handleMemoryTypeChange() { /* ... v7.8 logic ... */ }
  */
 function _createPreviewModal() {
     console.log("[ui.js] _createPreviewModal: Attempting to create element...");
-    let modal = null; // Initialize modal to null
+    let modal = null;
     try {
         modal = document.createElement('div');
         modal.id = 'preview-modal';
         modal.className = 'modal-overlay';
-        // --- Added try/catch around innerHTML ---
+        console.log("[ui.js] _createPreviewModal: Base div created.");
         try {
+            // Added type="button" to buttons
             modal.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">
-                        <button class="header-edit-btn" title="Edit Day">
+                        <button type="button" class="header-edit-btn" title="Edit Day">
                              <span class="material-icons-outlined">edit</span>
                         </button>
                         <h3></h3>
-                        <button class="modal-close-btn" title="Close">
+                        <button type="button" class="modal-close-btn" title="Close">
                             <span class="material-icons-outlined">close</span>
                         </button>
                     </div>
@@ -500,25 +502,36 @@ function _createPreviewModal() {
             console.log("[ui.js] _createPreviewModal: innerHTML set successfully.");
         } catch (htmlError) {
              console.error("[ui.js] FATAL ERROR setting innerHTML for Preview modal:", htmlError);
-             throw htmlError; // Re-throw to be caught by outer try/catch
+             throw htmlError;
         }
-        // --- End innerHTML try/catch ---
 
-        // Safely attach listeners
+        // Safely attach listeners AFTER innerHTML is set
         const closeBtn = modal.querySelector('.modal-close-btn');
         const editBtn = modal.querySelector('.header-edit-btn');
-        if (closeBtn) closeBtn.onclick = closePreviewModal; else console.warn("Preview modal close button not found!");
-        if (editBtn) editBtn.onclick = _handleEditFromPreview; else console.warn("Preview modal edit button not found!");
+        if (closeBtn) {
+             closeBtn.onclick = closePreviewModal;
+             console.log("[ui.js] _createPreviewModal: Close button listener attached.");
+        } else {
+             console.warn("[ui.js] _createPreviewModal: Close button not found in generated HTML!");
+        }
+        if (editBtn) {
+             editBtn.onclick = _handleEditFromPreview;
+             console.log("[ui.js] _createPreviewModal: Edit button listener attached.");
+         } else {
+             console.warn("[ui.js] _createPreviewModal: Edit button not found in generated HTML!");
+         }
 
-        modal.onclick = (e) => { if (e.target.id === 'preview-modal') closePreviewModal(); };
+
+        modal.onclick = (e) => { if (e.target === modal) closePreviewModal(); }; // Close on overlay click
 
         document.body.appendChild(modal);
         console.log("[ui.js] _createPreviewModal: Element created and appended successfully.");
-        return modal; // Return the created element
+        return modal;
     } catch (e) {
         console.error("[ui.js] CRITICAL ERROR in _createPreviewModal:", e);
+        // Clean up if partially created and added to body
         if (modal && modal.parentElement === document.body) {
-             document.body.removeChild(modal); // Clean up partially created element
+             try { document.body.removeChild(modal); } catch (removeError) { console.error("Error removing partial modal:", removeError); }
         }
         return null; // Return null on failure
     }
@@ -535,9 +548,9 @@ function _createEditModal() {
         modal = document.createElement('div');
         modal.id = 'edit-add-modal';
         modal.className = 'modal-overlay';
-        // --- Added try/catch around innerHTML ---
+        console.log("[ui.js] _createEditModal: Base div created.");
         try {
-            // Ensure template literal is correct (backticks ``, not single quotes '')
+            // Added type="button" where appropriate
             modal.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-content-scrollable">
@@ -550,7 +563,7 @@ function _createEditModal() {
                             <h3 id="edit-modal-title">Editing Day</h3>
                             <label for="nombre-especial-input">Name this day:</label>
                             <input type="text" id="nombre-especial-input" placeholder="e.g., Pizza Day" maxlength="30">
-                            <button id="save-name-btn" class="aqua-button">Save Day Name</button>
+                            <button type="button" id="save-name-btn" class="aqua-button">Save Day Name</button>
                             <p id="save-status" class="modal-status"></p>
                         </div>
                         <div class="modal-section memorias-section">
@@ -585,29 +598,87 @@ function _createEditModal() {
                         <button type="button" id="close-edit-add-btn" class="modal-cancel-btn">Close</button>
                     </div>
                 </div>
-            `; // Ensure backtick closes the template literal
+            `;
              console.log("[ui.js] _createEditModal: innerHTML set successfully.");
         } catch (htmlError) {
              console.error("[ui.js] FATAL ERROR setting innerHTML for Edit modal:", htmlError);
              throw htmlError;
         }
-        // --- End innerHTML try/catch ---
 
         document.body.appendChild(modal);
         console.log("[ui.js] _createEditModal: Element created and appended successfully.");
         return modal;
     } catch (e) {
         console.error("[ui.js] CRITICAL ERROR in _createEditModal:", e);
-        if (modal && modal.parentElement === document.body) document.body.removeChild(modal);
+        if (modal && modal.parentElement === document.body) {
+            try { document.body.removeChild(modal); } catch (removeError) { console.error("Error removing partial edit modal:", removeError); }
+        }
         return null;
     }
 }
 
-// ... (Rest of _create... functions with added try/catch around innerHTML and creation) ...
+
 function _bindEditModalEvents() { /* ... v7.8 logic ... */ }
 function _showConfirmDelete(memoria) { /* ... v7.8 logic ... */ }
 function _populateDaySelect(allDays) { /* ... v7.8 logic ... */ }
-function _createStoreModal() { /* ... v7.8 logic with try/catch ... */ }
+
+function _createStoreModal() {
+     console.log("[ui.js] _createStoreModal: Attempting to create element...");
+     let modal = null;
+    try {
+        modal = document.createElement('div');
+        modal.id = 'store-modal';
+        modal.className = 'modal-overlay';
+        console.log("[ui.js] _createStoreModal: Base div created.");
+        try {
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Store</h3>
+                        <button type="button" class="modal-close-btn" title="Close"><span class="material-icons-outlined">close</span></button>
+                    </div>
+                    <div class="modal-content-scrollable" style="padding: 0;"> </div>
+                </div>
+            `;
+            console.log("[ui.js] _createStoreModal: innerHTML set successfully.");
+        } catch (htmlError) {
+             console.error("[ui.js] FATAL ERROR setting innerHTML for Store modal:", htmlError);
+             throw htmlError;
+        }
+
+        const scrollableDiv = modal.querySelector('.modal-content-scrollable');
+        const categories = [
+            { type: 'Names', icon: 'label', label: 'Named Days' },
+            { type: 'Place', icon: 'place', label: 'Places' },
+            { type: 'Music', icon: 'music_note', label: 'Music' },
+            { type: 'Image', icon: 'image', label: 'Images' },
+            { type: 'Text', icon: 'notes', label: 'Text Notes' },
+        ];
+        if (scrollableDiv) {
+            const fragment = document.createDocumentFragment();
+            categories.forEach(cat => fragment.appendChild(_createStoreCategoryButton(cat.type, cat.icon, cat.label)));
+            scrollableDiv.appendChild(fragment);
+            console.log("[ui.js] _createStoreModal: Categories added.");
+        } else {
+             console.error("[ui.js] _createStoreModal: Could not find scrollable div to add categories!");
+        }
+
+
+        const closeBtn = modal.querySelector('.modal-close-btn');
+        if(closeBtn) closeBtn.onclick = closeStoreModal; else console.warn("Store modal close btn not found!");
+        modal.onclick = (e) => { if (e.target === modal) closeStoreModal(); };
+
+        document.body.appendChild(modal);
+        console.log("[ui.js] _createStoreModal: Element created and appended successfully.");
+        return modal;
+    } catch(e) {
+        console.error("[ui.js] CRITICAL ERROR in _createStoreModal:", e);
+         if (modal && modal.parentElement === document.body) {
+            try { document.body.removeChild(modal); } catch (removeError) { console.error("Error removing partial store modal:", removeError); }
+        }
+        return null;
+    }
+ }
 function _createStoreCategoryButton(type, icon, label) { /* ... v7.8 logic ... */ }
 function _createStoreListModal() { /* ... v7.8 logic with try/catch ... */ }
 function _createStoreListItem(item) { /* ... v7.8 logic ... */ }
