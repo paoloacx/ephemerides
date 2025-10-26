@@ -1,12 +1,12 @@
-// firebase-config.js - Módulo para inicializar Firebase
+/* firebase.js */
+/* Este módulo se encarga de inicializar Firebase y exportar las instancias */
 
-// Importaciones necesarias de Firebase SDK
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+// import { getStorage } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
-// Tu configuración de Firebase (mantenida aquí)
+// --- Firebase Config ---
 const firebaseConfig = {
   apiKey: "AIzaSyBrd-8qaBfSplBjj74MNuKP8UWYmr8RaJA",
   authDomain: "ephemerides-2005.firebaseapp.com",
@@ -17,13 +17,11 @@ const firebaseConfig = {
   measurementId: "G-BZC9FRYCJW"
 };
 
-// Inicializar Firebase
+// --- Inicialización ---
 const app = initializeApp(firebaseConfig);
 
-// Inicializar servicios de Firebase
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
-
-// Exportar los servicios inicializados para que otros módulos los usen
-export { db, auth, storage, app }; // Exportamos 'app' también si fuera necesario en otro lugar
+// --- Exportaciones ---
+// Exportamos las instancias para que otros módulos las usen
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+// export const storage = getStorage(app);
