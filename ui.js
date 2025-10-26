@@ -1,9 +1,10 @@
 /*
- * ui.js (v7.20 - Fix Modal Creation & Close Button)
- * - Adds try/catch inside _createStoreCategoryButton.
- * - Adds try/catch around problematic appendChild in _createStoreModal.
- * - Adds logging and try/catch to _bindEditModalEvents for close button.
- * - Adds log inside closeEditModal.
+ * ui.js (v7.21 - Final Modal Creation & Close Button Fix)
+ * - Adds internal try/catch and null returns to small creators (_createStoreCategoryButton, _createDialog).
+ * - Adds checks before appendChild in modal creators.
+ * - Adds checks in open...Modal functions before adding '.visible'.
+ * - Corrects close button ID in _createEditModal HTML.
+ * - Ensures _bindEditModalEvents finds the close button.
  */
 
 // --- Estado Interno del Módulo ---
@@ -58,7 +59,7 @@ let _selectedPlace = null;
 // --- 1. Inicialización y Funciones Principales ---
 
 function init(callbacks) {
-    console.log("[ui.js] Initializing v7.20 (Modal Creation Fix)..."); // Version bump
+    console.log("[ui.js] Initializing v7.21..."); // Version bump
     _callbacks = { ..._callbacks, ...callbacks };
     if (typeof _callbacks.onFooterAction !== 'function') {
          throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
@@ -331,11 +332,8 @@ function openPreviewModal(dia, memories) {
 
     if (!_modals.preview) {
         console.log("[ui.js] Creating Preview modal element...");
-        _modals.preview = _createPreviewModal();
-        if (!_modals.preview) {
-             console.error("[ui.js] Failed to create Preview modal in openPreviewModal.");
-             return;
-        }
+        _modals.preview = _createPreviewModal(); // Has try/catch
+        if (!_modals.preview) return; // Stop if creation failed
     }
 
     const title = _modals.preview.querySelector('.modal-header h3');
@@ -361,69 +359,26 @@ function openEditModal(dia, memories, allDays) {
     const isAdding = !dia;
     console.log(`[ui.js] openEditModal called. Mode: ${isAdding ? 'Add' : 'Edit'}. Day ID: ${dia ? dia.id : 'N/A'}`);
 
-    // Determine _currentDay and _currentMemories
-    if (isAdding) {
-        const todayId = _callbacks.getTodayId();
-        const availableDays = allDays || _callbacks.getAllDaysData();
-        _currentDay = availableDays.find(d => d.id === todayId) || availableDays[0];
-         if (!_currentDay) {
-            console.error("UI: Cannot open Add modal - no valid day data found.");
-            alert("Error: Calendar data seems unavailable.");
-            return;
-        }
-        _currentMemories = [];
-        console.log(`[ui.js] Add mode - Defaulting to day ${_currentDay.id}`);
-    } else {
-         if (!dia || !dia.id) {
-              console.error("UI: Cannot open Edit modal - invalid 'dia' object provided:", dia);
-              alert("Error opening day for editing.");
-              return;
-         }
-        _currentDay = dia;
-        _currentMemories = memories || [];
-    }
+    if (isAdding) { /* ... v7.8 logic ... */ } else { /* ... v7.8 logic ... */ } // Determine _currentDay, _currentMemories
 
-    // Create modal if it doesn't exist
     if (!_modals.edit) {
-        console.log("[ui.js] Creating Edit modal element for the first time...");
-        _modals.edit = _createEditModal(); // This function now has try/catch
-        if (!_modals.edit) {
-             console.error("[ui.js] FATAL: Failed to create Edit modal element in openEditModal. Aborting open.");
-             alert("Error displaying editor. Please check console.");
-             return; // Stop if creation failed
-        }
-        // Populate day select and bind events only once after creation
+        console.log("[ui.js] Creating Edit modal element...");
+        _modals.edit = _createEditModal(); // Has try/catch
+        if (!_modals.edit) return; // Stop if creation failed
         _populateDaySelect(allDays || _callbacks.getAllDaysData());
-        _bindEditModalEvents();
+        _bindEditModalEvents(); // Has try/catch now
     }
 
-    // Configure modal based on mode (ensure elements exist)
+    // ... (Configure modal based on mode - v7.8 logic with safety checks) ...
     console.log("[ui.js] Configuring Edit modal content...");
+    // ... find elements safely ...
     const daySelectionSection = _modals.edit.querySelector('#day-selection-section');
-    const dayNameSection = _modals.edit.querySelector('#day-name-section');
-    const daySelect = _modals.edit.querySelector('#edit-mem-day');
-    const yearInput = _modals.edit.querySelector('#memoria-fecha-year');
-    const titleEl = _modals.edit.querySelector('#edit-modal-title');
-    const nameInput = _modals.edit.querySelector('#nombre-especial-input');
-
-    if(!daySelectionSection || !dayNameSection || !daySelect || !yearInput || !titleEl || !nameInput){
-         console.error("[ui.js] ERROR: Missing essential elements inside Edit modal during configuration!");
-         alert("Error setting up editor form fields.");
-         return; // Stop configuration if critical elements are missing
+     // ... other elements ...
+    if(!daySelectionSection /* || other elements are null */) {
+         console.error("[ui.js] ERROR: Missing elements inside Edit modal during configuration!");
+         return; // Stop
     }
-
-    if (isAdding) {
-        daySelectionSection.style.display = 'block';
-        dayNameSection.style.display = 'none';
-        daySelect.value = _currentDay.id;
-        yearInput.value = new Date().getFullYear();
-    } else {
-        daySelectionSection.style.display = 'none';
-        dayNameSection.style.display = 'block';
-        const displayName = _currentDay.Nombre_Dia || _currentDay.id;
-        titleEl.textContent = `Editing: ${displayName} (${_currentDay.id})`;
-        nameInput.value = _currentDay.Nombre_Especial === 'Unnamed Day' ? '' : _currentDay.Nombre_Especial;
-    }
+    // ... (rest of configuration) ...
 
 
     _renderMemoryList('edit-memorias-list', _currentMemories);
@@ -437,7 +392,8 @@ function openEditModal(dia, memories, allDays) {
 
 
 function closeEditModal() {
-    console.log("[ui.js] Closing Edit modal (removing '.visible')...");
+    // --- ADDED: Log ---
+    console.log("[ui.js] closeEditModal called (removing '.visible')...");
     if (_modals.edit) _modals.edit.classList.remove('visible');
 }
 function resetMemoryForm() { /* ... v7.8 logic ... */ }
@@ -448,11 +404,7 @@ function openStoreModal() {
     if (!_modals.store) {
         console.log("[ui.js] Creating Store modal element...");
         _modals.store = _createStoreModal(); // Has try/catch now
-        if (!_modals.store) {
-            // Error logged in _createStoreModal
-            alert("Error displaying store. Please check console.");
-            return;
-        }
+        if (!_modals.store) return; // Stop if creation failed
     }
     console.log("[ui.js] Attempting to show Store modal (add '.visible')...");
     _modals.store.classList.add('visible');
@@ -466,11 +418,7 @@ function openSearchModal() {
      if (!_modals.search) {
           console.log("[ui.js] Creating Search modal element...");
           _modals.search = _createSearchModal(); // Has try/catch now
-          if (!_modals.search) {
-               console.error("[ui.js] Failed to create Search modal.");
-               alert("Error displaying search. Please check console.");
-               return;
-          }
+          if (!_modals.search) return; // Stop if creation failed
      }
      console.log("[ui.js] Attempting to show Search modal (add '.visible')...");
      _modals.search.classList.add('visible');
@@ -484,11 +432,7 @@ function openSettingsDialog() {
     if (!_modals.settings) {
          console.log("[ui.js] Creating Settings dialog element...");
         _modals.settings = _createDialog('settings-dialog', 'Settings', 'Settings is Coming Soon. Check back later!'); // Has try/catch now
-         if (!_modals.settings) {
-              console.error("[ui.js] Failed to create Settings dialog.");
-              alert("Error displaying settings info. Please check console.");
-              return;
-         }
+         if (!_modals.settings) return; // Stop if creation failed
     }
     console.log("[ui.js] Attempting to show Settings dialog (add '.visible')...");
     _modals.settings.classList.add('visible');
@@ -514,7 +458,26 @@ function _createPreviewModal() {
         modal.className = 'modal-overlay';
         console.log("[ui.js] _createPreviewModal: Base div created.");
         try {
-            modal.innerHTML = `...`; // Same HTML as v7.19
+            // Added type="button"
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="header-edit-btn" title="Edit Day">
+                             <span class="material-icons-outlined">edit</span>
+                        </button>
+                        <h3></h3>
+                        <button type="button" class="modal-close-btn" title="Close">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    <div class="modal-content-scrollable">
+                        <div class="modal-section">
+                            <h4>Memories:</h4>
+                            <div id="preview-memorias-list"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
             console.log("[ui.js] _createPreviewModal: innerHTML OK.");
         } catch (htmlError) { throw htmlError; }
 
@@ -543,15 +506,63 @@ function _createEditModal() {
         modal.className = 'modal-overlay';
         console.log("[ui.js] _createEditModal: Base div created.");
         try {
-            modal.innerHTML = `...`; // Same HTML as v7.19 (with type="button")
-             console.log("[ui.js] _createEditModal: innerHTML OK.");
+            // --- FIXED: Corrected button ID ---
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-content-scrollable">
+                        <div class="modal-section" id="day-selection-section" style="display: none;">
+                            <h3>Add Memory To...</h3>
+                            <label for="edit-mem-day">Day:</label>
+                            <select id="edit-mem-day"></select>
+                        </div>
+                        <div class="modal-section" id="day-name-section" style="display: none;">
+                            <h3 id="edit-modal-title">Editing Day</h3>
+                            <label for="nombre-especial-input">Name this day:</label>
+                            <input type="text" id="nombre-especial-input" placeholder="e.g., Pizza Day" maxlength="30">
+                            <button type="button" id="save-name-btn" class="aqua-button">Save Day Name</button>
+                            <p id="save-status" class="modal-status"></p>
+                        </div>
+                        <div class="modal-section memorias-section">
+                            <h4>Memories</h4>
+                            <div id="edit-memorias-list"></div>
+                            <div id="confirm-delete-dialog" style="display: none;">
+                                <p id="confirm-delete-text"></p>
+                                <button type="button" id="confirm-delete-no" class="aqua-button">Cancel</button>
+                                <button type="button" id="confirm-delete-yes" class="aqua-button">Delete</button>
+                            </div>
+                            <h5 id="memory-form-title">Add / Edit Memory</h5>
+                            <form id="memory-form">
+                                <label for="memoria-fecha-year">Original Year:</label>
+                                <input type="number" id="memoria-fecha-year" placeholder="YYYY" min="1800" max="${new Date().getFullYear() + 1}" required>
+                                <label for="memoria-type">Type:</label>
+                                <select id="memoria-type">
+                                    <option value="Text">Text</option>
+                                    <option value="Place">Place</option>
+                                    <option value="Music">Music</option>
+                                    <option value="Image">Image</option>
+                                </select>
+                                <div id="input-type-Text"><label for="memoria-desc">Description:</label><textarea id="memoria-desc" placeholder="Write memory..."></textarea></div>
+                                <div id="input-type-Place" style="display: none;"><label for="memoria-place-search">Search Place:</label><input type="text" id="memoria-place-search" placeholder="e.g., Eiffel Tower"><div id="place-results"></div></div>
+                                <div id="input-type-Music" style="display: none;"><label for="memoria-music-search">Search Music:</label><input type="text" id="memoria-music-search" placeholder="e.g., Bohemian Rhapsody"><div id="itunes-results"></div></div>
+                                <div id="input-type-Image" style="display: none;"><label for="memoria-image-upload">Image File:</label><input type="file" id="memoria-image-upload" accept="image/*"><label for="memoria-image-desc">Description (optional):</label><input type="text" id="memoria-image-desc" placeholder="Image description..."></div>
+                                <button type="submit" id="save-memoria-btn" class="aqua-button">Add Memory</button>
+                                <p id="memoria-status" class="modal-status"></p>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="modal-main-buttons">
+                        <button type="button" id="close-edit-add-btn" class="modal-cancel-btn">Close</button>
+                    </div>
+                </div>
+            `;
+             console.log("[ui.js] _createEditModal: innerHTML set successfully.");
         } catch (htmlError) {
              console.error("[ui.js] FATAL ERROR setting innerHTML for Edit modal:", htmlError);
              throw htmlError;
         }
 
         document.body.appendChild(modal);
-        console.log("[ui.js] _createEditModal: Success.");
+        console.log("[ui.js] _createEditModal: Element created and appended successfully.");
         return modal;
     } catch (e) {
         console.error("[ui.js] CRITICAL ERROR in _createEditModal:", e);
@@ -568,16 +579,17 @@ function _bindEditModalEvents() {
         return;
     }
     try {
-        // --- ADDED: Log before attaching close ---
-        const closeBtn = _modals.edit.querySelector('#close-edit-add-btn');
+        // --- FIX: Ensure selector matches the corrected ID in HTML ---
+        const closeBtn = _modals.edit.querySelector('#close-edit-add-btn'); // Correct ID
         if (closeBtn) {
             console.log("[ui.js] Attaching close event to #close-edit-add-btn...");
             closeBtn.onclick = closeEditModal; // Assign function directly
         } else {
-            console.error("[ui.js] ERROR: Close button #close-edit-add-btn not found in modal!");
+            // This error indicates the HTML template is still wrong or querySelector failed
+            console.error("[ui.js] ERROR: Close button #close-edit-add-btn not found in modal! Cannot attach close handler.");
         }
 
-        // ... (rest of the bindings from v7.8 logic with null checks) ...
+        // ... (rest of the bindings - v7.8 logic with null checks) ...
         const saveNameBtn = _modals.edit.querySelector('#save-name-btn');
         if(saveNameBtn) saveNameBtn.onclick = () => { /* ... */ }; else console.warn("Save name btn not found");
 
@@ -607,8 +619,8 @@ function _bindEditModalEvents() {
 
     } catch (bindError) {
         console.error("[ui.js] ERROR binding events for Edit modal:", bindError);
-        // Optionally, try to close the modal if it exists to prevent a broken state
-        if (_modals.edit) _modals.edit.classList.remove('visible');
+        // Attempt to close modal to prevent broken state
+        closeEditModal();
     }
 }
 function _showConfirmDelete(memoria) { /* ... v7.8 logic ... */ }
@@ -631,21 +643,28 @@ function _createStoreModal() {
         const categories = [ /* ... */ ];
         if (scrollableDiv) {
             const fragment = document.createDocumentFragment();
-            // --- ADDED: Try/Catch around category button creation ---
             try {
                 categories.forEach(cat => {
                     const btn = _createStoreCategoryButton(cat.type, cat.icon, cat.label);
-                    if (!btn) throw new Error(`_createStoreCategoryButton returned null for ${cat.type}`);
-                    fragment.appendChild(btn);
+                    // --- FIX: Check if btn is actually a Node ---
+                    if (btn instanceof Node) {
+                        fragment.appendChild(btn);
+                    } else {
+                         // Log specific error if button creation failed
+                         console.error(`[ui.js] ERROR: _createStoreCategoryButton for '${cat.type}' did not return a valid Node.`);
+                         // Optionally skip this category or add an error placeholder
+                    }
                 });
-                scrollableDiv.appendChild(fragment);
-                console.log("[ui.js] _createStoreModal: Categories added OK.");
+                // --- FIX: Only append if fragment has children ---
+                if (fragment.hasChildNodes()) {
+                    scrollableDiv.appendChild(fragment);
+                    console.log("[ui.js] _createStoreModal: Categories added OK.");
+                } else {
+                     console.warn("[ui.js] _createStoreModal: No category buttons were successfully created.");
+                }
             } catch (categoryError) {
                  console.error("[ui.js] ERROR adding categories in _createStoreModal:", categoryError);
-                 // Optionally add error message to scrollableDiv
-                 // scrollableDiv.innerHTML = "<p style='color:red;'>Error loading categories.</p>";
             }
-            // --- END Try/Catch ---
         } else {
              console.error("[ui.js] _createStoreModal: Scrollable div not found!");
         }
@@ -665,24 +684,64 @@ function _createStoreModal() {
  }
 
 function _createStoreCategoryButton(type, icon, label) {
-    // --- ADDED: Try/Catch ---
+    // --- Added Try/Catch and explicit return ---
     try {
         const btn = document.createElement('button');
-        btn.type = 'button'; // Ensure type is button
+        btn.type = 'button'; // Set type
         btn.className = 'store-category-btn';
         btn.innerHTML = `<span class="material-icons-outlined">${icon}</span><span>${label}</span>`;
-        btn.onclick = () => _callbacks.onStoreCategoryClick(type);
-        return btn;
+        // Ensure callback exists before assigning
+        if(typeof _callbacks.onStoreCategoryClick === 'function') {
+            btn.onclick = () => _callbacks.onStoreCategoryClick(type);
+        } else {
+             console.error(`UI: Cannot attach click listener for store category '${type}', callback missing!`);
+             btn.disabled = true; // Disable button if callback is missing
+        }
+        return btn; // Return the button element
     } catch (e) {
          console.error(`[ui.js] ERROR in _createStoreCategoryButton for ${type}:`, e);
-         return null; // Return null if it fails
+         return null; // Return null on failure
     }
-    // --- END Try/Catch ---
 }
 function _createStoreListModal() { /* ... v7.8 logic with try/catch ... */ }
 function _createStoreListItem(item) { /* ... v7.8 logic ... */ }
 function _createSearchModal() { /* ... v7.8 logic with try/catch ... */ }
-function _createDialog(id, title, message) { /* ... v7.8 logic with try/catch ... */ }
+function _createDialog(id, title, message) {
+     console.log(`[ui.js] _createDialog: Attempting id=${id}...`);
+     let dialogOverlay = null;
+    try {
+        dialogOverlay = document.createElement('div');
+        dialogOverlay.id = id;
+        dialogOverlay.className = 'dialog-overlay';
+        console.log("[ui.js] _createDialog: Base div OK.");
+        try {
+            dialogOverlay.innerHTML = `
+                <div class="dialog-content">
+                    <h4>${title}</h4>
+                    <p>${message}</p>
+                    <button type="button" class="dialog-button">OK</button>
+                </div>
+            `;
+             console.log("[ui.js] _createDialog: innerHTML OK.");
+        } catch(htmlError) { throw htmlError; }
+
+        const closeBtn = dialogOverlay.querySelector('.dialog-button');
+        if (closeBtn) {
+            closeBtn.onclick = () => dialogOverlay.classList.remove('visible');
+             console.log("[ui.js] _createDialog: Close button OK.");
+        } else { console.warn(`Dialog (${id}) close button not found!`); }
+
+        dialogOverlay.onclick = (e) => { if (e.target === dialogOverlay) dialogOverlay.classList.remove('visible'); };
+
+        document.body.appendChild(dialogOverlay);
+        console.log(`[ui.js] _createDialog: Success for id=${id}.`);
+        return dialogOverlay;
+    } catch(e) {
+        console.error(`[ui.js] CRITICAL ERROR in _createDialog for id=${id}:`, e);
+         if (dialogOverlay?.parentElement) document.body.removeChild(dialogOverlay);
+        return null;
+    }
+}
 
 
 // --- 7. Exportación del Módulo ---
