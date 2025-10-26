@@ -1,15 +1,16 @@
 /*
- * main.js (v4.1 - Corregido)
- * Controlador principal de Ephemerides.
- * Orquesta los módulos: auth, store, api, ui.
- * Gestiona el estado de la aplicación.
+ * main.js (v4.2 - Loader Fix & English Translation)
+ * Main app controller.
+ * Orchestrates auth, store, api, and ui modules.
+ * Manages application state.
  */
 
-// --- Importaciones de Módulos ---
+// --- Module Imports ---
 import { initFirebase, db, auth } from './firebase.js'; 
 import { initAuthListener, handleLogin, handleLogout } from './auth.js';
 import { 
     checkAndRunApp as storeCheckAndRun,
+    migrateDayNamesToEnglish, // Import the new migration function
     loadAllDaysData,
     loadMemoriesForDay,
     saveDayName,
@@ -23,82 +24,85 @@ import {
 import { searchiTunes, searchNominatim } from './api.js';
 import { ui } from './ui.js';
 
-// --- Estado Global de la App ---
+// --- Global App State ---
 let state = {
     allDaysData: [],
     currentMonthIndex: new Date().getMonth(),
     currentUser: null,
     todayId: '',
     
-    // Estado del modal "Almacén"
+    // Store Modal State
     store: {
-        currentType: null, // 'Lugar', 'Musica', 'Nombres', etc.
+        currentType: null, // 'Place', 'Music', 'Names', etc.
         isLoading: false,
-        lastVisible: null, // Para paginación
+        lastVisible: null, // For pagination
     }
 };
 
-// --- 1. Inicialización de la App ---
+// --- 1. App Initialization ---
 
 /**
- * Función principal que arranca la aplicación.
+ * Main function to start the application.
  */
 async function checkAndRunApp() {
-    console.log("Iniciando Ephemerides v4.1 (Modular)...");
+    console.log("Starting Ephemerides v4.2 (Modular)...");
     
     try {
-        ui.setLoading("Verificando base de datos...", true);
+        ui.setLoading("Verifying database...", true);
         initFirebase();
         initAuthListener(handleAuthStateChange);
         
         await storeCheckAndRun((message) => ui.setLoading(message, true));
         
-        ui.setLoading("Cargando calendario...", true);
+        // --- NEW: Run one-time data migration ---
+        ui.setLoading("Checking data migration...", true);
+        await migrateDayNamesToEnglish((message) => ui.setLoading(message, true));
+        // --- End Migration ---
+
+        ui.setLoading("Loading calendar...", true);
         state.allDaysData = await loadAllDaysData();
 
         if (state.allDaysData.length === 0) {
-            throw new Error("La base de datos está vacía después de la verificación.");
+            throw new Error("Database is empty after verification.");
         }
         
         const today = new Date();
-        // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
-        // Era .part() y debía ser .padStart()
         state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
         
-        // Inicializar la UI (conectar todos los callbacks)
         ui.init(getUICallbacks());
         
         drawCurrentMonth();
         loadTodaySpotlight();
         
+        // --- THIS IS THE FIX ---
+        // Hide the loader after everything is done
+        ui.setLoading(null, false); 
+        
     } catch (err) {
-        console.error("Error crítico durante el arranque:", err);
-        ui.setLoading(`Error crítico: ${err.message}. Por favor, recarga.`, true);
+        console.error("Critical error during startup:", err);
+        ui.setLoading(`Critical error: ${err.message}. Please reload.`, true);
     }
 }
 
 /**
- * Carga los datos del "Spotlight" para el día de hoy.
+ * Loads the "Spotlight" data for today.
  */
 async function loadTodaySpotlight() {
     const today = new Date();
-    // CORRECCIÓN IDIOMA: Cambiar 'es-ES' a 'en-US' (o el locale deseado)
     const dateString = `Today, ${today.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}`; 
     
     const spotlightData = await getTodaySpotlight(state.todayId);
     
     if (spotlightData) {
-        // CORRECCIÓN IDIOMA: Cambiar 'Unnamed Day' si se traduce
         const fullDateString = `${dateString} ${spotlightData.dayName !== 'Unnamed Day' ? `(${spotlightData.dayName})` : ''}`; 
         ui.updateSpotlight(fullDateString, spotlightData.memories);
     }
 }
 
 /**
- * Dibuja el mes actual en el calendario.
+ * Draws the current month's calendar grid.
  */
 function drawCurrentMonth() {
-    // CORRECCIÓN IDIOMA: Cambiar 'es-ES' a 'en-US'
     const monthName = new Date(2024, state.currentMonthIndex, 1).toLocaleDateString('en-US', { month: 'long' }); 
     const monthNumber = state.currentMonthIndex + 1;
     
@@ -110,56 +114,55 @@ function drawCurrentMonth() {
 }
 
 
-// --- 2. Callbacks y Manejadores de Eventos ---
+// --- 2. Callbacks and Event Handlers ---
 
 /**
- * Devuelve un objeto con todas las funciones "callback" que ui.js necesita.
+ * Returns an object of all callback functions for ui.js
  * @returns {Object}
  */
 function getUICallbacks() {
     return {
-        // Navegación y Footer
+        // Nav & Footer
         onMonthChange: handleMonthChange,
         onDayClick: handleDayClick,
         onFooterAction: handleFooterAction,
         
-        // Autenticación
+        // Auth
         onLogin: handleLogin,
         onLogout: handleLogout,
         
-        // Acciones del Modal de Edición
+        // Edit Modal Actions
         onSaveDayName: handleSaveDayName,
         onSaveMemory: handleSaveMemorySubmit,
         onDeleteMemory: handleDeleteMemory,
         
-        // Acciones de API
+        // API Actions
         onSearchMusic: handleMusicSearch,
         onSearchPlace: handlePlaceSearch,
         
-        // Acciones del Modal "Almacén"
+        // Store Modal Actions
         onStoreCategoryClick: handleStoreCategoryClick,
         onStoreLoadMore: handleStoreLoadMore,
         onStoreItemClick: handleStoreItemClick,
 
-        // Acción del Modal "Buscar"
+        // Search Modal Action
         onSearchSubmit: handleSearchSubmit, 
     };
 }
 
 /**
- * Se llama cuando el estado de autenticación cambia (login/logout).
- * @param {Object} user - El objeto de usuario de Firebase, o null.
+ * Called when authentication state changes.
+ * @param {Object} user - Firebase user object or null.
  */
 function handleAuthStateChange(user) {
     state.currentUser = user;
     ui.updateLoginUI(user);
-    // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
     console.log("Authentication state changed:", user ? user.uid : "Logged out"); 
 }
 
 /**
- * Maneja los clics en los botones de navegación (mes anterior/siguiente).
- * @param {string} direction - 'prev' o 'next'.
+ * Handles month navigation clicks.
+ * @param {string} direction - 'prev' or 'next'.
  */
 function handleMonthChange(direction) {
     if (direction === 'prev') {
@@ -171,14 +174,11 @@ function handleMonthChange(direction) {
 }
 
 /**
- * Maneja el clic en un día del calendario.
- * @param {Object} dia - El objeto de día clicado.
+ * Handles clicks on a calendar day.
+ * @param {Object} dia - The clicked day object.
  */
 async function handleDayClick(dia) {
-    // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
-    // ui.setLoading("Loading memories...", true); 
     const memories = await loadMemoriesForDay(dia.id);
-    // ui.setLoading(null, false);
     
     if (state.currentUser) {
         ui.openEditModal(dia, memories, state.allDaysData);
@@ -188,8 +188,7 @@ async function handleDayClick(dia) {
 }
 
 /**
- * Maneja los clics en los botones del footer (Add, Store, Shuffle).
- * 'Search' ahora es manejado internamente por ui.js para abrir el modal.
+ * Handles footer button clicks (Add, Store, Shuffle).
  * @param {string} action - 'add', 'store', 'shuffle'.
  */
 function handleFooterAction(action) {
@@ -205,17 +204,14 @@ function handleFooterAction(action) {
         case 'shuffle':
             handleShuffleClick();
             break;
-        
-        // 'search' ya no se maneja aquí
             
         default:
-            // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
             console.warn("Unknown footer action:", action); 
     }
 }
 
 /**
- * Navega a un día aleatorio.
+ * Navigates to a random day.
  */
 function handleShuffleClick() {
     if (state.allDaysData.length === 0) return;
@@ -237,11 +233,10 @@ function handleShuffleClick() {
 }
 
 /**
- * Maneja el envío del formulario de búsqueda (desde ui.js).
- * @param {string} term - Término de búsqueda.
+ * Handles the submission from the search modal.
+ * @param {string} term - Search term.
  */
 async function handleSearchSubmit(term) {
-    // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
     console.log("Searching for term:", term); 
     
     const results = await searchMemories(term.toLowerCase());
@@ -249,82 +244,72 @@ async function handleSearchSubmit(term) {
     ui.closeSearchModal();
     
     if (results.length === 0) {
-        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
         ui.updateSpotlight(`No results found for "${term}"`, []); 
     } else {
-        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
         ui.updateSpotlight(`Results for "${term}" (${results.length})`, results); 
     }
 }
 
 
-// --- 3. Lógica de Modales (Controlador) ---
+// --- 3. Modal Logic (Controller) ---
 
 /**
- * Guarda el nuevo nombre especial para un día.
- * @param {string} diaId - El ID del día (ej. "01-01").
- * @param {string} newName - El nuevo nombre.
+ * Saves the special name for a day.
+ * @param {string} diaId - The day ID (e.g., "01-01").
+ * @param {string} newName - The new name.
  */
 async function handleSaveDayName(diaId, newName) {
     try {
-        // CORRECCIÓN IDIOMA: Cambiar 'Unnamed Day' si se traduce
         await saveDayName(diaId, newName || "Unnamed Day"); 
         
         const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
         if (dayIndex !== -1) {
-            // CORRECCIÓN IDIOMA: Cambiar 'Unnamed Day' si se traduce
             state.allDaysData[dayIndex].Nombre_Especial = newName || "Unnamed Day"; 
         }
         
-        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
         ui.showModalStatus('save-status', 'Name saved', false); 
         drawCurrentMonth(); 
         
     } catch (err) {
         console.error("Error saving name:", err);
-        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
         ui.showModalStatus('save-status', `Error: ${err.message}`, true); 
     }
 }
 
 /**
- * Recibe los datos del formulario de memoria (desde ui.js) y los guarda.
- * @param {string} diaId - El ID del día.
- * @param {Object} memoryData - Los datos del formulario.
- * @param {boolean} isEditing - True si es una actualización.
+ * Receives memory form data from ui.js and saves it.
+ * @param {string} diaId - The day ID.
+ * @param {Object} memoryData - Form data.
+ * @param {boolean} isEditing - True if updating.
  */
 async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
     
     try {
-        // 1. Convertir fecha string a Objeto Date
+        // 1. Convert date string to Date object
         try {
             const dateParts = memoryData.Fecha_Original.split('-'); // YYYY-MM-DD
             const utcDate = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2])));
-            // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
             if (isNaN(utcDate.getTime())) throw new Error('Invalid date'); 
             memoryData.Fecha_Original = utcDate; 
         } catch (e) {
-            // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
             throw new Error('Invalid original date format.'); 
         }
         
-        // 2. Lógica de subida de imagen (TODO)
+        // 2. Image upload logic (TODO)
         if (memoryData.Tipo === 'Imagen' && memoryData.file) {
-            // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
             console.warn("Image upload not yet implemented."); 
             delete memoryData.file;
         }
 
-        // 3. Guardar en Firestore
+        // 3. Save to Firestore
         const memoryId = isEditing ? memoryData.id : null;
         await saveMemory(diaId, memoryData, memoryId);
         
-        // 4. Actualizar UI
-        // CORRECCIÓN IDIOMA: Cambiar mensajes si se traducen
+        // 4. Update UI
         ui.showModalStatus('memoria-status', isEditing ? 'Memory updated' : 'Memory saved', false); 
         ui.resetMemoryForm();
         
-        // 5. Recargar la lista de memorias en el modal
+        // 5. Reload memory list in modal
         const updatedMemories = await loadMemoriesForDay(diaId);
         ui.openEditModal(
             state.allDaysData.find(d => d.id === diaId),
@@ -332,34 +317,32 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
             state.allDaysData
         );
         
-        // 6. Actualizar el grid (para el punto azul)
+        // 6. Update grid (for blue dot)
         const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
         if (dayIndex !== -1 && !state.allDaysData[dayIndex].tieneMemorias) {
             state.allDaysData[dayIndex].tieneMemorias = true;
             drawCurrentMonth();
         }
         
-        // 7. Recargar el spotlight si estábamos editando el día de hoy
+        // 7. Reload spotlight if today was edited
         if (diaId === state.todayId) {
             loadTodaySpotlight();
         }
         
     } catch (err) {
         console.error("Error saving memory:", err);
-        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
         ui.showModalStatus('memoria-status', `Error: ${err.message}`, true); 
     }
 }
 
 /**
- * Borra una memoria.
- * @param {string} diaId - El ID del día.
- * @param {string} memId - El ID de la memoria.
+ * Deletes a memory.
+ * @param {string} diaId - The day ID.
+ * @param {string} memId - The memory ID.
  */
 async function handleDeleteMemory(diaId, memId) {
     try {
         await deleteMemory(diaId, memId);
-        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
         ui.showModalStatus('memoria-status', 'Memory deleted', false); 
         
         const updatedMemories = await loadMemoriesForDay(diaId);
@@ -384,17 +367,16 @@ async function handleDeleteMemory(diaId, memId) {
         
     } catch (err) {
         console.error("Error deleting memory:", err);
-        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
         ui.showModalStatus('memoria-status', `Error: ${err.message}`, true); 
     }
 }
 
 
-// --- 4. Lógica de API Externa (Controlador) ---
+// --- 4. External API Logic (Controller) ---
 
 /**
- * Llama al módulo API para buscar música y pasa los resultados a la UI.
- * @param {string} term - Término de búsqueda.
+ * Calls API module to search iTunes and passes results to UI.
+ * @param {string} term - Search term.
  */
 async function handleMusicSearch(term) {
     try {
@@ -402,14 +384,13 @@ async function handleMusicSearch(term) {
         ui.showMusicResults(tracks);
     } catch (err) {
         console.error("Error searching iTunes:", err);
-        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
         ui.showModalStatus('memoria-status', 'Error searching music', true); 
     }
 }
 
 /**
- * Llama al módulo API para buscar lugares y pasa los resultados a la UI.
- * @param {string} term - Término de búsqueda.
+ * Calls API module to search places and passes results to UI.
+ * @param {string} term - Search term.
  */
 async function handlePlaceSearch(term) {
     try {
@@ -417,32 +398,29 @@ async function handlePlaceSearch(term) {
         ui.showPlaceResults(places);
     } catch (err) {
         console.error("Error searching Nominatim:", err);
-        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
         ui.showModalStatus('memoria-status', 'Error searching places', true); 
     }
 }
 
-// --- 5. Lógica del "Almacén" (Controlador) ---
+// --- 5. "Store" Modal Logic (Controller) ---
 
 /**
- * Maneja el clic en una categoría del Almacén.
- * @param {string} type - 'Nombres', 'Lugar', 'Musica', 'Texto', 'Imagen'
+ * Handles click on a Store category.
+ * @param {string} type - 'Names', 'Place', 'Music', 'Text', 'Image'
  */
 async function handleStoreCategoryClick(type) {
-    // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
     console.log("Loading Store for:", type); 
     
     state.store.currentType = type;
     state.store.lastVisible = null;
     state.store.isLoading = true;
     
-    // CORRECCIÓN IDIOMA: Cambiar título si se traduce
     const title = `Store: ${type}`; 
     ui.openStoreListModal(title);
     
     try {
         let result;
-        if (type === 'Nombres') {
+        if (type === 'Names') {
             result = await getNamedDays(10);
         } else {
             result = await getMemoriesByType(type, 10);
@@ -458,26 +436,24 @@ async function handleStoreCategoryClick(type) {
         ui.updateStoreList([], false, false);
         if (err.code === 'failed-precondition') {
             console.error("FIREBASE INDEX REQUIRED!", err.message);
-            // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
             alert("Firebase Error: An index is required. Check the console (F12) for the creation link."); 
         }
     }
 }
 
 /**
- * Carga la siguiente página de resultados en el Almacén.
+ * Loads the next page of results in the Store.
  */
 async function handleStoreLoadMore() {
     const { currentType, lastVisible, isLoading } = state.store;
     if (isLoading || !currentType || !lastVisible) return;
     
-    // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
     console.log("Loading more...", currentType); 
     state.store.isLoading = true;
     
     try {
         let result;
-        if (currentType === 'Nombres') {
+        if (currentType === 'Names') {
             result = await getNamedDays(10, lastVisible);
         } else {
             result = await getMemoriesByType(currentType, 10, lastVisible);
@@ -495,13 +471,12 @@ async function handleStoreLoadMore() {
 }
 
 /**
- * Maneja el clic en un item de la lista del Almacén (navega a ese día).
- * @param {string} diaId - El ID del día (ej. "05-14").
+ * Handles click on a Store list item (navigates to that day).
+ * @param {string} diaId - The day ID (e.g., "05-14").
  */
 function handleStoreItemClick(diaId) {
     const dia = state.allDaysData.find(d => d.id === diaId);
     if (!dia) {
-        // CORRECCIÓN IDIOMA: Cambiar mensaje si se traduce
         console.error("Day not found:", diaId); 
         return;
     }
@@ -523,6 +498,6 @@ function handleStoreItemClick(diaId) {
 }
 
 
-// --- 6. Ejecución Inicial ---
+// --- 6. Initial Execution ---
 checkAndRunApp();
 
