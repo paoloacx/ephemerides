@@ -1,4 +1,4 @@
-/* main.js - v2.0 Modular */
+/* main.js - v2.1 Modular */
 
 // --- Importaciones de Módulos ---
 import { initAuthListener, handleLogin, handleLogout } from './auth.js';
@@ -11,6 +11,9 @@ import {
     deleteMemory,
     updateDayName
 } from './store.js';
+// ¡NUEVO! Importar el módulo de API
+import { searchiTunes, searchNominatim } from './api.js';
+
 
 // --- Importaciones de Funciones de Firebase ---
 // (Solo las que necesitamos para crear Timestamps en el FORMULARIO)
@@ -274,7 +277,7 @@ async function ejecutarBusqueda(term) {
                 
                 let contentHTML = `<small><b>${mem.diaNombre} (${mem.diaId})</b> - ${fechaStr}</small>`;
                 switch (mem.Tipo) {
-                    case 'Lugar': contentHTML += `📍 ${memoria.LugarNombre || 'Place'}`; break;
+                    case 'Lugar': contentHTML += `📍 ${mem.LugarNombre || 'Place'}`; break; // Corregido 'memoria' a 'mem'
                     case 'Musica':
                         if (mem.CancionData?.trackName) contentHTML += `🎵 <strong>${mem.CancionData.trackName}</strong> by ${mem.CancionData.artistName}`;
                         else contentHTML += `🎵 ${mem.CancionInfo || 'Music'}`;
@@ -693,23 +696,64 @@ function handleMemoryTypeChangeUnified() {
 }
 
 async function buscarBSOUnified() {
-    // (Esta función se moverá a 'api.js')
+    // (Esta función ahora es un 'controlador' de UI)
     const i=document.getElementById('memoria-music-search'),r=document.getElementById('itunes-results'),s=document.getElementById('memoria-status'),q=i.value.trim();
     if(!q){r.innerHTML='<p class="error">Enter term.</p>';return;}
     r.innerHTML='<p>Searching...</p>';s.textContent='';selectedMusicTrack=null;
-    const p='https://corsproxy.io/?',u=`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=5`,f=p+encodeURIComponent(u);
-    try{const e=await fetch(f); if(!e.ok)throw new Error(`HTTP ${e.status}`); const d=await e.json(); if(!d.results||d.resultCount===0){r.innerHTML='<p>No results.</p>';return;}
-    r.innerHTML=''; d.results.forEach(t=>{const v=document.createElement('div'); v.className='itunes-track'; const a=t.artworkUrl100||t.artworkUrl60||''; v.innerHTML=` <img src="${a}" class="itunes-artwork" style="${a?'':'display:none;'}" onerror="this.style.display='none';"><div class="itunes-track-info"><div class="itunes-track-name">${t.trackName||'?'}</div><div class="itunes-track-artist">${t.artistName||'?'}</div></div><div class="itunes-track-select">➔</div>`; v.onclick=()=>{selectedMusicTrack=t;i.value=`${t.trackName} - ${t.artistName}`;r.innerHTML=`<div class="itunes-track selected"><img src="${a}" class="itunes-artwork" style="${a?'':'display:none;'}">... <span style="color:green;">✓</span></div>`;console.log("Selected:",selectedMusicTrack);}; r.appendChild(v);}); }catch(e){console.error('iTunes Error:',e);r.innerHTML=`<p class="error">Search error: ${e.message}</p>`;}
+    
+    try {
+        // --- ¡CAMBIO! ---
+        // Llama a la función de la API
+        const data = await searchiTunes(q);
+
+        // El resto es lógica de UI
+        if(!data.results || data.resultCount === 0) {
+            r.innerHTML='<p>No results.</p>';
+            return;
+        }
+        r.innerHTML='';
+        data.results.forEach(t => {
+            const v=document.createElement('div');
+            v.className='itunes-track';
+            const a=t.artworkUrl100||t.artworkUrl60||'';
+            v.innerHTML=` <img src="${a}" class="itunes-artwork" style="${a?'':'display:none;'}" onerror="this.style.display='none';"><div class="itunes-track-info"><div class="itunes-track-name">${t.trackName||'?'}</div><div class="itunes-track-artist">${t.artistName||'?'}</div></div><div class="itunes-track-select">➔</div>`;
+            v.onclick=()=>{selectedMusicTrack=t;i.value=`${t.trackName} - ${t.artistName}`;r.innerHTML=`<div class="itunes-track selected"><img src="${a}" class="itunes-artwork" style="${a?'':'display:none;'}">... <span style="color:green;">✓</span></div>`;console.log("Selected:",selectedMusicTrack);};
+            r.appendChild(v);
+        });
+    } catch(e) {
+        console.error('iTunes Error:',e);
+        r.innerHTML=`<p class="error">Search error: ${e.message}</p>`;
+    }
 }
 
 async function buscarLugarUnified() {
-    // (Esta función se moverá a 'api.js')
+    // (Esta función ahora es un 'controlador' de UI)
     const i=document.getElementById('memoria-place-search'),r=document.getElementById('place-results'),s=document.getElementById('memoria-status'),q=i.value.trim();
     if(!q){r.innerHTML='<p class="error">Enter place.</p>';return;}
     r.innerHTML='<p>Searching...</p>';s.textContent='';selectedPlace=null;
-    const n=`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5`;
-    try{const e=await fetch(n,{headers:{'Accept':'application/json'}}); if(!e.ok)throw new Error(`HTTP ${e.status}`); const d=await e.json(); if(!d||d.length===0){r.innerHTML='<p>No results.</p>';return;}
-    r.innerHTML=''; d.forEach(p=>{const v=document.createElement('div'); v.className='place-result'; v.innerHTML=`${p.display_name}`; v.onclick=()=>{selectedPlace={name:p.display_name,lat:p.lat,lon:p.lon,osm_id:p.osm_id,osm_type:p.osm_type};i.value=p.display_name;r.innerHTML=`<p class="success">Selected: ${p.display_name}</p>`;console.log("Selected:",selectedPlace);}; r.appendChild(v);}); }catch(e){console.error('Nominatim Error:',e);r.innerHTML=`<p class="error">Search error: ${e.message}</p>`;}
+    
+    try {
+        // --- ¡CAMBIO! ---
+        // Llama a la función de la API
+        const data = await searchNominatim(q);
+        
+        // El resto es lógica de UI
+        if(!data || data.length === 0) {
+            r.innerHTML='<p>No results.</p>';
+            return;
+        }
+        r.innerHTML='';
+        data.forEach(p => {
+            const v=document.createElement('div');
+            v.className='place-result';
+            v.innerHTML=`${p.display_name}`;
+            v.onclick=()=>{selectedPlace={name:p.display_name,lat:p.lat,lon:p.lon,osm_id:p.osm_id,osm_type:p.osm_type};i.value=p.display_name;r.innerHTML=`<p class="success">Selected: ${p.display_name}</p>`;console.log("Selected:",selectedPlace);};
+            r.appendChild(v);
+        });
+    } catch(e) {
+        console.error('Nominatim Error:',e);
+        r.innerHTML=`<p class="error">Search error: ${e.message}</p>`;
+    }
 }
 
 function startEditMemoriaUnified(memoria) {
