@@ -21,8 +21,8 @@
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
     
-    <!-- App Stylesheet (v18) -->
-    <link rel="stylesheet" href="style.css?v=18">
+    <!-- App Stylesheet (v19) -->
+    <link rel="stylesheet" href="style.css?v=19">
     
     <style>
         body, button, input, textarea, select {
@@ -44,8 +44,9 @@
     <header>
         <h1>EPHEMERIDES</h1>
         
-        <button id="refresh-btn" class="header-icon-btn" title="Refresh Page">
-             <span class="material-icons-outlined">refresh</span>
+        <!-- CHANGED: Refresh button removed, Search button added -->
+        <button id="header-search-btn" class="header-icon-btn" title="Search">
+             <span class="material-icons-outlined">search</span>
         </button>
         
         <div id="login-section">
@@ -78,7 +79,7 @@
         </div>
     </main>
     
-    <!-- REMOVED: Loader Element Removed -->
+    <!-- Loader Element Removed -->
     
     <footer class="footer-dock">
          <button class="dock-button" data-action="add" title="Add Memory">
@@ -93,13 +94,14 @@
              <span class="material-icons-outlined">shuffle</span>
              <span>Shuffle</span>
          </button>
-         <button class="dock-button" data-action="search" title="Search">
-             <span class="material-icons-outlined">search</span>
-             <span>Search</span>
+         <!-- CHANGED: Search button is now Settings button -->
+         <button class="dock-button" data-action="settings" title="Settings">
+             <span class="material-icons-outlined">settings</span>
+             <span>Settings</span>
          </button>
     </footer>
 
-    <!-- App Scripts (v4.4 - No Loader Calls) -->
+    <!-- App Scripts (v4.4) -->
     <script type="module" src="main.js?v=4.4"></script>
 
 </body>
