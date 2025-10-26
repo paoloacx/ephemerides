@@ -1,122 +1,378 @@
-/* style.css - v10.7 - Spotlight Redesign */
+/* style.css - v11.0 - Styles for Spotlight + iOS Style Grid */
 
-/* ... (Estilos anteriores sin cambios hasta el final) ... */
+body {
+    margin: 0; padding: 0 0 90px 0; /* Footer height */
+    /* ¡CAMBIO! Usando 'beige-paper.jpg' como fondo, que coincide más con la idea de "papel" */
+    background-image: url('beige-paper.jpg');
+    background-color: #EFEFEF; /* Fallback color claro */
+    background-repeat: repeat;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #333;
+    font-size: 16px; /* Increased base font size */
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+}
 
-/* --- Today Memory Spotlight Redesign --- */
+button, input, textarea, select { font-family: inherit; font-size: inherit; }
+
+header { /* Sin cambios */
+    background: linear-gradient(to bottom, #bcc6d1 0%, #a4b0bd 50%, #909dad 51%, #a4b0bd 100%);
+    border-bottom: 1px solid #6d6d6d; padding: 5px 10px; text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: center; height: 45px;
+}
+header h1 { margin: 0; font-size: 20px; color: #ffffff; font-weight: bold; text-shadow: 0 -1px 0 rgba(0,0,0,0.5); flex-grow: 1; text-align: center; padding-left: 50px; }
+#refresh-btn, #login-section { flex-shrink: 0; margin: 0 5px; }
+#refresh-btn { background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0; }
+#refresh-btn:hover { opacity: 1; } #refresh-btn svg { width: 18px; height: 18px; }
+#login-section { display: flex; align-items: center; } #user-info { display: none; align-items: center; margin-right: 5px; }
+#user-img { width: 30px; height: 30px; border-radius: 50%; margin-right: 5px; border: 1px solid rgba(255,255,255,0.5); }
+#user-name { color: white; font-size: 12px; text-shadow: 0 -1px 0 rgba(0,0,0,0.5); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-login-btn { background: none; border: none; padding: 5px; cursor: pointer; color: white; opacity: 0.8; line-height: 0; display: flex; align-items: center; justify-content: center; }
+.header-login-btn:hover { opacity: 1; } .header-login-btn svg { width: 18px; height: 18px; } .header-login-btn img { width: 24px; height: 24px; border-radius: 50%; }
+
+.month-nav { /* Sin cambios */
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 15px; background-color: #f0f0f0; border-bottom: 1px solid #bbb;
+    position: sticky; top: 45px; z-index: 9;
+}
+#month-name-display { font-size: 17px; font-weight: bold; color: #000000; text-align: center; flex-grow: 1; }
+
+/* --- Aqua Button Style (Sin cambios) --- */
+.aqua-button {
+    background: linear-gradient(to bottom, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%);
+    border: 1px solid #3c82b1 !important; border-radius: 15px !important;
+    padding: 8px 20px !important; font-size: 15px !important; font-weight: bold !important;
+    color: #fff !important; cursor: pointer;
+    box-shadow: 0 2px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.1) !important;
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.3) !important; min-width: 40px; transition: all 0.1s ease-in-out;
+    margin: 5px; line-height: normal !important; -webkit-appearance: none; appearance: none;
+    text-align: center; display: inline-block;
+}
+.aqua-button:hover { background: linear-gradient(to bottom, #b8dcf4 0%, #8cc8ec 50%, #6fbde4 51%, #5fb9e2 100%) !important; }
+.aqua-button:active { background: linear-gradient(to top, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%) !important; box-shadow: inset 0 2px 3px rgba(0,0,0,0.3) !important; transform: translateY(1px); }
+
+/* --- Main Content Layout --- */
+main { 
+    padding: 10px; 
+    /* ¡NUEVO! Centrar el contenido */
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* --- NUEVO: Spotlight "Today" (Basado en tu captura) --- */
 #spotlight-date-header {
     font-size: 18px;
     font-weight: bold;
     color: #555;
     text-align: center;
-    margin: 15px 10px 5px 10px; /* Margen superior e inferior */
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+    margin: 10px 0 8px 0;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7);
 }
-
 #today-memory-spotlight {
-    background-color: transparent; /* El fondo lo da el slide interno */
-    border: none; /* Sin borde exterior */
-    border-radius: 12px; /* Bordes más redondeados */
-    padding: 0; /* Sin padding exterior */
-    margin: 0 10px 20px 10px; /* Margen alrededor */
+    background-color: #f0f0f0; /* Color base claro */
+    border: 1px solid #b5b5b5;
+    border-radius: 10px; /* Bordes redondeados */
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.5); /* Inset */
+    margin: 0 auto 15px auto;
+    padding: 5px 12px;
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15); /* Sombra exterior suave */
-    overflow: hidden; /* Para contener el slide redondeado */
+    display: none; /* Oculto por defecto, JS lo muestra */
+}
+/* Estilo cuando tiene recuerdos */
+#today-memory-spotlight.has-memory {
+     background-color: #ffffff;
 }
 
 .spotlight-slide {
-    background-color: #ffffff; /* Fondo blanco para el slide */
-    padding: 12px 15px; /* Padding interno */
-    border-radius: 12px; /* Hereda o iguala el redondeo */
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* Sombra interior */
-    max-height: 250px; /* Altura máxima, permite scroll */
-    overflow-y: auto; /* Scroll si el contenido es largo */
-    position: relative; /* Para posibles elementos futuros */
+    /* Contenedor para los items */
 }
-
-/* Estilos para cada memoria dentro del slide */
 .spotlight-memory-item {
     display: flex;
     align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
+    padding: 10px 0;
+    border-bottom: 1px solid #ddd;
     font-size: 14px;
 }
 .spotlight-memory-item:last-child {
-    border-bottom: none; /* Sin borde en el último item */
+    border-bottom: none;
 }
-
 .spotlight-memory-icon {
-    font-size: 18px; /* Tamaño del icono emoji */
-    margin-right: 10px;
-    flex-shrink: 0; /* Evita que el icono se encoja */
+    font-size: 18px;
+    margin-right: 12px;
+    opacity: 0.8;
 }
-
 .spotlight-memory-details {
-    flex-grow: 1; /* Ocupa el espacio restante */
-    margin-right: 8px; /* Espacio antes del artwork */
+    flex-grow: 1;
     line-height: 1.3;
-    color: #333;
 }
-.spotlight-memory-details strong {
-    color: #000;
-}
-
-/* Ajuste del artwork */
 .spotlight-artwork {
-    width: 40px; /* Tamaño reducido */
+    width: 40px;
     height: 40px;
-    object-fit: cover;
-    border-radius: 4px; /* Bordes suaves */
-    flex-shrink: 0;
-    border: 1px solid #ddd;
-    margin-left: auto; /* Empuja a la derecha */
+    border-radius: 4px;
+    margin-left: 10px;
+    border: 1px solid #ccc;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
 }
-
 .no-memory-message {
-    font-style: italic;
+    font-size: 14px;
     color: #777;
     text-align: center;
     padding: 15px 0;
+    font-style: italic;
 }
-.no-memory-message.error {
-    color: #c00;
-    font-style: normal;
+
+
+/* --- Calendar Grid (7 Columnas, como en la captura) --- */
+.calendario-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px; /* Reducido para un look más "iOS" */
+    padding-bottom: 20px;
+}
+.dia-btn {
+    /* ¡CAMBIO! Estilo más simple, como en la captura */
+    background: #ffffff;
+    border: 1px solid #c8c8c8;
+    border-radius: 6px; /* Bordes redondeados */
+    padding: 0;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    color: #333;
+    width: 100%;
+    aspect-ratio: 1 / 1; /* Cuadrado */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    transition: background-color 0.1s;
+}
+.dia-btn:active { 
+    background-color: #eee; 
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); 
+}
+/* ¡NUEVO! Indicador de "tiene memorias" */
+.dia-btn.tiene-memorias {
+    /* Un punto sutil o un fondo diferente */
+    background: #f7f7f7;
     font-weight: bold;
 }
+.dia-btn.tiene-memorias::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background-color: #007aff; /* iOS blue */
+}
 
 
-/* --- Footer Dock (Glossy Style iOS 4-6) --- */
+.dia-numero {
+    /* ¡CAMBIO! Centrado simple */
+    font-size: 28px; /* Ligeramente más pequeño */
+    font-weight: 500; /* Menos grueso */
+    color: #444;
+    line-height: 1;
+}
+/* ¡ELIMINADO! La línea roja .dia-btn::before */
+.dia-btn::before {
+    display: none;
+}
+.dia-btn .nombre-especial { display: none; }
+
+
+/* --- Modales --- */
+.modal-preview, .modal-edit {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
+    display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; box-sizing: border-box;
+    opacity: 0; transform: scale(0.95); transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+.modal-preview.visible, .modal-edit.visible { display: flex; opacity: 1; transform: scale(1); }
+
+.modal-preview-content, .modal-edit .modal-content {
+    /* ¡CAMBIO! Fondo de lino claro para modales */
+    background-image: url('beige-paper.jpg');
+    background-color: #f7f7f7; 
+    padding: 0; border-radius: 10px; width: 100%;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #888;
+    max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; /* Important for scroll */
+}
+/* Scrollable container WITHIN the modal content */
+.modal-content-scrollable {
+    overflow-y: auto; /* Enable vertical scroll if needed */
+    flex-grow: 1; /* Allow this to take space */
+    padding: 0; /* Padding will be on sections */
+}
+
+
+/* --- Modal Preview (Adaptado al fondo de papel) --- */
+.modal-preview-content {
+    max-width: 600px;
+    min-height: 450px;
+    max-height: 85vh;
+    padding: 0;
+    justify-content: space-between;
+}
+.modal-preview-header {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid rgba(0,0,0,0.2);
+    padding: 15px 20px 10px 20px;
+    background: rgba(255, 255, 255, 0.4); /* Cabecera semi-transparente */
+}
+.modal-preview-header h3 { margin: 0; font-size: 19px; font-weight: bold; color: #333; text-align: left; flex-grow: 1; }
+#edit-from-preview-btn { background: none; border: none; padding: 5px; cursor: pointer; color: #555; line-height: 0; opacity: 0.7; }
+#edit-from-preview-btn:hover { opacity: 1; color: #000; } #edit-from-preview-btn svg { width: 24px; height: 24px; }
+.modal-preview-memorias {
+    flex-grow: 1; overflow-y: auto; text-align: left;
+    margin: 0; padding: 15px 20px;
+}
+.modal-preview-memorias h4 { margin: 0 0 10px 0; font-size: 17px; color: #444; font-weight: bold; }
+#preview-memorias-list {
+    background-color: rgba(255,255,255,0.7); /* Fondo más opaco */
+    border: 1px solid rgba(0,0,0,0.1); padding: 10px; border-radius: 5px; min-height: 40px;
+}
+#close-preview-btn { margin: 15px 20px; align-self: center;}
+
+
+/* --- Unified Edit/Add Modal (Adaptado) --- */
+.modal-edit .modal-content { max-width: 480px; }
+.modal-content-scrollable { 
+    overflow-y: auto; padding: 0; flex-grow: 1; 
+    /* ¡NUEVO! Añadir un "fade" superior para indicar scroll */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 15px, black calc(100% - 15px), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, black 15px, black calc(100% - 15px), transparent 100%);
+}
+.modal-section { 
+    padding: 15px 20px; 
+    border-bottom: 1px solid rgba(0,0,0,0.15); /* Borde más suave */
+    background: rgba(255,255,255,0.3); /* Fondo de sección ligero */
+}
+.modal-section:first-child {
+    padding-top: 20px;
+}
+.modal-section:last-child { border-bottom: none; padding-bottom: 20px; }
+.modal-edit .modal-content h3 { font-size: 18px; font-weight: bold; margin: 0 0 8px 0; text-align: center;}
+.modal-edit .modal-content p.section-description { font-size: 14px; margin: 0 0 10px 0; text-align: center; color: #555; }
+.modal-edit .modal-content label { display: block; font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 4px; color: #444; text-align: left;}
+
+.modal-edit .modal-content input[type="text"],
+.modal-edit .modal-content input[type="date"],
+.modal-edit .modal-content input[type="number"],
+.modal-edit .modal-content input[type="file"],
+.modal-edit .modal-content input[type="url"],
+.modal-edit .modal-content select,
+.modal-edit .modal-content textarea {
+    width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #aaa; border-radius: 5px;
+    box-sizing: border-box; font-size: 14px; background-color: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); font-family: inherit;
+    -webkit-appearance: none; /* Quitar estilos nativos de iOS */
+}
+.modal-edit .modal-content textarea { height: 70px; resize: vertical; }
+.modal-section #save-name-btn { display: block; width: 100%; margin-top: 10px; }
+
+/* Main buttons container at bottom */
+.modal-main-buttons { display: flex; border-top: 1px solid #ababab; background-color: #f0f0f0; margin-top: auto; flex-shrink: 0; }
+.modal-main-buttons button { flex: 1; background: transparent; border: none; border-left: 1px solid #ababab; padding: 12px 10px; font-size: 16px; color: #007aff; cursor: pointer; margin: 0; border-radius: 0; box-shadow: none; text-shadow: none; font-weight: bold; }
+.modal-main-buttons button:first-child { border-left: none; }
+.modal-main-buttons button:active { background-color: #d9d9d9; }
+.modal-main-buttons #close-edit-add-btn { color: #555; font-weight: normal; }
+.modal-main-buttons #close-edit-add-btn:active { color: #007aff; }
+
+/* Memory List and Form Styles (Unified Edit Modal - No Frame) */
+#save-status, #memoria-status { font-size: 12px; margin-top: 8px; min-height: 1.2em; text-align: center; padding: 0 15px 5px 15px; }
+.success { color: green; } .error { color: red; }
+.memorias-section { text-align: left; }
+.memorias-section h4 { margin: 0 0 10px 0; font-size: 16px; color: #555; }
+#edit-memorias-list { max-height: 180px; overflow-y: auto; margin-bottom: 15px; border: 1px solid #ccc; background-color: #fff; padding: 8px; border-radius: 5px; min-height: 40px; }
+
+.memoria-item { /* Simple background */
+    font-size: 13px; padding: 10px 8px; border-bottom: 1px solid #eee;
+    background-color: #fff; display: flex; justify-content: space-between; align-items: center;
+    border-radius: 3px; margin-bottom: 5px;
+}
+.memoria-item:last-child { border-bottom: none; margin-bottom: 0; }
+.memoria-item-content { flex-grow: 1; margin-right: 5px; }
+.memoria-item small { display: block; color: #555; margin-bottom: 3px; font-weight: bold; font-size: 11px; }
+.memoria-artwork { width: 35px; height: 35px; margin-right: 8px; border-radius: 3px; object-fit: cover; flex-shrink: 0; border: 1px solid #ddd; }
+.memoria-actions { display: flex; }
+.memoria-actions button { background: none; border: none; padding: 3px 5px; margin-left: 4px; cursor: pointer; font-size: 16px; color: #555; line-height: 0; opacity: 0.7; }
+.memoria-actions button svg { width: 16px; height: 16px; }
+.memoria-actions button:hover { opacity: 1; color: #000; }
+.delete-btn { color: #d15047; } .delete-btn:hover { color: #a00; }
+#memory-form { margin-top: 15px; }
+.add-memory-input-group { display: none; margin-bottom: 10px; /* Add margin between input groups */ }
+.add-memory-input-group label { margin-top: 8px; }
+#memory-form button.aqua-button { width: 100%; margin-top: 10px; }
+.list-placeholder { font-style: italic; color: #777; font-size: 13px; text-align: center; padding: 10px 0; }
+
+
+/* Confirmación de Borrado (Sin cambios) */
+#confirm-delete-dialog { position: absolute; background-color: rgba(247, 247, 247, 0.95); border: 1px solid #888; border-radius: 8px; padding: 20px; box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 1002; text-align: center; max-width: 90%; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; }
+#confirm-delete-dialog p { margin: 0 0 20px 0; font-size: 15px; }
+#confirm-delete-dialog button { margin: 0 15px; }
+#confirm-delete-yes { background: linear-gradient(to bottom, #ff8a80 0%, #ff5252 100%); border: 1px solid #c62828; color: white; text-shadow: 0 -1px 0 rgba(0,0,0,0.3); }
+#confirm-delete-yes:hover { background: linear-gradient(to bottom, #ff9e9e 0%, #ff6b6b 100%);}
+#confirm-delete-yes:active { background: linear-gradient(to top, #ff8a80 0%, #ff5252 100%);}
+
+/* Music/Place Results Styling (Sin cambios) */
+#itunes-results, #place-results { max-height: 150px; overflow-y: auto; border: 1px solid #ccc; border-radius: 3px; margin-top: 8px; background: white; margin-bottom: 10px; }
+.itunes-track, .place-result { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
+.itunes-track:last-child, .place-result:last-child { border-bottom: none; }
+.itunes-track:hover, .place-result:hover { background-color: #f0f8ff; }
+.itunes-artwork { width: 45px; height: 45px; margin-right: 10px; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
+.itunes-track.no-artwork .itunes-artwork { display: none; }
+.itunes-track-info { flex-grow: 1; }
+.itunes-track-name { font-weight: bold; font-size: 13px; }
+.itunes-track-artist { color: #555; font-size: 12px; }
+.itunes-track-select { margin-left: auto; color: #ccc; font-size: 18px; padding: 0 5px; }
+.itunes-track.selected, .place-result.selected { background-color: #e6ffed !important; font-weight: bold; }
+.place-result { font-size: 13px; }
+
+/* --- NUEVO: Estilos para el Mapa Leaflet --- */
+#leaflet-map {
+    height: 180px;
+    width: 100%;
+    margin-top: 10px;
+    border-radius: 5px;
+    border: 1px solid #aaa;
+    display: none; /* Oculto por defecto, se muestra con JS */
+}
+
+
+/* --- Footer Dock (Sin cambios) --- */
 .footer-dock {
     position: fixed; bottom: 0; left: 0; right: 0;
     height: 90px;
-    /* Glossy dark glass effect */
-    background: linear-gradient(to bottom, rgba(70,70,70,0.85) 0%, rgba(40,40,40,0.85) 50%, rgba(30,30,30,0.85) 51%, rgba(50,50,50,0.85) 100%);
-    background-color: rgba(50, 50, 50, 0.8); /* Fallback */
-    border-top: 1px solid rgba(130, 130, 130, 0.6); /* Borde superior más claro */
-    box-shadow: 0 -1px 0 rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1); /* Sombra inferior y brillo superior */
+    background: linear-gradient(to bottom, #d8d8d8 0%, #c8c8c8 5%, #b8b8b8 50%, #c8c8c8 95%, #d8d8d8 100%);
+    background-color: #c8c8c8;
+    border-top: 1px solid #777;
+    box-shadow: 0 -1px 3px rgba(0,0,0,0.2);
     display: flex; justify-content: space-around; align-items: center; padding: 5px 10px; z-index: 20;
     box-sizing: border-box;
-    backdrop-filter: blur(10px); /* Efecto blur si el navegador lo soporta */
-    -webkit-backdrop-filter: blur(10px);
 }
 .dock-button { background: none; border: none; color: #fff; text-align: center; cursor: pointer; padding: 5px; display: flex; flex-direction: column; align-items: center; opacity: 0.9; transition: opacity 0.2s, transform 0.1s; flex-basis: 0; flex-grow: 1; }
-.dock-button:hover { opacity: 1; }
-.dock-button:active { opacity: 1; transform: scale(0.95); } /* Efecto al pulsar */
+.dock-button:hover, .dock-button:active { opacity: 1; transform: scale(1.05); }
 .dock-button svg {
     margin-bottom: 5px;
-    filter: brightness(0) invert(1) drop-shadow(0 1px 1px rgba(0,0,0,0.4)); /* Sombra SVG */
+    filter: brightness(0) invert(1);
     width: 32px; height: 32px;
 }
-.dock-button span { font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,0.7); } /* Sombra texto más marcada */
+.dock-button span { font-size: 13px; text-shadow: 0 1px 1px rgba(0,0,0,0.6); }
 
-/* ... (Resto de estilos: Placeholder, Links, Utility, Scrollbars sin cambios) ... */
-.placeholder-button { font-size: 12px; padding: 4px 8px; margin-top: 5px; background-color: #ddd; color: #777; border: 1px solid #bbb; cursor: not-allowed; border-radius: 5px; display: block; width: 100%; text-align: center; box-sizing: border-box; }
+/* General Link styling */
 a { color: #007aff; text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+/* Utility Classes */
 .error { color: red !important; }
 .success { color: green !important; }
+
+/* Scrollbars */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }
 ::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px;}
 ::-webkit-scrollbar-thumb:hover { background: #999; }
-
