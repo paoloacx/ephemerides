@@ -183,7 +183,7 @@ async function loadMemoriesForDay(diaId) {
 }
 
 /**
- * ¡NUEVA FUNCIÓN! Carga los datos del "Spotlight" para el día de hoy.
+ * Carga los datos del "Spotlight" para el día de hoy.
  * @param {string} todayId - El ID del día de hoy (ej. "10-26").
  * @returns {Object} - { dayName: '...', memories: [...] }
  */
