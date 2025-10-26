@@ -1,6 +1,7 @@
 /*
- * ui.js (v7.15 - Footer Callback Debug & Verification)
- * - Adds console.log and alert() before calling onFooterAction in _setupFooter.
+ * ui.js (v7.16 - Remove Footer Debug, Verify Callback Storage)
+ * - Removes temporary alert() and console.log from _setupFooter.
+ * - Adds a log in init() to confirm _callbacks object structure after assignment.
  */
 
 // --- Estado Interno del Módulo ---
@@ -55,14 +56,20 @@ let _selectedPlace = null;
 // --- 1. Inicialización y Funciones Principales ---
 
 function init(callbacks) {
-    console.log("[ui.js] Initializing v7.15 (Footer Debug)..."); // Version bump
+    console.log("[ui.js] Initializing v7.16..."); // Version bump
+    // 1. Store Callbacks
+    console.log("[ui.js] Step 1: Storing callbacks...");
     _callbacks = { ..._callbacks, ...callbacks };
+     // --- ADDED: Log the structure AFTER merging ---
+     console.log("[ui.js] Callbacks stored. Verifying 'onFooterAction':", typeof _callbacks.onFooterAction);
+     // Verify essential callback exists
     if (typeof _callbacks.onFooterAction !== 'function') {
+         console.error("[ui.js] FATAL: Required callback 'onFooterAction' is missing or not a function!");
          throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
     }
-    console.log("[ui.js] Callbacks stored.");
 
-    console.log("[ui.js] Finding essential DOM elements...");
+    // 2. Find DOM Elements
+    console.log("[ui.js] Step 2: Finding essential DOM elements...");
     _dom.appContent = document.getElementById('app-content');
     _dom.footer = document.querySelector('.footer-dock');
 
@@ -77,7 +84,8 @@ function init(callbacks) {
     _dom.spotlightList = document.getElementById('today-memory-spotlight');
     console.log("[ui.js] DOM element finding complete.");
 
-    console.log("[ui.js] Setting up event listeners...");
+    // 3. Setup Event Listeners
+    console.log("[ui.js] Step 3: Setting up event listeners...");
     let setupError = null;
     try { _setupNavigation(); } catch (e) { console.error("Nav setup error:", e); if(!setupError) setupError = e; }
     try { _setupHeader(); } catch (e) { console.error("Header setup error:", e); if(!setupError) setupError = e; }
@@ -144,11 +152,8 @@ function updateLoginUI(user) {
 
 // --- 2. Renderizado del Contenido Principal ---
 
-/**
- * --- Restored Drawing Logic ---
- * Draws the actual calendar grid.
- */
 function drawCalendar(monthName, days, todayId) {
+    // ... (Restored logic from v7.14) ...
     console.log(`[ui.js] Drawing calendar grid for ${monthName}. Received ${days ? days.length : 'NO'} days.`);
 
     if (_dom.monthNameDisplay) {
@@ -292,10 +297,10 @@ function _setupHeader() {
 }
 
 /**
- * --- Footer Event Listener Logic (Confirmed v7.11 Correctness with DEBUG log) ---
+ * --- Footer Event Listener Logic (Confirmed v7.11 Correctness, removed debug) ---
  */
 function _setupFooter() {
-    console.log("[ui.js] Setting up footer listener (v7.14 DEBUG)..."); // Version bump
+    console.log("[ui.js] Setting up footer listener (v7.16 - debug removed)..."); // Version bump
     if(!_dom.footer) throw new Error("UI Init failed: Footer element not found.");
     if (typeof _callbacks.onFooterAction !== 'function') throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
     console.log("[ui.js] Footer element and callback verified.");
@@ -308,21 +313,15 @@ function _setupFooter() {
         console.log(`[ui.js] Footer button clicked! Action='${action}'`);
 
         if (action === 'add' || action === 'store' || action === 'shuffle') {
-            // --- DEBUG ---
-            console.log(`[ui.js] DEBUG: Checking callback before calling for action '${action}'. Is onFooterAction a function? `, typeof _callbacks.onFooterAction === 'function');
-            // --- TEMPORARY ALERT ---
-            alert(`UI trying to call main.js for action: ${action}`);
-            // --- END DEBUG ---
+            // --- REMOVED DEBUG ---
+            // console.log(`[ui.js] DEBUG: Is onFooterAction a function? `, typeof _callbacks.onFooterAction === 'function');
+            // alert(`UI trying to call main.js for action: ${action}`);
+            // --- END REMOVED ---
 
-            // Call main.js if callback exists
-            if (typeof _callbacks.onFooterAction === 'function') {
-                console.log(`[ui.js] Action '${action}' requires main.js. Calling onFooterAction callback...`);
-                _callbacks.onFooterAction(action);
-            } else {
-                 // This shouldn't happen due to the check in init(), but good safety
-                 console.error(`[ui.js] Cannot execute action '${action}': onFooterAction callback is missing or invalid!`);
-                 alert(`Error: Action '${action}' is not properly configured.`);
-            }
+            // Call main.js if callback exists (already checked in init)
+            console.log(`[ui.js] Action '${action}' requires main.js. Calling onFooterAction callback...`);
+            _callbacks.onFooterAction(action); // Call main.js
+
         } else if (action === 'settings') {
             console.log("[ui.js] Handling 'settings' action internally -> opening dialog.");
             openSettingsDialog();
