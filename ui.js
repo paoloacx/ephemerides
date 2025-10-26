@@ -1,8 +1,7 @@
 /*
- * ui.js (v7.11 - Final Footer Fix & Stricter Init Error Handling)
- * - Makes init() throw errors if critical listener setups fail.
- * - Ensures _setupFooter reliably calls main.js callbacks.
- * - Adds even more detailed logging.
+ * ui.js (v7.12 - Simple Draw Test)
+ * - Temporarily simplifies drawCalendar to confirm DOM manipulation.
+ * - Includes previous fixes.
  */
 
 // --- Estado Interno del Módulo ---
@@ -56,114 +55,53 @@ let _selectedPlace = null;
 
 // --- 1. Inicialización y Funciones Principales ---
 
-/**
- * Initializes the UI module. Finds DOM elements, sets up static listeners.
- * Throws an error if critical elements (#appContent, .footer-dock) are missing or setup fails.
- * @param {Object} callbacks - Functions provided by main.js
- */
 function init(callbacks) {
-    console.log("[ui.js] Initializing v7.11..."); // Version bump
-    // 1. Store Callbacks
-    console.log("[ui.js] Step 1: Storing callbacks...");
+    console.log("[ui.js] Initializing v7.12 (Simple Draw Test)..."); // Version bump
     _callbacks = { ..._callbacks, ...callbacks };
-     // Verify essential callbacks exist EARLY - Footer depends on this
     if (typeof _callbacks.onFooterAction !== 'function') {
-         console.error("[ui.js] FATAL: Required callback 'onFooterAction' is missing or not a function! Cannot initialize Footer.");
+         console.error("[ui.js] FATAL: Required callback 'onFooterAction' is missing!");
          throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
     }
     console.log("[ui.js] Callbacks stored.");
 
-    // 2. Find DOM Elements with CRITICAL Error Checking
-    console.log("[ui.js] Step 2: Finding essential DOM elements...");
+    console.log("[ui.js] Finding essential DOM elements...");
     _dom.appContent = document.getElementById('app-content');
-    _dom.footer = document.querySelector('.footer-dock'); // Footer is critical
+    _dom.footer = document.querySelector('.footer-dock');
 
-    // --- CRITICAL CHECKS ---
     if (!_dom.appContent) {
-        console.error("[ui.js] FATAL: #app-content element NOT FOUND! Aborting UI initialization.");
+        console.error("[ui.js] FATAL: #app-content element NOT FOUND!");
         throw new Error("UI Init failed: Required element #app-content not found.");
-    } else {
-         console.log("[ui.js] Step 2: #app-content found successfully.");
     }
     if (!_dom.footer) {
-         console.error("[ui.js] FATAL: Footer element (.footer-dock) NOT FOUND! Aborting UI initialization.");
+         console.error("[ui.js] FATAL: Footer element (.footer-dock) NOT FOUND!");
          throw new Error("UI Init failed: Required element .footer-dock not found.");
-    } else {
-         console.log("[ui.js] Step 2: Footer found successfully.");
     }
-    // --- End Critical Checks ---
+     console.log("[ui.js] Critical elements found.");
 
-    // Find non-critical elements (warn if missing)
     _dom.monthNameDisplay = document.getElementById('month-name-display');
     _dom.navPrev = document.getElementById('prev-month');
     _dom.navNext = document.getElementById('next-month');
     _dom.spotlightHeader = document.getElementById('spotlight-date-header');
     _dom.spotlightList = document.getElementById('today-memory-spotlight');
+    console.log("[ui.js] DOM element finding complete.");
 
-    if (!_dom.monthNameDisplay) console.warn("[ui.js] WARNING: #month-name-display not found.");
-    if (!_dom.navPrev) console.warn("[ui.js] WARNING: #prev-month button not found.");
-    if (!_dom.navNext) console.warn("[ui.js] WARNING: #next-month button not found.");
-    if (!_dom.spotlightHeader) console.warn("[ui.js] WARNING: #spotlight-date-header not found.");
-    if (!_dom.spotlightList) console.warn("[ui.js] WARNING: #today-memory-spotlight not found.");
-    console.log("[ui.js] Step 2: DOM element finding complete.");
+    console.log("[ui.js] Setting up event listeners...");
+    let setupError = null;
+    try { _setupNavigation(); } catch (e) { console.error("Nav setup error:", e); if(!setupError) setupError = e; }
+    try { _setupHeader(); } catch (e) { console.error("Header setup error:", e); if(!setupError) setupError = e; }
+    try { _setupFooter(); } catch (e) { console.error("Footer setup error:", e); if(!setupError) setupError = e; }
 
-
-    // 3. Setup Event Listeners with Individual Error Handling
-    console.log("[ui.js] Step 3: Setting up event listeners...");
-    let setupError = null; // Variable to store the first error encountered
-
-    // Setup Navigation
-    try {
-        console.log("[ui.js] Step 3a: Setting up navigation listeners...");
-        _setupNavigation(); // Has internal null checks, but callback check is crucial
-        console.log("[ui.js] Step 3a: Navigation listeners OK.");
-    } catch (navError) {
-         console.error("[ui.js] ERROR setting up navigation listeners:", navError);
-         if (!setupError) setupError = navError; // Store the first error
-    }
-
-    // Setup Header
-    try {
-        console.log("[ui.js] Step 3b: Setting up header listeners...");
-        _setupHeader(); // Has internal null checks
-        console.log("[ui.js] Step 3b: Header listeners OK.");
-    } catch (headerError) {
-         console.error("[ui.js] ERROR setting up header listeners:", headerError);
-         if (!setupError) setupError = headerError;
-    }
-
-    // Setup Footer - CRITICAL FOR BUTTONS
-    try {
-        console.log("[ui.js] Step 3c: Setting up footer listener...");
-        _setupFooter(); // Contains the DEFINITIVELY corrected logic
-        console.log("[ui.js] Step 3c: Footer listener OK.");
-    } catch (footerError) {
-         console.error("[ui.js] ERROR setting up footer listener:", footerError);
-         if (!setupError) setupError = footerError;
-         // Do not re-throw here, let the final check handle it
-    }
-
-    // --- FINAL CHECK for Setup Errors ---
     if (setupError) {
-         console.error("[ui.js] FATAL: One or more event listener setups failed. Throwing error to main.js.", setupError);
-         // Throw the first error encountered to stop initialization
-         throw new Error(`UI Init failed during event listener setup: ${setupError.message}`);
-    } else {
-        console.log("[ui.js] Step 3: All event listeners set up successfully.");
+         console.error("[ui.js] FATAL: Event listener setup failed.", setupError);
+         throw new Error(`UI Init failed during listener setup: ${setupError.message}`);
     }
-
-
-    // 4. Final Log
-    console.log("[ui.js] Initialization function (init) completed successfully."); // If we reach here, init succeeded
+    console.log("[ui.js] Event listeners OK.");
+    console.log("[ui.js] Initialization function (init) completed successfully.");
 }
 
 
-/**
- * Updates the login UI elements (avatar/button).
- * @param {object|null} user - The Firebase user object or null.
- */
 function updateLoginUI(user) {
-    // ... (logic from v7.5 is correct) ...
+    // ... (logic from v7.11) ...
      const loginSection = document.getElementById('login-section');
     if (!loginSection) {
          console.warn("UI: #login-section not found, cannot update login UI.");
@@ -181,7 +119,7 @@ function updateLoginUI(user) {
         if (userInfoDiv) {
              userInfoDiv.onclick = () => {
                  console.log("UI: Logout triggered by avatar click.");
-                 if (typeof _callbacks.onLogout === 'function') { // Check if it's a function
+                 if (typeof _callbacks.onLogout === 'function') {
                      _callbacks.onLogout();
                  } else {
                      console.error("UI: onLogout callback is missing or not a function!");
@@ -201,7 +139,7 @@ function updateLoginUI(user) {
         if (loginBtn) {
              loginBtn.onclick = () => {
                  console.log("UI: Login triggered.");
-                 if (typeof _callbacks.onLogin === 'function') { // Check if it's a function
+                 if (typeof _callbacks.onLogin === 'function') {
                      _callbacks.onLogin();
                  } else {
                      console.error("UI: onLogin callback is missing or not a function!");
@@ -216,71 +154,29 @@ function updateLoginUI(user) {
 // --- 2. Renderizado del Contenido Principal ---
 
 /**
- * Draws the calendar grid for the specified month.
- * @param {string} monthName - The name of the month (e.g., "October").
- * @param {Array<object>} days - An array of day objects for the month.
- * @param {string} todayId - The ID of the current day (e.g., "10-26").
+ * --- SIMPLIFIED FOR TESTING ---
+ * Draws a simple message in the calendar area to confirm execution.
+ * @param {string} monthName - The name of the month.
+ * @param {Array<object>} days - An array of day objects (ignored).
+ * @param {string} todayId - The ID of the current day (ignored).
  */
 function drawCalendar(monthName, days, todayId) {
-    // ... (logic from v7.5 is correct) ...
-    console.log(`[ui.js] Drawing calendar grid for ${monthName}. Received ${days ? days.length : 'NO'} days.`);
+    console.log(`[ui.js] DRAW CALENDAR TEST (v7.12) for ${monthName}.`);
 
     if (_dom.monthNameDisplay) {
         _dom.monthNameDisplay.textContent = monthName;
     } else {
-        console.warn("[ui.js] WARNING: #month-name-display not found during drawCalendar.");
+        console.warn("[ui.js] WARNING: #month-name-display not found during drawCalendar TEST.");
     }
 
     if (!_dom.appContent) {
-        console.error("[ui.js] ERROR in drawCalendar: #app-content element not found! Cannot draw calendar.");
+        console.error("[ui.js] ERROR in drawCalendar TEST: #app-content element not found! Cannot draw.");
         return;
     }
-    _dom.appContent.innerHTML = ''; // Clear previous grid
-
-    const grid = document.createElement('div');
-    grid.className = 'calendario-grid';
-
-    if (!days || days.length === 0) {
-        console.warn(`[ui.js] No valid days data provided for ${monthName}. Displaying empty message.`);
-        grid.innerHTML = "<p>No days found for this month.</p>";
-        _dom.appContent.appendChild(grid); // Append the empty message
-        return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    let buttonsCreated = 0;
-    console.log("[ui.js] Starting loop to create day buttons...");
-    try {
-        days.forEach((dia, index) => {
-            if (!dia || typeof dia !== 'object' || !dia.id || typeof dia.id !== 'string' || dia.id.length !== 5) {
-                 console.warn(`[ui.js] Skipping invalid day object at index ${index} in drawCalendar loop:`, dia);
-                 return;
-            }
-
-            const btn = document.createElement("button");
-            btn.className = "dia-btn";
-
-            if (dia.id === todayId) btn.classList.add('dia-btn-today');
-            if (dia.tieneMemorias === true) btn.classList.add('tiene-memorias');
-
-            const dayNumberStr = dia.id.substring(3);
-            const dayNumber = parseInt(dayNumberStr, 10);
-            btn.innerHTML = `<span class="dia-numero">${isNaN(dayNumber) ? '?' : dayNumber}</span>`;
-            btn.dataset.diaId = dia.id;
-
-            btn.onclick = () => _handleDayClick(dia);
-
-            fragment.appendChild(btn);
-            buttonsCreated++;
-        });
-        console.log("[ui.js] Finished loop creating day buttons.");
-    } catch (loopError) {
-         console.error("[ui.js] ERROR during drawCalendar button creation loop:", loopError);
-         grid.innerHTML = `<p style="color:red;">Error creating calendar view: ${loopError.message}</p>`;
-    }
-
-    _dom.appContent.appendChild(grid);
-    console.log(`[ui.js] Appended calendar grid container to #app-content. ${buttonsCreated} buttons added.`);
+    // --- THE TEST ---
+    _dom.appContent.innerHTML = `<p style="color: lightgreen; font-size: 2em; text-align: center; padding: 40px; border: 2px dashed lightgreen;">DRAW CALENDAR RAN for ${monthName}!</p>`;
+    console.log("[ui.js] >>> TEST MESSAGE WRITTEN TO #app-content. <<<");
+    // --- END TEST ---
 }
 
 
@@ -290,7 +186,7 @@ function drawCalendar(monthName, days, todayId) {
  * @param {Array<object>} memories - An array of memory objects.
  */
 function updateSpotlight(headerText, memories) {
-    // ... (logic from v7.5 is correct) ...
+    // ... (logic from v7.11) ...
     console.log(`[ui.js] Updating spotlight. Header: "${headerText}". Memories: ${memories ? memories.length : 0}`);
     if (_dom.spotlightHeader) {
         _dom.spotlightHeader.textContent = headerText;
@@ -359,7 +255,6 @@ function _setupNavigation() {
             }
             console.log("[ui.js] Prev month listener attached.");
          } else {
-              // Log error but DO NOT THROW, navigation is not strictly critical
               console.error("UI ERROR: Cannot attach Prev month listener - onMonthChange callback missing!");
          }
     } else {
@@ -400,56 +295,36 @@ function _setupHeader() {
 }
 
 /**
- * --- DEFINITIVELY CORRECTED FINAL TIME (v7.11): Footer Event Listener Logic ---
- * Attaches a single listener to the footer and reliably calls main.js callbacks for relevant actions.
+ * --- Footer Event Listener Logic (Confirmed v7.11 Correctness) ---
  */
 function _setupFooter() {
-    console.log("[ui.js] Setting up footer listener (v7.11)..."); // Version bump
+    console.log("[ui.js] Setting up footer listener (v7.11 logic)..."); // Log version
     if(!_dom.footer) {
-         // Footer is critical for core actions, throw error if missing
-         console.error("[ui.js] FATAL: Footer element (.footer-dock) not found. Cannot set up essential footer listeners.");
+         console.error("[ui.js] FATAL: Footer element (.footer-dock) not found.");
          throw new Error("UI Init failed: Footer element not found.");
     }
-
-    // Check that the necessary callback exists *before* adding the listener
     if (typeof _callbacks.onFooterAction !== 'function') {
-         console.error("[ui.js] FATAL: onFooterAction callback is missing or not a function! Footer buttons (Add, Store, Shuffle) will not work.");
-         // Throw error because these actions are essential
+         console.error("[ui.js] FATAL: onFooterAction callback is missing!");
          throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
-    } else {
-         console.log("[ui.js] onFooterAction callback verified.");
     }
+    console.log("[ui.js] Footer element and callback verified.");
 
-    // Use event delegation on the footer element
-    console.log("[ui.js] Adding click listener to footer...");
     _dom.footer.addEventListener('click', (e) => {
-        // Find the closest ancestor button element that has a data-action attribute
         const button = e.target.closest('.dock-button[data-action]');
-        if (!button) {
-            // console.log("[ui.js] Footer click ignored (not on a button with data-action).");
-            return; // Click was not on a relevant button
-        }
+        if (!button) return;
 
-        // Get the action identifier
         const action = button.dataset.action;
-        console.log(`[ui.js] Footer button clicked! Action='${action}'`); // Clearer log
+        console.log(`[ui.js] Footer button clicked! Action='${action}'`);
 
-        // --- THE ACTUAL FINAL FIX v7.11 ---
-        // Decide how to handle the action
         if (action === 'add' || action === 'store' || action === 'shuffle') {
-            // These actions require main.js logic
             console.log(`[ui.js] Action '${action}' requires main.js. Calling onFooterAction callback...`);
-            // ** Call the callback provided by main.js **
-            _callbacks.onFooterAction(action);
+            _callbacks.onFooterAction(action); // Call main.js
         } else if (action === 'settings') {
-            // This action is handled entirely within ui.js
             console.log("[ui.js] Handling 'settings' action internally -> opening dialog.");
             openSettingsDialog();
         } else {
-            // Log any other unexpected actions found in data-action
             console.warn(`[ui.js] Click on footer button with unknown action: ${action}`);
         }
-        // --- END FIX ---
     });
     console.log("[ui.js] Footer listener attached successfully.");
 }
@@ -457,12 +332,7 @@ function _setupFooter() {
 
 
 // --- 4. Creación y Manejo de Modales ---
-// ... (Modal functions largely unchanged, ensure safety checks) ...
-// openPreviewModal, closePreviewModal, _handleEditFromPreview
-// openEditModal, closeEditModal, resetMemoryForm, fillFormForEdit
-// openStoreModal, closeStoreModal, openStoreListModal, closeStoreListModal, updateStoreList
-// openSearchModal, closeSearchModal
-// openSettingsDialog
+// ... (Modal functions remain largely the same, ensure safety checks) ...
 function openPreviewModal(dia, memories) { /* ... v7.8 logic ... */ }
 function closePreviewModal() { /* ... v7.8 logic ... */ }
 function _handleEditFromPreview() { /* ... v7.8 logic ... */ }
@@ -480,10 +350,6 @@ function closeSearchModal() { /* ... v7.8 logic ... */ }
 function openSettingsDialog() { /* ... v7.8 logic ... */ }
 
 // --- 5. Lógica de UI interna (Helpers) ---
-// ... (_handleDayClick needs careful review, ensure callbacks are checked) ...
-// ... (_createMemoryItemHTML needs fix for undefined) ...
-// ... (_renderMemoryList needs safety checks) ...
-// ... (showModalStatus, showMusicResults, showPlaceResults, handleMemoryTypeChange remain the same) ...
 async function _handleDayClick(dia) { /* ... v7.8 logic ... */ }
 function _createMemoryItemHTML(memoria, context) { /* ... v7.8 logic ... */ }
 function _renderMemoryList(listId, memories) { /* ... v7.8 logic ... */ }
@@ -493,7 +359,6 @@ function showPlaceResults(places) { /* ... v7.8 logic ... */ }
 function handleMemoryTypeChange() { /* ... v7.8 logic ... */ }
 
 // --- 6. Creación de Elementos del DOM (Constructores) ---
-// ... (Ensure all _create... functions have try/catch blocks and return null on failure) ...
 function _createPreviewModal() { /* ... v7.8 logic ... */ }
 function _createEditModal() { /* ... v7.8 logic ... */ }
 function _bindEditModalEvents() { /* ... v7.8 logic ... */ }
@@ -508,11 +373,10 @@ function _createDialog(id, title, message) { /* ... v7.8 logic ... */ }
 
 
 // --- 7. Exportación del Módulo ---
-// Ensure all functions needed by main.js are present
 export const ui = {
     init,
     updateLoginUI,
-    drawCalendar,
+    drawCalendar, // Keep exporting the test version for now
     updateSpotlight,
     openPreviewModal,
     closePreviewModal,
