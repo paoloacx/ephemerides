@@ -1,5 +1,5 @@
 /*
- * main.js (v4.0)
+ * main.js (v4.1 - Corregido)
  * Controlador principal de Ephemerides.
  * Orquesta los módulos: auth, store, api, ui.
  * Gestiona el estado de la aplicación.
@@ -44,7 +44,7 @@ let state = {
  * Función principal que arranca la aplicación.
  */
 async function checkAndRunApp() {
-    console.log("Iniciando Ephemerides v4.0 (Modular)...");
+    console.log("Iniciando Ephemerides v4.1 (Modular)...");
     
     try {
         ui.setLoading("Verificando base de datos...", true);
@@ -61,7 +61,9 @@ async function checkAndRunApp() {
         }
         
         const today = new Date();
-        state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().part(2, '0')}`;
+        // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
+        // Era .part() y debía ser .padStart()
+        state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
         
         // Inicializar la UI (conectar todos los callbacks)
         ui.init(getUICallbacks());
