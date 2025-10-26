@@ -1,5 +1,5 @@
 /*
- * main.js (v4.6 - Connects UI v7.0 changes)
+ * main.js (v4.6 - Connects UI v7.1 changes)
  * - Adds isUserLoggedIn and onEditFromPreview callbacks
  * - Simplifies day click logic (UI decides modal)
  * - Exposes helper functions needed by UI
@@ -58,9 +58,10 @@ async function checkAndRunApp() {
         const today = new Date();
         state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
         
-        // Pass all necessary callbacks to UI
+        // --- CHANGED: init MUST be called before drawing ---
         ui.init(getUICallbacks()); 
         
+        // --- CHANGED: Draw functions called AFTER ui.init ---
         drawCurrentMonth();
         loadTodaySpotlight();
         
@@ -77,7 +78,6 @@ async function checkAndRunApp() {
 
 async function loadTodaySpotlight() {
     const today = new Date();
-    // Use 'en-US' locale for spotlight date formatting
     const dateString = `Today, ${today.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}`; 
     
     const spotlightData = await getTodaySpotlight(state.todayId);
@@ -89,7 +89,6 @@ async function loadTodaySpotlight() {
 }
 
 function drawCurrentMonth() {
-    // Use 'en-US' locale for month name formatting
     const monthName = new Date(2024, state.currentMonthIndex, 1).toLocaleDateString('en-US', { month: 'long' }); 
     const monthNumber = state.currentMonthIndex + 1;
     
@@ -110,21 +109,16 @@ function drawCurrentMonth() {
 function getUICallbacks() {
     return {
         // --- NEW Callbacks needed by ui.js ---
-        isUserLoggedIn: () => !!state.currentUser, // Checks if user exists
-        loadMemoriesForDay: loadMemoriesForDay, // Pass the function directly
-        getAllDaysData: () => state.allDaysData, // Pass a function to get current data
-        onEditFromPreview: handleEditFromPreview, // Handle edit button click in preview
+        isUserLoggedIn: () => !!state.currentUser, 
+        loadMemoriesForDay: loadMemoriesForDay, 
+        getAllDaysData: () => state.allDaysData, 
+        getTodayId: () => state.todayId, // Added callback for today's ID
+        onEditFromPreview: handleEditFromPreview, 
         // --- End New ---
 
         // Nav & Footer
         onMonthChange: handleMonthChange,
-        // --- CHANGED: onDayClick now just passes the day object ---
-        onDayClick: (dia) => { 
-            // ui.js's _handleDayClick will now decide which modal to open
-            // based on isUserLoggedIn()
-            // We just need to make sure ui.js has the functions it needs
-            console.log("Day clicked in main:", dia.id); 
-        }, 
+        // REMOVED: onDayClick - ui.js handles this internally now
         onFooterAction: handleFooterAction,
         
         // Auth
@@ -151,12 +145,17 @@ function getUICallbacks() {
 }
 
 function handleAuthStateChange(user) {
+    const wasLoggedIn = !!state.currentUser;
     state.currentUser = user;
-    ui.updateLoginUI(user); // UI updates login button/avatar
+    ui.updateLoginUI(user); 
     console.log("Authentication state changed:", user ? user.uid : "Logged out"); 
-    // If needed, redraw calendar or update modals if login affects visibility
-    // Example: If preview modal is open, update its edit button visibility
-    // (We might need a direct function in ui.js for this)
+
+    // If user logs out while preview modal is open, update its edit button
+    if (!user && wasLoggedIn) {
+        // We might need a direct function in ui.js to update the preview modal if it's open
+        // For now, assume modal closes or user navigates away.
+    }
+    // If user logs in, clicking a day will now open Edit directly (handled by ui.js)
 }
 
 function handleMonthChange(direction) {
@@ -168,10 +167,6 @@ function handleMonthChange(direction) {
     drawCurrentMonth();
 }
 
-// --- REMOVED: handleDayClick logic moved to ui.js's _handleDayClick ---
-// async function handleDayClick(dia) { ... } 
-
-// --- NEW Function ---
 /**
  * Handles the callback when the Edit button is clicked in the Preview modal.
  * @param {Object} dia - The day data from the preview modal.
@@ -179,16 +174,19 @@ function handleMonthChange(direction) {
  */
 function handleEditFromPreview(dia, memories) {
     console.log("Switching from Preview to Edit for day:", dia.id);
-    // Directly open the edit modal, passing the already loaded data
     ui.openEditModal(dia, memories, state.allDaysData);
 }
-// --- End New ---
 
 
 function handleFooterAction(action) {
     switch (action) {
         case 'add':
-            ui.openEditModal(null, [], state.allDaysData);
+            // Ensure we have day data before opening add modal
+            if(state.allDaysData.length > 0) {
+                 ui.openEditModal(null, [], state.allDaysData);
+            } else {
+                alert("Calendar data not loaded yet. Cannot add memory.");
+            }
             break;
         case 'store':
             ui.openStoreModal();
@@ -207,7 +205,7 @@ function handleShuffleClick() {
     
     const randomIndex = Math.floor(Math.random() * state.allDaysData.length);
     const randomDia = state.allDaysData[randomIndex];
-    const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1;
+    const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10 - 1);
     
     if (state.currentMonthIndex !== randomMonthIndex) {
         state.currentMonthIndex = randomMonthIndex;
@@ -215,10 +213,9 @@ function handleShuffleClick() {
     }
     
     setTimeout(() => {
-        // --- CHANGED: Call ui.js's internal handler ---
-        // This will now correctly open Preview or Edit based on login state
+        // Simulate click using ui.js's internal handler
         const dayButton = document.querySelector(`.dia-btn[data-dia-id="${randomDia.id}"]`);
-        if(dayButton) dayButton.click(); // Simulate click
+        if(dayButton) dayButton.click(); 
         else console.error("Could not find button for shuffled day:", randomDia.id);
     }, 100);
     
@@ -254,7 +251,6 @@ async function handleSaveDayName(diaId, newName) {
         ui.showModalStatus('save-status', 'Name saved', false); 
         drawCurrentMonth(); 
         
-        // Also update spotlight if today's name changed
         if (diaId === state.todayId) {
             loadTodaySpotlight();
         }
@@ -295,7 +291,6 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
         // 5. Reload memory list in modal
         const updatedMemories = await loadMemoriesForDay(diaId);
         const currentDayData = state.allDaysData.find(d => d.id === diaId); 
-        // Re-open modal to refresh list and reset form state
         ui.openEditModal(currentDayData, updatedMemories, state.allDaysData); 
         
         // 6. Update grid (for blue dot)
@@ -324,19 +319,16 @@ async function handleDeleteMemory(diaId, memId) {
         const updatedMemories = await loadMemoriesForDay(diaId);
         const currentDayData = state.allDaysData.find(d => d.id === diaId); 
         
-        // Re-open modal to refresh list
         ui.openEditModal(currentDayData, updatedMemories, state.allDaysData); 
 
-        // Check if it was the last memory for the day
         if (updatedMemories.length === 0) {
             const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
             if (dayIndex !== -1) {
                 state.allDaysData[dayIndex].tieneMemorias = false;
-                drawCurrentMonth(); // Update grid to remove dot
+                drawCurrentMonth(); 
             }
         }
 
-        // Reload spotlight if today was edited
         if (diaId === state.todayId) {
             loadTodaySpotlight();
         }
@@ -444,14 +436,14 @@ function handleStoreItemClick(diaId) {
     ui.closeStoreListModal();
     ui.closeStoreModal();
     
-    const monthIndex = parseInt(dia.id.substring(0, 2), 10) - 1;
+    const monthIndex = parseInt(dia.id.substring(0, 2), 10 - 1);
     if (state.currentMonthIndex !== monthIndex) {
         state.currentMonthIndex = monthIndex;
         drawCurrentMonth();
     }
     
     setTimeout(() => {
-        // --- CHANGED: Call ui.js's internal handler ---
+        // Simulate click using ui.js's internal handler
         const dayButton = document.querySelector(`.dia-btn[data-dia-id="${dia.id}"]`);
         if(dayButton) dayButton.click(); 
         else console.error("Could not find button for store item day:", dia.id);
