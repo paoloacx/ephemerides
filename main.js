@@ -1,5 +1,5 @@
 /*
- * main.js (v4.2 - Loader Fix & English Translation)
+ * main.js (v4.3 - Loader Fix & English Translation)
  * Main app controller.
  * Orchestrates auth, store, api, and ui modules.
  * Manages application state.
@@ -45,7 +45,7 @@ let state = {
  * Main function to start the application.
  */
 async function checkAndRunApp() {
-    console.log("Starting Ephemerides v4.2 (Modular)...");
+    console.log("Starting Ephemerides v4.3 (Modular)...");
     
     try {
         ui.setLoading("Verifying database...", true);
