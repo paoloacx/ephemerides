@@ -1,4 +1,4 @@
-/* main.js - v3.0 Modular (UI Separada) */
+/* main.js - v3.1 Modular (Limpio) */
 
 // --- Importaciones de Módulos ---
 import { initAuthListener, handleLogin, handleLogout } from './auth.js';
