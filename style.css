@@ -1,33 +1,30 @@
-/* style.css (v16)
- * - Corrige modales descolocados (position: fixed)
- * - Elimina 'beige-paper' y añade fondo de cuaderno CSS
- * - Oculta el nombre de usuario (#user-name)
- * - Añade estilos para el modal de Búsqueda
+/*
+ * style.css (v17)
+ * - Adds Playfair Display font for H1
+ * - Makes month nav bar thinner
+ * - Hides username
+ * - Fixes modal layout & adds notebook background
+ * - Adds search modal styles
  */
 
-/* --- Body y Fuentes --- */
 body {
-    margin: 0;
-    padding: 0 0 90px 0; /* Espacio para el footer */
-    /* Fondo de lino oscuro */
-    background-image: url('plain-linen.jpeg'); 
-    background-color: #3a3a3a; /* Fallback */
+    margin: 0; 
+    padding: 0 0 90px 0; /* Footer Height */
+    background-image: url('plain-linen.jpeg');
+    background-color: #333; /* Fallback */
     background-repeat: repeat;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    color: #f5f5f5; /* Texto principal claro */
+    color: #f0f0f0; /* Default light text for dark bg */
     font-size: 16px;
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
 }
 
-button, input, textarea, select {
-    font-family: inherit;
-    font-size: inherit;
-    color: #333; /* Color de texto por defecto para inputs */
+button, input, textarea, select { 
+    font-family: inherit; 
+    font-size: inherit; 
+    box-sizing: border-box;
 }
-
-a { color: #5aa9e4; text-decoration: none; }
-a:hover { text-decoration: underline; }
 
 /* --- Header --- */
 header {
@@ -46,40 +43,23 @@ header {
 }
 header h1 {
     margin: 0;
-    font-size: 20px;
+    flex-grow: 1;
+    text-align: center;
+    padding-left: 50px; /* Space for refresh button */
     color: #ffffff;
     font-weight: bold;
     text-shadow: 0 -1px 0 rgba(0,0,0,0.5);
-    flex-grow: 1;
-    text-align: center;
-    /* Centrado correcto con botones a los lados */
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    /* Evitar que el título se solape */
-    max-width: calc(100% - 140px);
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    
+    /* --- NEW FONT CHANGES --- */
+    font-family: 'Playfair Display', serif;
+    text-transform: uppercase;
+    font-weight: 700;
+    font-size: 22px; /* Slightly larger */
+    letter-spacing: 1px;
 }
-#refresh-btn, #login-section {
-    flex-basis: 60px; /* Dar un ancho base */
+.header-icon-btn {
     flex-shrink: 0;
     margin: 0 5px;
-    z-index: 2; /* Poner por encima del h1 */
-}
-#refresh-btn {
-    display: flex; /* Para centrar icono */
-    justify-content: flex-start;
-}
-#login-section {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end; /* Alinear a la derecha */
-}
-
-/* Estilo de botones de icono del Header */
-.header-icon-btn {
     background: none;
     border: none;
     padding: 5px;
@@ -87,32 +67,47 @@ header h1 {
     color: white;
     opacity: 0.8;
     line-height: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.header-icon-btn .material-icons-outlined {
-    font-size: 24px; /* Tamaño de icono */
-    text-shadow: 0 -1px 0 rgba(0,0,0,0.4);
 }
 .header-icon-btn:hover { opacity: 1; }
+.header-icon-btn .material-icons-outlined { font-size: 24px; }
 
+#refresh-btn { 
+    position: absolute; /* Position over h1 padding */
+    left: 5px; 
+    top: 50%;
+    transform: translateY(-50%);
+} 
+#login-section { 
+    flex-shrink: 0; 
+    margin-right: 5px; 
+    display: flex;
+    align-items: center;
+    position: absolute; /* Absolute position right */
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+}
 #user-info {
     display: flex;
     align-items: center;
-    margin-right: 5px;
+    /* --- NEW: Clickable --- */
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 50px; /* Rounded */
+    transition: background-color 0.2s;
+}
+#user-info:hover {
+    background-color: rgba(0,0,0,0.1);
 }
 #user-img {
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    margin-right: 5px;
     border: 1px solid rgba(255,255,255,0.5);
 }
-/* *** PUNTO 2: Ocultar nombre de usuario *** */
 #user-name {
-    display: none; /* Oculta el nombre */
-    /* Estilos antiguos por si se reactiva */
+    /* --- NEW: Hidden --- */
+    display: none; 
     color: white;
     font-size: 12px;
     text-shadow: 0 -1px 0 rgba(0,0,0,0.5);
@@ -120,320 +115,352 @@ header h1 {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-#login-btn img {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
+    margin-left: 5px;
+    margin-right: 5px;
 }
 
-/* --- Navegación de Mes --- */
+/* --- Month Nav --- */
 .month-nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 15px;
-    background-color: #f0f0f0; /* Fondo gris claro */
-    border-bottom: 1px solid #bbb;
+    /* --- NEW: Thinner --- */
+    padding: 4px 15px; 
+    background-color: rgba(0,0,0,0.1); /* Slightly transparent */
+    border-bottom: 1px solid #6d6d6d;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     position: sticky;
-    top: 45px; /* Pegarse bajo el header */
+    top: 45px; /* Header height */
     z-index: 9;
 }
 #month-name-display {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: bold;
-    color: #000000; /* Texto negro */
+    color: #ffffff;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.3);
     text-align: center;
     flex-grow: 1;
 }
 
-/* --- Botón Aqua (para nav) --- */
+/* --- Aqua Button (used in Month Nav) --- */
 .aqua-button {
     background: linear-gradient(to bottom, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%);
-    border: 1px solid #3c82b1 !important;
-    border-radius: 15px !important;
-    padding: 8px 15px !important; /* Padding ajustado para iconos */
-    font-size: 15px !important;
-    font-weight: bold !important;
-    color: #fff !important;
+    border: 1px solid #3c82b1;
+    border-radius: 8px; /* Less rounded */
+    padding: 6px 12px; /* Smaller */
+    font-size: 15px;
+    font-weight: bold;
+    color: #fff;
     cursor: pointer;
-    box-shadow: 0 2px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.1) !important;
-    text-shadow: 0 -1px 0 rgba(0,0,0,0.3) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
     min-width: 40px;
     transition: all 0.1s ease-in-out;
-    margin: 5px;
-    line-height: normal !important;
-    -webkit-appearance: none;
+    line-height: normal; 
+    -webkit-appearance: none; 
     appearance: none;
     text-align: center;
-    display: inline-block;
 }
-/* Ajuste para que los iconos queden centrados */
+.aqua-button:hover { 
+    background: linear-gradient(to bottom, #b8dcf4 0%, #8cc8ec 50%, #6fbde4 51%, #5fb9e2 100%); 
+}
+.aqua-button:active { 
+    background: linear-gradient(to top, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%); 
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.3); 
+    transform: translateY(1px); 
+}
 .aqua-button .material-icons-outlined {
-    font-size: 18px; /* Tamaño del icono */
-    vertical-align: middle; /* Centrar verticalmente */
-    margin: -3px 0; /* Ajuste fino vertical */
-}
-.aqua-button:hover {
-    background: linear-gradient(to bottom, #b8dcf4 0%, #8cc8ec 50%, #6fbde4 51%, #5fb9e2 100%) !important;
-}
-.aqua-button:active {
-    background: linear-gradient(to top, #a7d1ef 0%, #76b6e4 50%, #58a5d9 51%, #4aa2d8 100%) !important;
-    box-shadow: inset 0 2px 3px rgba(0,0,0,0.3) !important;
-    transform: translateY(1px);
+    font-size: 20px;
+    vertical-align: middle;
+    margin-top: -2px;
 }
 
-/* --- Contenido Principal (Grid y Spotlight) --- */
-main {
-    padding: 10px;
+
+/* --- Main Content --- */
+main { padding: 10px; }
+
+/* --- Spotlight Widget --- */
+#today-spotlight-container {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 12px;
+    margin: 10px auto;
     max-width: 960px;
-    margin: 0 auto;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 1px rgba(0,0,0,0.1);
 }
-
-/* Spotlight (Widget "Hoy") */
 #spotlight-date-header {
-    font-size: 16px;
+    margin: 0 0 10px 0;
+    font-size: 17px;
     font-weight: bold;
-    color: #f0f0f0;
-    text-shadow: 0 1px 1px rgba(0,0,0,0.4);
-    margin: 10px 5px 5px 5px;
-    text-align: left;
+    color: #fff;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.3);
 }
 #today-memory-spotlight {
-    background: rgba(255, 255, 255, 0.9); /* Fondo blanco translúcido */
+    background-color: rgba(0,0,0,0.1);
     border-radius: 8px;
-    border: 1px solid #ccc;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    padding: 10px;
-    margin-bottom: 20px;
-    min-height: 50px;
+    padding: 5px 8px;
+    min-height: 40px;
 }
 .spotlight-memory-item {
     display: flex;
     align-items: center;
     padding: 8px 5px;
-    border-bottom: 1px solid #ddd;
-    font-size: 14px;
-    color: #333; /* Texto oscuro sobre fondo claro */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.2s;
 }
 .spotlight-memory-item:last-child { border-bottom: none; }
+.spotlight-memory-item:hover { background-color: rgba(255, 255, 255, 0.05); }
 .spotlight-memory-item .material-icons-outlined {
     font-size: 20px;
-    color: #555;
     margin-right: 10px;
-    flex-shrink: 0;
+    color: #ccc;
 }
 .spotlight-memory-content {
     display: flex;
     flex-direction: column;
-    flex-grow: 1;
-    overflow: hidden;
+    line-height: 1.3;
 }
 .spotlight-memory-content small {
     font-size: 11px;
-    color: #666;
-    font-weight: bold;
-    margin-bottom: 2px;
+    color: #aaa;
+    text-transform: uppercase;
 }
 .spotlight-memory-content span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 14px;
+    font-weight: 500;
 }
 
-/* Grid del Calendario */
+
+/* --- Calendar Grid --- */
 .calendario-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 8px; /* Reducir gap */
+    gap: 10px;
     padding-bottom: 20px;
+    max-width: 960px;
+    margin: 20px auto 0 auto; /* More space above */
 }
 .dia-btn {
-    background-color: #fdfdfd;
+    background-color: #fdfdfd; 
     border: 1px solid #ccc;
-    border-radius: 8px; /* Bordes redondeados */
-    padding: 0;
-    text-align: center;
+    border-radius: 8px; /* Rounded corners */
+    padding: 0; 
+    text-align: center; 
     cursor: pointer;
-    box-shadow: 0 2px 3px rgba(0,0,0,0.15);
-    color: #333; /* Texto oscuro */
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.2), inset 0 0 5px rgba(0,0,0,0.05);
+    color: #333;
     width: 100%;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 1 / 1; /* Square */
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
     position: relative;
     overflow: hidden;
     transition: background-color 0.1s, transform 0.1s;
 }
-.dia-btn:active {
-    background-color: #eee;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-    transform: translateY(1px);
+.dia-btn:active { 
+    background-color: #eee; 
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); 
+    transform: translateY(1px); 
 }
 .dia-numero {
     font-size: 24px;
-    font-weight: 500; /* Menos grueso */
+    font-weight: 500; /* Slightly thinner */
     color: #444;
     line-height: 1;
 }
 
-/* Banda roja para el día de HOY */
+/* --- Day Modifiers --- */
 .dia-btn-today {
-    background-color: #fff;
-    /* Banda roja */
-    border-top: 10px solid #e57373;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    background-color: #e57373; /* Soft red */
+    border-color: #c62828;
 }
 .dia-btn-today .dia-numero {
-    color: #c62828; /* Número rojo */
+    color: #fff;
     font-weight: bold;
-    transform: translateY(4px); /* Bajar el número */
+    text-shadow: 0 1px 1px rgba(0,0,0,0.2);
 }
-
-/* Punto azul para días con memorias */
 .dia-btn.tiene-memorias::after {
     content: '';
     position: absolute;
-    bottom: 8px; /* Ajustar posición */
+    bottom: 8px;
     left: 50%;
     transform: translateX(-50%);
     width: 6px;
     height: 6px;
-    background-color: #007aff;
     border-radius: 50%;
-    box-shadow: 0 0 2px rgba(0,122,255,0.5);
+    background-color: #4aa2d8; /* Blue */
+    box-shadow: 0 0 2px rgba(0,0,0,0.3);
 }
 .dia-btn-today.tiene-memorias::after {
-    bottom: 4px; /* Ajustar si es hoy */
+    background-color: #fff; /* White dot on red day */
 }
 
 
-/* --- Modales (REGLAS GLOBALES) --- */
-/* *** PUNTO 1: Arreglar modales descolocados *** */
+/* --- Main Loader --- */
+#main-loader {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9998;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none; /* Don't block clicks */
+}
+#main-loader.visible {
+    opacity: 1;
+    pointer-events: auto; /* Block clicks */
+}
+#main-loader span {
+    background-color: rgba(0,0,0,0.8);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 500;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
+
+
+/* --- Modals --- */
 .modal-overlay {
-    /* Fondo oscuro semitransparente */
-    position: fixed; /* Clave para superponer */
-    top: 0;
-    left: 0;
-    width: 100%;
+    /* --- POSITION FIX --- */
+    position: fixed; 
+    top: 0; left: 0;
+    width: 100%; 
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: none; /* Oculto por defecto */
+    
+    background-color: rgba(0,0,0,0.5);
+    display: flex; /* Use flex for centering */
     justify-content: center;
     align-items: center;
     z-index: 1000;
     padding: 15px;
     box-sizing: border-box;
+    
     opacity: 0;
-    transition: opacity 0.2s ease-out;
+    transform: scale(0.95);
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+    display: none; /* Start hidden */
 }
 .modal-overlay.visible {
-    display: flex;
     opacity: 1;
+    transform: scale(1);
+    display: flex; /* Show */
 }
 
-/* Contenido del Modal (Caja Blanca) */
 .modal-content {
-    background: #f7f7f7; /* Fondo blanco roto */
-    padding: 0;
-    border-radius: 10px;
     width: 100%;
-    max-width: 500px; /* Ancho máximo */
+    max-width: 500px;
+    border-radius: 12px; /* More rounded */
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     border: 1px solid #888;
+    max-height: 90vh; /* Max height */
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Clave para bordes redondeados */
+    overflow: hidden; /* Key */
     
-    /* Animación de entrada */
-    transform: scale(0.95);
-    transition: transform 0.2s ease-out;
-}
-.modal-overlay.visible .modal-content {
-    transform: scale(1);
+    /* --- NEW: Notebook Background --- */
+    background-color: #fdfdfa; /* Off-white */
+    background-image: 
+        linear-gradient(to right, rgba(255,0,0,0.15) 1px, transparent 1px), /* Vertical red line (margin) */
+        linear-gradient(to bottom, rgba(0,0,255,0.1) 1px, transparent 1px); /* Horizontal blue lines */
+    background-position: 40px 0, 0 0; /* Margin position */
+    background-size: 1px 100%, 100% 2.5em; /* Line sizes */
+    background-repeat: repeat-y, repeat;
+    line-height: 2.5em; /* Match line height */
+    color: #333; /* Dark text for light background */
 }
 
-/* Cabecera del Modal (Gris) */
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #ccc;
     padding: 12px 15px;
-    background: #f0f0f0; /* Fondo gris cabecera */
+    border-bottom: 1px solid #ccc;
+    background-color: rgba(255, 255, 255, 0.7); /* Translucent white background */
 }
 .modal-header h3 {
     margin: 0;
     font-size: 18px;
     font-weight: bold;
     color: #333;
-    text-align: left;
-    flex-grow: 1;
+    line-height: 1.2; /* Adjust */
 }
-.modal-header .modal-close-btn {
+.modal-close-btn {
     background: none;
     border: none;
     padding: 5px;
     cursor: pointer;
-    color: #555;
+    color: #888;
     line-height: 0;
-    opacity: 0.7;
+    opacity: 0.8;
 }
-.modal-header .modal-close-btn:hover { opacity: 1; }
-.modal-header .modal-close-btn .material-icons-outlined { font-size: 24px; }
+.modal-close-btn:hover { color: #000; opacity: 1; }
 
-/* Cuerpo Desplazable del Modal */
 .modal-content-scrollable {
     overflow-y: auto;
     flex-grow: 1;
-    max-height: 75vh; /* Límite de altura */
-    
-    /* *** PUNTO 1: Fondo de Hoja de Cuaderno *** */
-    background-color: #fdfdfa; /* Blanco roto */
-    background-image:
-        /* Línea roja vertical */
-        linear-gradient(to right, #fdfdfa 39px, #ffcccc 40px, #fdfdfa 41px),
-        /* Líneas azules horizontales */
-        repeating-linear-gradient(to bottom, #fdfdfa, #fdfdfa 24px, #e8f0f7 25px);
-    background-size: 100% 25px, 100% 25px; /* Tamaño de repetición */
-    line-height: 25px; /* Coincidir con las líneas */
-    
-    padding: 0; /* Sin padding aquí */
+    padding: 15px 20px 15px 50px; /* Add left padding for margin line */
+    /* Adjust line-height for content */
+    line-height: 1.5; 
+}
+.modal-section {
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+}
+.modal-section:last-child { 
+    border-bottom: none; 
+    margin-bottom: 0;
+    padding-bottom: 5px;
 }
 
-/* Secciones dentro del modal */
-.modal-section {
-    padding: 15px 20px;
-    padding-left: 50px; /* Padding para la línea roja */
-    border-bottom: 1px solid #eee;
-    color: #333;
-    text-align: left;
+.modal-main-buttons {
+    display: flex;
+    border-top: 1px solid #ababab;
+    background-color: #f0f0f0;
+    margin-top: auto;
+    flex-shrink: 0;
 }
-.modal-section:last-child { border-bottom: none; }
-.modal-section h4 {
-    margin: 0 0 10px 0;
+.modal-main-buttons button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-left: 1px solid #ababab;
+    padding: 12px 10px;
     font-size: 16px;
-    color: #555;
+    color: #007aff; /* iOS Blue */
+    cursor: pointer;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    text-shadow: none;
+    font-weight: bold;
 }
-.modal-section p.section-description {
-    font-size: 14px;
-    margin: 0 0 10px 0;
-    text-align: left;
-    color: #555;
+.modal-main-buttons button:first-child { border-left: none; }
+.modal-main-buttons button:active { background-color: #d9d9d9; }
+.modal-main-buttons .modal-cancel-btn { 
+    color: #555; 
+    font-weight: normal; 
 }
-.modal-section label {
+
+/* --- Forms in Modals --- */
+.modal-content label {
     display: block;
     font-size: 14px;
     font-weight: bold;
     margin-top: 12px;
     margin-bottom: 4px;
     color: #444;
+    line-height: 1.5;
 }
-
-/* Inputs y Botones del Modal */
 .modal-content input[type="text"],
 .modal-content input[type="date"],
 .modal-content input[type="number"],
@@ -450,129 +477,93 @@ main {
     font-size: 14px;
     background-color: #fff;
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    line-height: normal; /* Reset line-height */
 }
 .modal-content textarea {
-    height: 75px; /* 3 líneas */
+    height: 70px;
     resize: vertical;
-    line-height: 1.5; /* Altura de línea normal */
+    line-height: 1.4; /* Adjust for textarea */
 }
-.modal-content .aqua-button {
-    width: 100%;
-    margin: 10px 0 0 0;
-}
-
-/* Botones principales (Cerrar/Guardar) del modal */
-.modal-main-buttons {
-    display: flex;
-    border-top: 1px solid #ababab;
-    background-color: #f0f0f0;
-    margin-top: auto; /* Empujar al fondo */
-    flex-shrink: 0;
-}
-.modal-main-buttons button {
-    flex: 1;
-    background: transparent;
-    border: none;
-    border-left: 1px solid #ababab;
-    padding: 12px 10px;
+.modal-content h4 {
     font-size: 16px;
-    color: #007aff;
-    cursor: pointer;
-    margin: 0;
-    border-radius: 0;
-    box-shadow: none;
-    text-shadow: none;
     font-weight: bold;
+    color: #333;
+    margin: 0 0 10px 0;
+    line-height: 1.5;
 }
-.modal-main-buttons button:first-child { border-left: none; }
-.modal-main-buttons button:active { background-color: #d9d9d9; }
-.modal-main-buttons button.modal-cancel-btn {
+.modal-content h5 {
+    font-size: 15px;
+    font-weight: bold;
     color: #555;
-    font-weight: normal;
+    margin: 15px 0 5px 0;
+    line-height: 1.5;
 }
-.modal-main-buttons button.modal-cancel-btn:active { color: #007aff; }
 
-/* Placeholder (ej. "No hay memorias") */
+.modal-status {
+    font-size: 13px;
+    margin-top: 8px;
+    min-height: 1.2em;
+    text-align: center;
+    padding: 5px 0;
+    line-height: 1.5;
+}
+.modal-status.success { color: green; }
+.modal-status.error { color: red; }
+
+/* --- Lists in Modals (Memories, Results) --- */
 .list-placeholder {
     font-style: italic;
     color: #777;
     font-size: 14px;
     text-align: center;
     padding: 15px 0;
-    line-height: 1.5; /* Altura de línea normal */
+    line-height: 1.5;
 }
-
-/* Indicador de estado (Guardado, Error) */
-.modal-status {
-    font-size: 12px;
-    margin-top: 8px;
-    min-height: 1.2em;
-    text-align: center;
-    padding: 0 15px 5px 15px;
-    color: #555;
-}
-.modal-status.success { color: green; }
-.modal-status.error { color: red; }
-
-
-/* --- Estilos Específicos: Modal Preview --- */
-#preview-modal .modal-content-scrollable {
-    padding-top: 15px; /* Espacio arriba */
-}
-#preview-memorias-list {
+#preview-memorias-list,
+#edit-memorias-list {
     background-color: rgba(255,255,255,0.6);
-    border: 1px solid rgba(0,0,0,0.1);
-    padding: 10px;
+    border: 1px solid #ccc;
     border-radius: 5px;
+    padding: 8px;
     min-height: 40px;
-    margin: 0 20px 0 50px; /* Alinear con padding */
-}
-#preview-modal .modal-main-buttons {
-    /* El botón de cerrar está en el footer */
-}
-
-
-/* --- Estilos Específicos: Modal Edición --- */
-#edit-modal .modal-content-scrollable {
-    /* Ya tiene el fondo de cuaderno */
 }
 #edit-memorias-list {
-    max-height: 200px; /* Más altura */
+    max-height: 200px;
     overflow-y: auto;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    background-color: #fff;
-    padding: 8px;
-    border-radius: 5px;
-    min-height: 40px;
 }
+
 .memoria-item {
-    font-size: 13px;
+    font-size: 14px;
     padding: 10px 8px;
     border-bottom: 1px solid #eee;
     background-color: #fff;
     display: flex;
-    justify-content: space-between;
     align-items: center;
     border-radius: 3px;
     margin-bottom: 5px;
-    line-height: 1.4; /* Altura de línea normal */
+    line-height: 1.4;
+    color: #333;
 }
 .memoria-item:last-child { border-bottom: none; }
-.memoria-item-content { flex-grow: 1; margin-right: 5px; }
-.memoria-item-content small {
-    display: block;
-    color: #555;
-    margin-bottom: 3px;
-    font-weight: bold;
-    font-size: 11px;
+.memoria-item .memoria-item-content {
+    flex-grow: 1;
+    margin: 0 5px;
 }
-.memoria-item-content .material-icons-outlined {
+.memoria-item .memoria-item-content small {
+    display: block;
+    color: #666;
+    margin-bottom: 3px;
+    font-size: 11px;
+    font-weight: bold;
+}
+.memoria-item .memoria-item-content .material-icons-outlined {
     font-size: 16px;
     margin-right: 5px;
-    vertical-align: -3px;
+    vertical-align: middle;
+    margin-top: -2px;
+    color: #666;
 }
-.memoria-item-artwork {
+.memoria-item .memoria-artwork {
     width: 35px;
     height: 35px;
     margin-right: 8px;
@@ -581,8 +572,8 @@ main {
     flex-shrink: 0;
     border: 1px solid #ddd;
 }
-.memoria-actions { display: flex; }
-.memoria-actions button {
+.memoria-item .memoria-actions { display: flex; }
+.memoria-item .memoria-actions button {
     background: none;
     border: none;
     padding: 3px 5px;
@@ -593,50 +584,33 @@ main {
     line-height: 0;
     opacity: 0.7;
 }
-.memoria-actions button .material-icons-outlined { font-size: 18px; }
-.memoria-actions button:hover { opacity: 1; color: #000; }
-.delete-btn { color: #d15047; }
-.delete-btn:hover { color: #a00; }
-
-/* Grupos de inputs (Formulario de añadir) */
-.add-memory-input-group {
-    display: none; /* Oculto por defecto */
-    margin-bottom: 10px;
+.memoria-item .memoria-actions button .material-icons-outlined {
+    font-size: 20px;
 }
-.add-memory-input-group label { margin-top: 8px; }
+.memoria-item .memoria-actions button:hover { opacity: 1; color: #000; }
+.memoria-item .memoria-actions .delete-btn { color: #d15047; }
+.memoria-item .memoria-actions .delete-btn:hover { color: #a00; }
 
-/* Diálogo de Confirmar Borrado (dentro del modal) */
+/* Confirm Delete Dialog */
 #confirm-delete-dialog {
+    display: none;
     position: absolute;
-    background-color: rgba(247, 247, 247, 0.95);
-    border: 1px solid #888;
-    border-radius: 8px;
+    bottom: 0; left: 0; right: 0;
+    background-color: #f7f7f7;
+    border-top: 1px solid #888;
     padding: 20px;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    box-shadow: 0 -3px 8px rgba(0,0,0,0.2);
     z-index: 1002;
     text-align: center;
-    max-width: 90%;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    display: none;
 }
-#confirm-delete-dialog p {
-    margin: 0 0 20px 0;
-    font-size: 15px;
-    line-height: 1.4;
-}
+#confirm-delete-dialog p { margin: 0 0 20px 0; font-size: 15px; color: #333; line-height: 1.4; }
 #confirm-delete-dialog button { margin: 0 15px; }
-#confirm-delete-yes { /* Rojo */
+#confirm-delete-yes { /* Red */
      background: linear-gradient(to bottom, #ff8a80 0%, #ff5252 100%);
-     border: 1px solid #c62828;
-     color: white;
-     text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+     border: 1px solid #c62828; color: white;
 }
-#confirm-delete-yes:hover { background: linear-gradient(to bottom, #ff9e9e 0%, #ff6b6b 100%);}
-#confirm-delete-yes:active { background: linear-gradient(to top, #ff8a80 0%, #ff5252 100%);}
 
-/* Resultados de Búsqueda API (iTunes, Places) */
+/* --- Search Results (Place/Music) --- */
 #itunes-results, #place-results {
     max-height: 150px;
     overflow-y: auto;
@@ -645,6 +619,7 @@ main {
     margin-top: 8px;
     background: white;
     margin-bottom: 10px;
+    line-height: 1.4;
 }
 .itunes-track, .place-result {
     display: flex;
@@ -653,10 +628,11 @@ main {
     border-bottom: 1px solid #eee;
     cursor: pointer;
     font-size: 13px;
-    line-height: 1.4;
+    color: #333;
 }
 .itunes-track:last-child, .place-result:last-child { border-bottom: none; }
 .itunes-track:hover, .place-result:hover { background-color: #f0f8ff; }
+
 .itunes-artwork {
     width: 45px;
     height: 45px;
@@ -668,109 +644,86 @@ main {
 .itunes-track-info { flex-grow: 1; }
 .itunes-track-name { font-weight: bold; font-size: 13px; }
 .itunes-track-artist { color: #555; font-size: 12px; }
+
 .itunes-track.selected, .place-result.selected {
     background-color: #e6ffed !important;
     font-weight: bold;
 }
 
-
-/* --- Estilos Específicos: Modal Almacén (Select y Lista) --- */
-#store-modal .modal-content-scrollable {
-    padding-top: 15px; /* Espacio arriba */
-}
+/* --- "Store" Modal --- */
 .store-category-btn {
     display: flex;
     align-items: center;
-    width: calc(100% - 70px); /* Ancho total menos padding */
-    margin: 10px auto 10px 50px; /* Alinear con padding */
-    padding: 15px;
-    font-size: 16px;
+    width: 100%;
+    padding: 15px 10px;
+    font-size: 17px;
     font-weight: 500;
     color: #333;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    background-color: #fff;
+    border: none;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
     cursor: pointer;
-    transition: background-color 0.1s, transform 0.1s;
+    transition: background-color 0.2s;
+    line-height: normal; /* Reset */
 }
 .store-category-btn:hover { background-color: #f9f9f9; }
-.store-category-btn:active { background-color: #eee; transform: translateY(1px); }
 .store-category-btn .material-icons-outlined {
-    font-size: 22px;
+    font-size: 24px;
     margin-right: 15px;
     color: #555;
 }
+.modal-content-scrollable .store-category-btn:first-child { border-top: 1px solid #ddd; }
 
-#store-list-modal .modal-content-scrollable {
-    padding-top: 10px;
-}
+/* "Store" List */
 .store-list-item {
     display: flex;
     align-items: center;
-    padding: 12px 20px 12px 50px; /* Alinear */
-    border-bottom: 1px solid #eee;
+    padding: 10px 5px;
+    border-bottom: 1px solid #ddd;
     cursor: pointer;
-    font-size: 13px;
+    transition: background-color 0.2s;
     line-height: 1.4;
-    transition: background-color 0.1s;
 }
-.store-list-item:hover { background-color: #f5f5f5; }
-.store-list-item:last-child { border-bottom: none; }
+.store-list-item:hover { background-color: rgba(0,0,0,0.03); }
 .store-list-item .material-icons-outlined {
-    font-size: 20px;
-    margin-right: 10px;
-    color: #555;
-    flex-shrink: 0;
+    font-size: 22px;
+    margin-right: 12px;
+    color: #666;
 }
 .store-list-item-content {
     display: flex;
     flex-direction: column;
-    flex-grow: 1;
-    overflow: hidden;
 }
 .store-list-item-content small {
     font-size: 11px;
     color: #666;
-    font-weight: bold;
-    margin-bottom: 2px;
 }
 .store-list-item-content span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
 }
 #store-load-more-btn {
-    display: block;
-    width: calc(100% - 70px);
-    margin: 15px auto 15px 50px;
-}
-#store-list-loading {
-    text-align: center;
-    padding: 20px;
-    color: #777;
-    font-size: 14px;
-    line-height: 1.5;
+    width: calc(100% - 0px); /* Adjust to scrollable padding (50px left) */
+    margin: 15px 0 15px 0; /* Centered */
 }
 
-/* --- Estilos Específicos: Modal Búsqueda --- */
-/* *** PUNTO 3: Estilos para el nuevo modal de Búsqueda *** */
-#search-modal .modal-content-scrollable {
-    padding: 15px 20px 15px 50px; /* Alinear con cuaderno */
+
+/* --- Search Modal Specific Styles --- */
+#search-form .modal-section {
+    border-bottom: none;
 }
-#search-modal label {
+#search-form label {
     margin-top: 0;
 }
 
 
-/* --- Footer Dock (Metal Cepillado) --- */
+/* --- Footer Dock --- */
 .footer-dock {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 0; left: 0; right: 0;
     height: 90px;
-    /* Metal Cepillado CSS */
     background: linear-gradient(to bottom, #d8d8d8 0%, #c8c8c8 5%, #b8b8b8 50%, #c8c8c8 95%, #d8d8d8 100%);
     background-color: #c8c8c8;
     border-top: 1px solid #777;
@@ -785,7 +738,7 @@ main {
 .dock-button {
     background: none;
     border: none;
-    color: #333; /* Texto oscuro sobre metal claro */
+    color: #fff; /* Color given by icon */
     text-align: center;
     cursor: pointer;
     padding: 5px;
@@ -802,61 +755,19 @@ main {
     transform: scale(1.05);
 }
 .dock-button .material-icons-outlined {
-    font-size: 32px; /* Icono grande */
+    /* Icon color (dark on light bg) */
+    color: #555; 
+    font-size: 32px; /* Icon size */
     margin-bottom: 5px;
-    color: #222; /* Icono oscuro */
-    /* Sombra para efecto relieve */
-    text-shadow: 0 1px 0 rgba(255,255,255,0.7); 
 }
 .dock-button span {
     font-size: 13px;
+    color: #333; /* Dark text */
     font-weight: 500;
-    /* Sombra para legibilidad */
-    text-shadow: 0 1px 0 rgba(255,255,255,0.6); 
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7); /* Light shadow */
 }
 
-/* --- Loader Principal --- */
-#main-loader {
-    display: none; /* Oculto por defecto */
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.6);
-    z-index: 9998;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    font-size: 18px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-}
-#main-loader.visible {
-    display: flex;
-}
-/* Spinner simple con CSS */
-#main-loader::before {
-    content: '';
-    display: block;
-    width: 30px;
-    height: 30px;
-    margin-right: 15px;
-    border: 4px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* --- Utilidades --- */
-.error { color: red !important; }
-.success { color: green !important; }
-
-/* Scrollbars */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px;}
-::-webkit-scrollbar-thumb:hover { background: #999; }
+/* Utility */
+a { color: #007aff; text-decoration: none; }
+a:hover { text-decoration: underline; }
 
