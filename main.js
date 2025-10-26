@@ -1,17 +1,14 @@
 /*
- * main.js (v3.5 - Corregido)
+ * main.js (v4.0)
  * Controlador principal de Ephemerides.
  * Orquesta los módulos: auth, store, api, ui.
  * Gestiona el estado de la aplicación.
  */
 
 // --- Importaciones de Módulos ---
-// CORRECCIÓN: Importamos 'db' y 'auth' desde firebase.js
 import { initFirebase, db, auth } from './firebase.js'; 
-// CORRECCIÓN: 'auth' ya no se importa desde aquí
 import { initAuthListener, handleLogin, handleLogout } from './auth.js';
 import { 
-    // CORRECCIÓN: 'store' (la variable) no se importa, solo las funciones
     checkAndRunApp as storeCheckAndRun,
     loadAllDaysData,
     loadMemoriesForDay,
@@ -19,18 +16,15 @@ import {
     saveMemory,
     deleteMemory,
     searchMemories,
-    getTodaySpotlight, // <-- Esta línea ahora funciona
+    getTodaySpotlight,
     getMemoriesByType,
     getNamedDays
-    // CORRECCIÓN: 'findMemoryById' eliminado, no se usa.
 } from './store.js';
-// CORRECCIÓN: 'api' (la variable) no se importa
 import { searchiTunes, searchNominatim } from './api.js';
 import { ui } from './ui.js';
 
 // --- Estado Global de la App ---
 let state = {
-// ... (resto del estado sin cambios) ...
     allDaysData: [],
     currentMonthIndex: new Date().getMonth(),
     currentUser: null,
@@ -39,35 +33,26 @@ let state = {
     // Estado del modal "Almacén"
     store: {
         currentType: null, // 'Lugar', 'Musica', 'Nombres', etc.
-        lastVisible: null, // Para paginación
         isLoading: false,
+        lastVisible: null, // Para paginación
     }
 };
 
 // --- 1. Inicialización de la App ---
-// ... (checkAndRunApp, loadTodaySpotlight, drawCurrentMonth sin cambios) ...
 
 /**
  * Función principal que arranca la aplicación.
  */
 async function checkAndRunApp() {
-    console.log("Iniciando Ephemerides v3.5 (Modular)...");
+    console.log("Iniciando Ephemerides v4.0 (Modular)...");
     
     try {
-        // Mostrar mensaje de carga inicial
         ui.setLoading("Verificando base de datos...", true);
-
-        // Inicializar Firebase (esto es síncrono)
-        initFirebase(); // <-- Esta línea ahora funciona
-        
-        // Configurar el listener de autenticación
+        initFirebase();
         initAuthListener(handleAuthStateChange);
         
-        // Verificar y/o generar la base de datos de 366 días
-        // Pasamos un callback para actualizar el estado de carga
         await storeCheckAndRun((message) => ui.setLoading(message, true));
         
-        // Cargar todos los datos de los días
         ui.setLoading("Cargando calendario...", true);
         state.allDaysData = await loadAllDaysData();
 
@@ -75,17 +60,13 @@ async function checkAndRunApp() {
             throw new Error("La base de datos está vacía después de la verificación.");
         }
         
-        // Calcular el ID de hoy (solo una vez)
         const today = new Date();
-        state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+        state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().part(2, '0')}`;
         
         // Inicializar la UI (conectar todos los callbacks)
         ui.init(getUICallbacks());
         
-        // Dibujar el mes actual por primera vez
         drawCurrentMonth();
-        
-        // Cargar el Spotlight de Hoy
         loadTodaySpotlight();
         
     } catch (err) {
@@ -101,8 +82,7 @@ async function loadTodaySpotlight() {
     const today = new Date();
     const dateString = `Hoy, ${today.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`;
     
-    // Pedir a store.js las memorias y el nombre del día
-    const spotlightData = await getTodaySpotlight(state.todayId); // <-- Esta línea ahora funciona
+    const spotlightData = await getTodaySpotlight(state.todayId);
     
     if (spotlightData) {
         const fullDateString = `${dateString} ${spotlightData.dayName !== 'Unnamed Day' ? `(${spotlightData.dayName})` : ''}`;
@@ -117,12 +97,10 @@ function drawCurrentMonth() {
     const monthName = new Date(2024, state.currentMonthIndex, 1).toLocaleDateString('es-ES', { month: 'long' });
     const monthNumber = state.currentMonthIndex + 1;
     
-    // Filtrar los días que pertenecen a este mes
     const diasDelMes = state.allDaysData.filter(dia => 
         parseInt(dia.id.substring(0, 2), 10) === monthNumber
     );
     
-    // Dibujar el calendario
     ui.drawCalendar(monthName, diasDelMes, state.todayId);
 }
 
@@ -135,7 +113,6 @@ function drawCurrentMonth() {
  */
 function getUICallbacks() {
     return {
-// ... (resto de callbacks sin cambios) ...
         // Navegación y Footer
         onMonthChange: handleMonthChange,
         onDayClick: handleDayClick,
@@ -158,6 +135,9 @@ function getUICallbacks() {
         onStoreCategoryClick: handleStoreCategoryClick,
         onStoreLoadMore: handleStoreLoadMore,
         onStoreItemClick: handleStoreItemClick,
+
+        // ¡NUEVO! Acción del Modal "Buscar"
+        onSearchSubmit: handleSearchSubmit, 
     };
 }
 
@@ -166,12 +146,9 @@ function getUICallbacks() {
  * @param {Object} user - El objeto de usuario de Firebase, o null.
  */
 function handleAuthStateChange(user) {
-// ... (sin cambios) ...
     state.currentUser = user;
     ui.updateLoginUI(user);
     console.log("Estado de autenticación cambiado:", user ? user.uid : "Logged out");
-    
-    // TODO: Recargar memorias si las reglas de seguridad dependen del UID
 }
 
 /**
@@ -179,7 +156,6 @@ function handleAuthStateChange(user) {
  * @param {string} direction - 'prev' o 'next'.
  */
 function handleMonthChange(direction) {
-// ... (sin cambios) ...
     if (direction === 'prev') {
         state.currentMonthIndex = (state.currentMonthIndex - 1 + 12) % 12;
     } else {
@@ -190,39 +166,28 @@ function handleMonthChange(direction) {
 
 /**
  * Maneja el clic en un día del calendario.
- * Decide si abrir el modal de Preview o el de Edición.
  * @param {Object} dia - El objeto de día clicado.
  */
 async function handleDayClick(dia) {
-// ... (sin cambios) ...
-    // Si el usuario está logueado, abre "Editar", si no, abre "Preview".
-    // TODO: ¿Permitir que el usuario logueado también vea "Preview" primero?
-    
-    // Cargar las memorias para este día
-    // ui.setLoading("Cargando memorias...", true); // Esto oculta el grid, mejor un loader en el modal
+    // ui.setLoading("Cargando memorias...", true); // Loader en modal es mejor
     const memories = await loadMemoriesForDay(dia.id);
-    // ui.setLoading(null, false); // Limpiar loader principal
+    // ui.setLoading(null, false);
     
     if (state.currentUser) {
-        // Usuario logueado: Abrir modal de edición
         ui.openEditModal(dia, memories, state.allDaysData);
     } else {
-        // Usuario no logueado: Abrir modal de vista previa
         ui.openPreviewModal(dia, memories);
     }
 }
 
 /**
- * Maneja los clics en los botones del footer.
- * @param {string} action - 'add', 'store', 'shuffle', 'search'.
- * @param {*} [payload] - Datos adicionales (ej. memId para 'edit-memory').
+ * Maneja los clics en los botones del footer (Add, Store, Shuffle).
+ * 'Search' ahora es manejado internamente por ui.js para abrir el modal.
+ * @param {string} action - 'add', 'store', 'shuffle'.
  */
-function handleFooterAction(action, payload) {
+function handleFooterAction(action) {
     switch (action) {
-// ... (resto de casos sin cambios) ...
         case 'add':
-            // Abrir modal de edición en modo "Añadir" (dia=null)
-            // Asume que no hay memorias que cargar (array vacío)
             ui.openEditModal(null, [], state.allDaysData);
             break;
             
@@ -233,16 +198,8 @@ function handleFooterAction(action, payload) {
         case 'shuffle':
             handleShuffleClick();
             break;
-            
-        case 'search':
-            handleSearchClick();
-            break;
         
-        // CORRECCIÓN: Este caso se ha eliminado.
-        // La lógica se mueve a ui.js
-        // case 'edit-memory':
-        //     handleEditMemoryClick(payload); // payload es el memId
-        //     break;
+        // 'search' ya no se maneja aquí
             
         default:
             console.warn("Acción de footer desconocida:", action);
@@ -253,7 +210,6 @@ function handleFooterAction(action, payload) {
  * Navega a un día aleatorio.
  */
 function handleShuffleClick() {
-// ... (sin cambios) ...
     if (state.allDaysData.length === 0) return;
     
     const randomIndex = Math.floor(Math.random() * state.allDaysData.length);
@@ -265,39 +221,36 @@ function handleShuffleClick() {
         drawCurrentMonth();
     }
     
-    // Esperar a que el DOM se actualice y luego abrir el modal
     setTimeout(() => {
-        handleDayClick(randomDia); // Reutiliza la lógica de clic
-    }, 100); // 100ms de gracia
+        handleDayClick(randomDia);
+    }, 100);
     
     window.scrollTo(0, 0);
 }
 
 /**
- * Pide un término de búsqueda y muestra los resultados.
+ * ¡NUEVO! Maneja el envío del formulario de búsqueda (desde ui.js).
+ * @param {string} term - Término de búsqueda.
  */
-async function handleSearchClick() {
-// ... (sin cambios) ...
-    const searchTerm = prompt("Buscar en todas las memorias:");
-    if (!searchTerm || searchTerm.trim() === '') return;
+async function handleSearchSubmit(term) {
+    console.log("Buscando término:", term);
     
-    const term = searchTerm.trim().toLowerCase();
+    // ui.js ya ha deshabilitado el botón
     
-    ui.setLoading(`Buscando "${term}"...`, true);
+    // Llamar a la búsqueda (lenta) de store.js
+    const results = await searchMemories(term.toLowerCase());
     
-    // store.js hace la búsqueda lenta de 366 consultas
-    const results = await searchMemories(term);
+    // Cerrar el modal de búsqueda
+    ui.closeSearchModal();
     
-    // Limpiar el loader y mostrar resultados (usando el spotlight)
-    ui.setLoading(null, false);
-    
+    // Mostrar resultados en el Spotlight
     if (results.length === 0) {
         ui.updateSpotlight(`No hay resultados para "${term}"`, []);
     } else {
-        // Reutilizamos el Spotlight para mostrar los resultados de búsqueda
         ui.updateSpotlight(`Resultados para "${term}" (${results.length})`, results);
     }
 }
+
 
 // --- 3. Lógica de Modales (Controlador) ---
 
@@ -307,7 +260,6 @@ async function handleSearchClick() {
  * @param {string} newName - El nuevo nombre.
  */
 async function handleSaveDayName(diaId, newName) {
-// ... (sin cambios) ...
     try {
         await saveDayName(diaId, newName);
         
@@ -333,15 +285,14 @@ async function handleSaveDayName(diaId, newName) {
  * @param {boolean} isEditing - True si es una actualización.
  */
 async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
-// ... (sin cambios) ...
     
     try {
-        // 1. Convertir fecha string a Timestamp (lógica de negocio)
+        // 1. Convertir fecha string a Objeto Date
         try {
             const dateParts = memoryData.Fecha_Original.split('-'); // YYYY-MM-DD
             const utcDate = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2])));
             if (isNaN(utcDate.getTime())) throw new Error('Fecha inválida');
-            memoryData.Fecha_Original = utcDate; // store.js lo convertirá
+            memoryData.Fecha_Original = utcDate; // store.js lo convertirá a Timestamp
         } catch (e) {
             throw new Error('Formato de fecha original inválido.');
         }
@@ -350,6 +301,9 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
         if (memoryData.Tipo === 'Imagen' && memoryData.file) {
             // ... lógica de subida ...
             // memoryData.ImagenURL = await uploadImage(memoryData.file);
+            console.warn("Subida de imagen aún no implementada.");
+            // Por ahora, borramos el 'file' para que no intente guardarlo en Firestore
+            delete memoryData.file;
         }
 
         // 3. Guardar en Firestore
@@ -362,15 +316,12 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
         
         // 5. Recargar la lista de memorias en el modal
         const updatedMemories = await loadMemoriesForDay(diaId);
-        // ui.js debe tener una función para actualizar solo la lista
-        // (La función _renderMemoryList no es pública, main.js no debería llamarla)
-        // Solución:
+        // Volver a abrir/refrescar el modal de edición con los datos actualizados
         ui.openEditModal(
             state.allDaysData.find(d => d.id === diaId),
             updatedMemories,
             state.allDaysData
         );
-        
         
         // 6. Actualizar el grid (para el punto azul)
         const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
@@ -379,15 +330,15 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
             drawCurrentMonth();
         }
         
+        // 7. Recargar el spotlight si estábamos editando el día de hoy
+        if (diaId === state.todayId) {
+            loadTodaySpotlight();
+        }
+        
     } catch (err) {
         console.error("Error guardando memoria:", err);
         ui.showModalStatus('memoria-status', `Error: ${err.message}`, true);
-        // Reactivar el botón si falla
-        const saveBtn = document.getElementById('save-memoria-btn');
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.textContent = isEditing ? 'Actualizar Memoria' : 'Añadir Memoria';
-        }
+        // Reactivar el botón si falla (ui.js debería hacer esto)
     }
 }
 
@@ -397,15 +348,13 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
  * @param {string} memId - El ID de la memoria.
  */
 async function handleDeleteMemory(diaId, memId) {
-// ... (sin cambios) ...
     try {
         await deleteMemory(diaId, memId);
         ui.showModalStatus('memoria-status', 'Memoria borrada', false);
         
-        // Recargar la lista de memorias
         const updatedMemories = await loadMemoriesForDay(diaId);
         
-        // Volver a renderizar la lista en el modal
+        // Refrescar el modal de edición
         ui.openEditModal(
             state.allDaysData.find(d => d.id === diaId),
             updatedMemories,
@@ -420,15 +369,17 @@ async function handleDeleteMemory(diaId, memId) {
                 drawCurrentMonth();
             }
         }
+
+        // Recargar el spotlight si estábamos editando el día de hoy
+        if (diaId === state.todayId) {
+            loadTodaySpotlight();
+        }
         
     } catch (err) {
         console.error("Error borrando memoria:", err);
         ui.showModalStatus('memoria-status', `Error: ${err.message}`, true);
     }
 }
-
-// CORRECCIÓN: Función eliminada. La lógica se ha movido a ui.js
-// async function handleEditMemoryClick(memId) { ... }
 
 
 // --- 4. Lógica de API Externa (Controlador) ---
@@ -438,14 +389,12 @@ async function handleDeleteMemory(diaId, memId) {
  * @param {string} term - Término de búsqueda.
  */
 async function handleMusicSearch(term) {
-// ... (sin cambios) ...
     try {
         const tracks = await searchiTunes(term);
         ui.showMusicResults(tracks);
     } catch (err) {
         console.error("Error en búsqueda de iTunes:", err);
-        // ui.js debería tener una función showErrorMusicResults
-        // ui.showMusicResultsError(err.message);
+        ui.showModalStatus('memoria-status', 'Error buscando música', true);
     }
 }
 
@@ -454,13 +403,12 @@ async function handleMusicSearch(term) {
  * @param {string} term - Término de búsqueda.
  */
 async function handlePlaceSearch(term) {
-// ... (sin cambios) ...
     try {
         const places = await searchNominatim(term);
         ui.showPlaceResults(places);
     } catch (err) {
         console.error("Error en búsqueda de Nominatim:", err);
-        // ui.showPlaceResultsError(err.message);
+        ui.showModalStatus('memoria-status', 'Error buscando lugares', true);
     }
 }
 
@@ -471,7 +419,6 @@ async function handlePlaceSearch(term) {
  * @param {string} type - 'Nombres', 'Lugar', 'Musica', 'Texto', 'Imagen'
  */
 async function handleStoreCategoryClick(type) {
-// ... (sin cambios) ...
     console.log("Cargando Almacén para:", type);
     
     // Resetear estado de paginación
@@ -479,30 +426,25 @@ async function handleStoreCategoryClick(type) {
     state.store.lastVisible = null;
     state.store.isLoading = true;
     
-    // Abrir el modal de lista
     const title = `Almacén: ${type}`;
     ui.openStoreListModal(title);
     
     try {
         let result;
         if (type === 'Nombres') {
-            result = await getNamedDays(10); // Límite de 10
+            result = await getNamedDays(10);
         } else {
-            result = await getMemoriesByType(type, 10); // Límite de 10
+            result = await getMemoriesByType(type, 10);
         }
         
-        // Actualizar estado de paginación
         state.store.lastVisible = result.lastVisible;
         state.store.isLoading = false;
         
-        // Enviar datos a la UI
-        ui.updateStoreList(result.items, false, result.hasMore); // false = reemplazar
+        ui.updateStoreList(result.items, false, result.hasMore);
         
     } catch (err) {
         console.error(`Error cargando categoría ${type}:`, err);
-        // TODO: Mostrar error en el modal de lista
-        ui.updateStoreList([], false, false); // Limpiar lista
-        // Mostrar el error de Firebase (enlace del índice)
+        ui.updateStoreList([], false, false);
         if (err.code === 'failed-precondition') {
             console.error("¡ÍNDICE DE FIREBASE REQUERIDO!", err.message);
             alert("Error de Firebase: Se requiere un índice. Revisa la consola (F12) para ver el enlace de creación.");
@@ -514,9 +456,7 @@ async function handleStoreCategoryClick(type) {
  * Carga la siguiente página de resultados en el Almacén.
  */
 async function handleStoreLoadMore() {
-// ... (sin cambios) ...
     const { currentType, lastVisible, isLoading } = state.store;
-    
     if (isLoading || !currentType || !lastVisible) return;
     
     console.log("Cargando más...", currentType);
@@ -530,17 +470,14 @@ async function handleStoreLoadMore() {
             result = await getMemoriesByType(currentType, 10, lastVisible);
         }
         
-        // Actualizar estado
         state.store.lastVisible = result.lastVisible;
         state.store.isLoading = false;
         
-        // Enviar datos a la UI (modo append)
-        ui.updateStoreList(result.items, true, result.hasMore); // true = añadir
+        ui.updateStoreList(result.items, true, result.hasMore);
         
     } catch (err) {
         console.error(`Error cargando más ${currentType}:`, err);
         state.store.isLoading = false;
-        // TODO: Mostrar error
     }
 }
 
@@ -549,18 +486,15 @@ async function handleStoreLoadMore() {
  * @param {string} diaId - El ID del día (ej. "05-14").
  */
 function handleStoreItemClick(diaId) {
-// ... (sin cambios) ...
     const dia = state.allDaysData.find(d => d.id === diaId);
     if (!dia) {
         console.error("No se encontró el día:", diaId);
         return;
     }
     
-    // Cerrar todos los modales del Almacén
     ui.closeStoreListModal();
     ui.closeStoreModal();
     
-    // Navegar a ese mes y abrir el día
     const monthIndex = parseInt(dia.id.substring(0, 2), 10) - 1;
     if (state.currentMonthIndex !== monthIndex) {
         state.currentMonthIndex = monthIndex;
