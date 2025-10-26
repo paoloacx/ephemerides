@@ -1,662 +1,560 @@
-/* main.js - v3.2 (Con Lógica de Almacén) */
+/*
+ * main.js (v3.2)
+ * Controlador principal de Ephemerides.
+ * Orquesta los módulos: auth, store, api, ui.
+ * Gestiona el estado de la aplicación.
+ */
 
 // --- Importaciones de Módulos ---
-import { initAuthListener, handleLogin, handleLogout } from './auth.js';
-import {
-    generateCleanDatabase, loadAllDaysData, searchMemories,
-    getMemoriesForDay, saveMemory, deleteMemory, updateDayName,
-    getMemoriesByType, getNamedDays // ¡Nuevas importaciones!
+import { initFirebase } from './firebase.js';
+import { auth, initAuthListener, handleLogin, handleLogout } from './auth.js';
+import { 
+    store, 
+    checkAndRunApp as storeCheckAndRun,
+    loadAllDaysData,
+    loadMemoriesForDay,
+    saveDayName,
+    saveMemory,
+    deleteMemory,
+    searchMemories,
+    getTodaySpotlight,
+    getMemoriesByType,
+    getNamedDays,
+    findMemoryById // Asumiendo que store.js tiene esta función
 } from './store.js';
-import { searchiTunes, searchNominatim } from './api.js';
-import * as ui from './ui.js';
+import { api, searchiTunes, searchNominatim } from './api.js';
+import { ui } from './ui.js';
 
-// --- Importaciones de Funciones de Firebase ---
-import { Timestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-
-// --- Constantes ---
-const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // Incluye Feb 29
-
-// --- Estado de la Aplicación (El "Cerebro") ---
-let allDaysData = [];
-let currentMonthIndex = new Date().getMonth();
-let currentMemories = [];      // Caché de memorias para el modal de edición
-let editingMemoryId = null;    // ID de la memoria que se está editando
-let currentlyOpenDay = null; // Día (preview o edit)
-let selectedMusicTrack = null; // Track de iTunes seleccionado
-let selectedPlace = null;      // Lugar de Nominatim seleccionado
-let currentUser = null;        // Usuario de Firebase
-
-// --- ¡NUEVO! Estado del Almacén (Paginación) ---
-let storeLastDoc = null;
-let storeCurrentType = null;
-let storeIsLoading = false;
-
+// --- Estado Global de la App ---
+let state = {
+    allDaysData: [],
+    currentMonthIndex: new Date().getMonth(),
+    currentUser: null,
+    todayId: '',
+    
+    // Estado del modal "Almacén"
+    store: {
+        currentType: null, // 'Lugar', 'Musica', 'Nombres', etc.
+        lastVisible: null, // Para paginación
+        isLoading: false,
+    }
+};
 
 // --- 1. Inicialización de la App ---
 
 /**
- * Función principal que comprueba la BBDD y arranca la app.
+ * Función principal que arranca la aplicación.
  */
 async function checkAndRunApp() {
-// ... (código existente sin cambios)
-    console.log("Starting App...");
-    ui.setLoading("Verifying database...");
+    console.log("Iniciando Ephemerides v3.2 (Modular)...");
+    
     try {
-// ... (código existente sin cambios)
-        let data = await loadAllDaysData();
-        console.log(`Docs in 'Dias': ${data.count}`);
+        // Mostrar mensaje de carga inicial
+        ui.setLoading("Verificando base de datos...", true); // <-- CORRECCIÓN AQUÍ
 
-        if (data.count < 366) {
-// ... (código existente sin cambios)
-            console.warn(`Repairing... Found ${data.count} docs, expected 366.`);
-            ui.setLoading("Repairing database...");
-// ... (código existente sin cambios)
-            const created = await generateCleanDatabase(monthNames, daysInMonth);
-            ui.setLoading(`✅ DB regenerated: ${created} days!`);
-// ... (código existente sin cambios)
-            data = await loadAllDaysData(); // Recargar datos
+        // Inicializar Firebase (esto es síncrono)
+        initFirebase();
+        
+        // Configurar el listener de autenticación
+        initAuthListener(handleAuthStateChange);
+        
+        // Verificar y/o generar la base de datos de 366 días
+        // Pasamos un callback para actualizar el estado de carga
+        await storeCheckAndRun((message) => ui.setLoading(message, true));
+        
+        // Cargar todos los datos de los días
+        ui.setLoading("Cargando calendario...", true);
+        state.allDaysData = await loadAllDaysData();
+
+        if (state.allDaysData.length === 0) {
+            throw new Error("La base de datos está vacía después de la verificación.");
         }
         
-        allDaysData = data.docs;
-// ... (código existente sin cambios)
-        if (allDaysData.length === 0) {
-             throw new Error("Database empty or invalid after loading.");
-// ... (código existente sin cambios)
-        }
+        // Calcular el ID de hoy (solo una vez)
+        const today = new Date();
+        state.todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
         
-        console.log(`Loaded ${allDaysData.length} valid days.`);
-// ... (código existente sin cambios)
-        console.log("Data sorted. First:", allDaysData[0]?.id, "Last:", allDaysData[allDaysData.length - 1]?.id);
-
-        // Configurar la UI con los 'controladores'
-// ... (código existente sin cambios)
-        setupUICallbacks();
+        // Inicializar la UI (conectar todos los callbacks)
+        ui.init(getUICallbacks());
         
-        // Dibujar estado inicial
-// ... (código existente sin cambios)
-        updateCalendarView();
+        // Dibujar el mes actual por primera vez
+        drawCurrentMonth();
         
-        // Inicializar Auth
-// ... (código existente sin cambios)
-        initAuthListener(onAuthChange);
+        // Cargar el Spotlight de Hoy
+        loadTodaySpotlight();
         
-    } catch (e) {
-// ... (código existente sin cambios)
-        ui.showAppError(`Critical error during startup: ${e.message}`);
-        console.error(e);
+    } catch (err) {
+        console.error("Error crítico durante el arranque:", err);
+        ui.setLoading(`Error crítico: ${err.message}. Por favor, recarga.`, true);
     }
 }
 
 /**
- * Conecta los "controladores" (lógica) a los "eventos" (UI).
+ * Carga los datos del "Spotlight" para el día de hoy.
  */
-function setupUICallbacks() {
-    ui.setupNavigation(handlePrevMonth, handleNextMonth);
-    // ¡Actualizado! quitamos handleTodayClick, añadimos handleStoreClick
-    ui.setupFooter(handleSearchClick, handleShuffleClick, handleAddMemoryClick, handleStoreClick);
-    ui.setupRefreshButton(() => window.location.reload());
-    // (Login/Logout se configuran en onAuthChange)
-}
-
-// --- 2. Controladores de Autenticación ---
-
-function onAuthChange(user) {
-// ... (código existente sin cambios)
-    currentUser = user;
-    // Pasa los callbacks de login/logout a la UI
-// ... (código existente sin cambios)
-    ui.updateLoginUI(user, handleLogin, handleLogout); 
-    if (user) {
-// ... (código existente sin cambios)
-        console.log("User logged in:", user.displayName);
-    } else {
-// ... (código existente sin cambios)
-        console.log("User logged out.");
-    }
-}
-
-// --- 3. Controladores de Navegación y Footer ---
-
-function handlePrevMonth() {
-// ... (código existente sin cambios)
-    currentMonthIndex = (currentMonthIndex - 1 + 12) % 12;
-    updateCalendarView();
-}
-
-function handleNextMonth() {
-// ... (código existente sin cambios)
-    currentMonthIndex = (currentMonthIndex + 1) % 12;
-    updateCalendarView();
-}
-
-/** Dibuja el grid del calendario para el mes actual. */
-function updateCalendarView() {
-// ... (código existente sin cambios)
-    ui.updateMonthName(monthNames[currentMonthIndex]);
-    
-    const monthNumberTarget = currentMonthIndex + 1;
-// ... (código existente sin cambios)
-    const daysOfMonth = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget);
-    
+async function loadTodaySpotlight() {
     const today = new Date();
-// ... (código existente sin cambios)
-    const todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+    const dateString = `Hoy, ${today.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`;
     
-    ui.drawCalendarGrid(daysOfMonth, daysInMonth[currentMonthIndex], todayId, currentMonthIndex, handleDayClick);
-}
-
-function handleDayClick(day) {
-// ... (código existente sin cambios)
-    console.log("Day clicked:", day.id);
-    currentlyOpenDay = day;
-// ... (código existente sin cambios)
-    ui.openPreviewModal(day, () => handleEditDayClick(day));
+    // Pedir a store.js las memorias y el nombre del día
+    const spotlightData = await getTodaySpotlight(state.todayId);
     
-    // Carga las memorias *después* de abrir el modal
-// ... (código existente sin cambios)
-    loadAndDrawMemories(day.id, 'preview-memorias-list');
-}
-
-// ¡ELIMINADO! La función handleTodayClick() ya no existe.
-
-async function handleSearchClick() {
-// ... (código existente sin cambios)
-    const searchTerm = ui.promptSearch();
-    if (!searchTerm?.trim()) return;
-
-    const term = searchTerm.trim().toLowerCase();
-// ... (código existente sin cambios)
-    ui.setLoading(`Searching for "${term}"...`);
-    try {
-// ... (código existente sin cambios)
-        const results = await searchMemories(allDaysData, term);
-        ui.drawSearchResults(term, results, (memoria) => {
-// ... (código existente sin cambios)
-            // Lógica de clic en resultado
-            const monthIndex = parseInt(memoria.diaId.substring(0, 2), 10) - 1;
-// ... (código existente sin cambios)
-            if (monthIndex >= 0) {
-                currentMonthIndex = monthIndex;
-// ... (código existente sin cambios)
-                updateCalendarView();
-                const targetDia = allDaysData.find(d => d.id === memoria.diaId);
-// ... (código existente sin cambios)
-                if(targetDia) setTimeout(() => handleDayClick(targetDia), 50);
-                window.scrollTo(0, 0);
-// ... (código existente sin cambios)
-            }
-        });
-    } catch (e) {
-// ... (código existente sin cambios)
-        ui.showAppError(`Search error: ${e.message}`);
-        console.error(e);
+    if (spotlightData) {
+        const fullDateString = `${dateString} ${spotlightData.dayName !== 'Unnamed Day' ? `(${spotlightData.dayName})` : ''}`;
+        ui.updateSpotlight(fullDateString, spotlightData.memories);
     }
 }
 
-function handleShuffleClick() {
-// ... (código existente sin cambios)
-    if (allDaysData.length === 0) return;
+/**
+ * Dibuja el mes actual en el calendario.
+ */
+function drawCurrentMonth() {
+    const monthName = new Date(2024, state.currentMonthIndex, 1).toLocaleDateString('es-ES', { month: 'long' });
+    const monthNumber = state.currentMonthIndex + 1;
     
-    const randomIndex = Math.floor(Math.random() * allDaysData.length);
-// ... (código existente sin cambios)
-    const randomDia = allDaysData[randomIndex];
+    // Filtrar los días que pertenecen a este mes
+    const diasDelMes = state.allDaysData.filter(dia => 
+        parseInt(dia.id.substring(0, 2), 10) === monthNumber
+    );
+    
+    // Dibujar el calendario
+    ui.drawCalendar(monthName, diasDelMes, state.todayId);
+}
+
+// --- 2. Callbacks y Manejadores de Eventos ---
+
+/**
+ * Devuelve un objeto con todas las funciones "callback" que ui.js necesita.
+ * @returns {Object}
+ */
+function getUICallbacks() {
+    return {
+        // Navegación y Footer
+        onMonthChange: handleMonthChange,
+        onDayClick: handleDayClick,
+        onFooterAction: handleFooterAction,
+        
+        // Autenticación
+        onLogin: handleLogin,
+        onLogout: handleLogout,
+        
+        // Acciones del Modal de Edición
+        onSaveDayName: handleSaveDayName,
+        onSaveMemory: handleSaveMemorySubmit,
+        onDeleteMemory: handleDeleteMemory,
+        
+        // Acciones de API
+        onSearchMusic: handleMusicSearch,
+        onSearchPlace: handlePlaceSearch,
+        
+        // Acciones del Modal "Almacén"
+        onStoreCategoryClick: handleStoreCategoryClick,
+        onStoreLoadMore: handleStoreLoadMore,
+        onStoreItemClick: handleStoreItemClick,
+    };
+}
+
+/**
+ * Se llama cuando el estado de autenticación cambia (login/logout).
+ * @param {Object} user - El objeto de usuario de Firebase, o null.
+ */
+function handleAuthStateChange(user) {
+    state.currentUser = user;
+    ui.updateLoginUI(user);
+    console.log("Estado de autenticación cambiado:", user ? user.uid : "Logged out");
+    
+    // TODO: Recargar memorias si las reglas de seguridad dependen del UID
+}
+
+/**
+ * Maneja los clics en los botones de navegación (mes anterior/siguiente).
+ * @param {string} direction - 'prev' o 'next'.
+ */
+function handleMonthChange(direction) {
+    if (direction === 'prev') {
+        state.currentMonthIndex = (state.currentMonthIndex - 1 + 12) % 12;
+    } else {
+        state.currentMonthIndex = (state.currentMonthIndex + 1) % 12;
+    }
+    drawCurrentMonth();
+}
+
+/**
+ * Maneja el clic en un día del calendario.
+ * Decide si abrir el modal de Preview o el de Edición.
+ * @param {Object} dia - El objeto de día clicado.
+ */
+async function handleDayClick(dia) {
+    // Si el usuario está logueado, abre "Editar", si no, abre "Preview".
+    // TODO: ¿Permitir que el usuario logueado también vea "Preview" primero?
+    
+    // Cargar las memorias para este día
+    ui.setLoading("Cargando memorias...", true); // Usar un loader de modal?
+    const memories = await loadMemoriesForDay(dia.id);
+    ui.setLoading(null, false); // Limpiar loader principal
+    
+    if (state.currentUser) {
+        // Usuario logueado: Abrir modal de edición
+        ui.openEditModal(dia, memories, state.allDaysData);
+    } else {
+        // Usuario no logueado: Abrir modal de vista previa
+        ui.openPreviewModal(dia, memories);
+    }
+}
+
+/**
+ * Maneja los clics en los botones del footer.
+ * @param {string} action - 'add', 'store', 'shuffle', 'search'.
+ * @param {*} [payload] - Datos adicionales (ej. memId para 'edit-memory').
+ */
+function handleFooterAction(action, payload) {
+    switch (action) {
+        case 'add':
+            // Abrir modal de edición en modo "Añadir" (dia=null)
+            ui.openEditModal(null, [], state.allDaysData);
+            break;
+            
+        case 'store':
+            ui.openStoreModal();
+            break;
+            
+        case 'shuffle':
+            handleShuffleClick();
+            break;
+            
+        case 'search':
+            handleSearchClick();
+            break;
+        
+        // Este es un "hack" llamado desde ui.js para rellenar el formulario
+        case 'edit-memory':
+            handleEditMemoryClick(payload); // payload es el memId
+            break;
+            
+        default:
+            console.warn("Acción de footer desconocida:", action);
+    }
+}
+
+/**
+ * Navega a un día aleatorio.
+ */
+function handleShuffleClick() {
+    if (state.allDaysData.length === 0) return;
+    
+    const randomIndex = Math.floor(Math.random() * state.allDaysData.length);
+    const randomDia = state.allDaysData[randomIndex];
     const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1;
     
-    if (currentMonthIndex !== randomMonthIndex) {
-// ... (código existente sin cambios)
-        currentMonthIndex = randomMonthIndex;
-        updateCalendarView();
+    if (state.currentMonthIndex !== randomMonthIndex) {
+        state.currentMonthIndex = randomMonthIndex;
+        drawCurrentMonth();
     }
-// ... (código existente sin cambios)
-    setTimeout(() => handleDayClick(randomDia), 50);
+    
+    // Esperar a que el DOM se actualice y luego abrir el modal
+    setTimeout(() => {
+        handleDayClick(randomDia); // Reutiliza la lógica de clic
+    }, 100); // 100ms de gracia
+    
     window.scrollTo(0, 0);
 }
 
-function handleAddMemoryClick() {
-// ... (código existente sin cambios)
-    // Abre el modal de edición en modo "Añadir"
-    // Elige el día de hoy por defecto
-// ... (código existente sin cambios)
-    const today = new Date();
-    const todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-// ... (código existente sin cambios)
-    currentlyOpenDay = allDaysData.find(d => d.id === todayId) || allDaysData[0]; // Fallback
-    
-    editingMemoryId = null;
-// ... (código existente sin cambios)
-    currentMemories = [];
-    
-    ui.openEditModal(currentlyOpenDay, allDaysData,
-// ... (código existente sin cambios)
-        handleSaveDayName,
-        handleSaveMemorySubmit,
-// ... (código existente sin cambios)
-        handleSearchMusic,
-        handleSearchPlace
-// ... (código existente sin cambios)
-    );
-}
-
-function handleEditDayClick(day) {
-// ... (código existente sin cambios)
-    ui.closePreviewModal();
-    
-    currentlyOpenDay = day;
-// ... (código existente sin cambios)
-    editingMemoryId = null;
-    currentMemories = []; // Resetea caché
-
-// ... (código existente sin cambios)
-    // Abre el modal de edición
-    setTimeout(() => {
-// ... (código existente sin cambios)
-        ui.openEditModal(day, allDaysData,
-            handleSaveDayName,       // Callback para guardar nombre
-// ... (código existente sin cambios)
-            handleSaveMemorySubmit,  // Callback para guardar memoria
-            handleSearchMusic,       // Callback para buscar música
-// ... (código existente sin cambios)
-            handleSearchPlace        // Callback para buscar lugar
-        );
-        // Carga las memorias *después* de abrir el modal
-// ... (código existente sin cambios)
-        loadAndDrawMemories(day.id, 'edit-memorias-list');
-    }, 250); // Delay para que cierre el preview
-}
-
-
-// --- 4. Controladores de Carga de Memorias ---
-
 /**
- * Lógica de negocio para cargar y dibujar memorias en una lista.
-// ... (código existente sin cambios)
- * @param {string} listId - El ID del div donde dibujar.
+ * Pide un término de búsqueda y muestra los resultados.
  */
-async function loadAndDrawMemories(diaId, listId) {
-// ... (código existente sin cambios)
-    try {
-        const memories = await getMemoriesForDay(diaId);
-        
-// ... (código existente sin cambios)
-        // Si es la lista de edición, guarda las memorias en caché
-        if (listId === 'edit-memorias-list') {
-// ... (código existente sin cambios)
-            currentMemories = memories;
-        }
-        
-// ... (código existente sin cambios)
-        // Llama a la UI para dibujar
-        ui.drawMemoriesList(listId, memories,
-// ... (código existente sin cambios)
-            (memoria) => handleEditMemoryClick(memoria), // Callback de Editar
-            (memoria, displayInfo) => handleDeleteMemoryClick(memoria, displayInfo) // Callback de Borrar
-// ... (código existente sin cambios)
-        );
-        console.log(`Loaded ${memories.length} memories for ${diaId} into ${listId}`);
-// ... (código existente sin cambios)
+async function handleSearchClick() {
+    const searchTerm = prompt("Buscar en todas las memorias:");
+    if (!searchTerm || searchTerm.trim() === '') return;
     
-    } catch (e) {
-        console.error(`Error loading memories ${diaId}:`, e);
-// ... (código existente sin cambios)
-        ui.showMemoryListError(listId);
-    }
-}
-
-// --- 5. Controladores del Modal de Edición (Formularios y API) ---
-
-async function handleSaveDayName(newName) {
-// ... (código existente sin cambios)
-    if (!currentlyOpenDay) return;
-    const diaId = currentlyOpenDay.id;
+    const term = searchTerm.trim().toLowerCase();
     
-    try {
-// ... (código existente sin cambios)
-        const nombreGuardado = await updateDayName(diaId, newName);
-        
-        // Actualiza estado local
-// ... (código existente sin cambios)
-        const dayInState = allDaysData.find(d => d.id === diaId);
-        if (dayInState) dayInState.Nombre_Especial = nombreGuardado;
-// ... (código existente sin cambios)
-        if (currentlyOpenDay) currentlyOpenDay.Nombre_Especial = nombreGuardado;
-        
-        ui.showSaveDayNameStatus("Name Saved!");
-// ... (código existente sin cambios)
-        updateCalendarView(); // Redibuja el grid
-        
-    } catch (e) {
-// ... (código existente sin cambios)
-        ui.showSaveDayNameStatus(`Error: ${e.message}`, true);
-        console.error(e);
-    }
-}
-
-async function handleSearchMusic(term) {
-// ... (código existente sin cambios)
-    if (!term) {
-        ui.showMusicSearchError("Enter a term.");
-// ... (código existente sin cambios)
-        return;
-    }
-    ui.showMusicSearchLoading();
-// ... (código existente sin cambios)
-    try {
-        const data = await searchiTunes(term);
-// ... (código existente sin cambios)
-        if (!data.results || data.resultCount === 0) {
-            ui.showMusicSearchError("No results.");
-// ... (código existente sin cambios)
-            return;
-        }
-        // Pasa los datos a la UI para que los dibuje
-// ... (código existente sin cambios)
-        ui.drawMusicSearchResults(data.results, (track) => {
-            // Callback cuando se selecciona un track
-// ... (código existente sin cambios)
-            selectedMusicTrack = track;
-            console.log("Selected Music:", track);
-// ... (código existente sin cambios)
-        });
-    } catch (e) {
-// ... (código existente sin cambios)
-        ui.showMusicSearchError(`Error: ${e.message}`);
-    }
-}
-
-async function handleSearchPlace(term) {
-// ... (código existente sin cambios)
-    if (!term) {
-        ui.showPlaceSearchError("Enter a place.");
-// ... (código existente sin cambios)
-        return;
-    }
-    ui.showPlaceSearchLoading();
-// ... (código existente sin cambios)
-    try {
-        const data = await searchNominatim(term);
-// ... (código existente sin cambios)
-        if (!data || data.length === 0) {
-            ui.showPlaceSearchError("No results.");
-// ... (código existente sin cambios)
-            return;
-        }
-        // Pasa los datos a la UI para que los dibuje
-// ... (código existente sin cambios)
-        ui.drawPlaceSearchResults(data, (place) => {
-            // Callback cuando se selecciona un lugar
-// ... (código existente sin cambios)
-            selectedPlace = place;
-            console.log("Selected Place:", place);
-// ... (código existente sin cambios)
-        });
-    } catch (e) {
-// ... (código existente sin cambios)
-        ui.showPlaceSearchError(`Error: ${e.message}`);
-    }
-}
-
-// --- 6. Controladores de CRUD de Memorias (Formulario) ---
-
-/**
- * Se llama cuando el usuario hace clic en el botón 'Editar' de una memoria.
-// ... (código existente sin cambios)
- */
-function handleEditMemoryClick(memoria) {
-    console.log("Editing memory:", memoria.id);
-// ... (código existente sin cambios)
-    editingMemoryId = memoria.id;
+    ui.setLoading(`Buscando "${term}"...`, true);
     
-    // Resetea selecciones de API
-// ... (código existente sin cambios)
-    selectedMusicTrack = memoria.CancionData || null;
-    selectedPlace = memoria.LugarData ? { name: memoria.LugarNombre, ...memoria.LugarData } : null;
+    // store.js hace la búsqueda lenta de 366 consultas
+    const results = await searchMemories(term);
     
-    // Llama a la UI para rellenar el formulario
-// ... (código existente sin cambios)
-    ui.fillEditForm(memoria);
-}
-
-/**
- * Se llama cuando el usuario hace clic en el botón 'Borrar' de una memoria.
-// ... (código existente sin cambios)
- */
-function handleDeleteMemoryClick(memoria, displayInfo) {
-    console.log("Deleting memory:", memoria.id);
-// ... (código existente sin cambios)
-    ui.showDeleteConfirmation(displayInfo, async () => {
-        // Callback de confirmación
-// ... (código existente sin cambios)
-        if (!currentlyOpenDay) return;
-        const diaId = currentlyOpenDay.id;
-        
-        try {
-// ... (código existente sin cambios)
-            await deleteMemory(diaId, memoria.id);
-            ui.showSaveMemoryStatus("Deleted!");
-// ... (código existente sin cambios)
-            // Recarga la lista de memorias
-            await loadAndDrawMemories(diaId, 'edit-memorias-list');
-// ... (código existente sin cambios)
-            // También recarga la preview si está abierta
-            loadAndDrawMemories(diaId, 'preview-memorias-list');
-// ... (código existente sin cambios)
-        } catch (e) {
-            ui.showSaveMemoryStatus(`Error: ${e.message}`, true);
-// ... (código existente sin cambios)
-            console.error(e);
-        }
-    });
-}
-
-/**
- * Se llama cuando el usuario envía el formulario de 'Añadir/Editar Memoria'.
- */
-async function handleSaveMemorySubmit() {
-// ... (código existente sin cambios)
-    // 1. Obtener datos de la UI
-    const selection = ui.getDaySelectionData(); // Para modo 'Añadir'
-// ... (código existente sin cambios)
-    const { memoryData, imageFile, isValid } = ui.getMemoryFormData();
+    // Limpiar el loader y mostrar resultados (usando el spotlight)
+    ui.setLoading(null, false);
     
-    let diaId;
-// ... (código existente sin cambios)
-    if (selection) {
-        diaId = selection.diaId;
-// ... (código existente sin cambios)
-    } else if (currentlyOpenDay) {
-        diaId = currentlyOpenDay.id;
-// ... (código existente sin cambios)
+    if (results.length === 0) {
+        ui.updateSpotlight(`No hay resultados para "${term}"`, []);
     } else {
-        ui.showSaveMemoryStatus("Error: No day selected.", true);
-// ... (código existente sin cambios)
-        return;
+        // Reutilizamos el Spotlight para mostrar los resultados de búsqueda
+        ui.updateSpotlight(`Resultados para "${term}" (${results.length})`, results);
     }
+}
 
-    if (!isValid) {
-// ... (código existente sin cambios)
-        ui.showSaveMemoryStatus("Fill required fields.", true);
-        return;
-    }
+// --- 3. Lógica de Modales (Controlador) ---
 
-// ... (código existente sin cambios)
-    // 2. Lógica de negocio para validar
-    if (memoryData.Tipo === 'Imagen' && !imageFile && !editingMemoryId) {
-// ... (código existente sin cambios)
-        ui.showSaveMemoryStatus("New image memory requires a file.", true);
-        return; // Requiere imagen si es nueva
-// ... (código existente sin cambios)
-    }
-    
-    // (Lógica de subida de imagen iría aquí)
-// ... (código existente sin cambios)
-    if (imageFile) {
-        alert("Image upload not implemented yet.");
-// ... (código existente sin cambios)
-        ui.showSaveMemoryStatus("Upload not implemented.", true);
-        return;
-    }
-    
-// ... (código existente sin cambios)
-    // 3. Preparar objeto de datos final
+/**
+ * Guarda el nuevo nombre especial para un día.
+ * @param {string} diaId - El ID del día (ej. "01-01").
+ * @param {string} newName - El nuevo nombre.
+ */
+async function handleSaveDayName(diaId, newName) {
     try {
-        const dateParts = memoryData.Fecha_Original.split('-');
-// ... (código existente sin cambios)
-        const dateOfMemory = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2])));
-        memoryData.Fecha_Original = Timestamp.fromDate(dateOfMemory);
-
-// ... (código existente sin cambios)
-        // Añadir datos de API si existen
-        if (memoryData.Tipo === 'Lugar' && selectedPlace) {
-// ... (código existente sin cambios)
-            memoryData.LugarNombre = selectedPlace.name;
-            memoryData.LugarData = { lat: selectedPlace.lat, lon: selectedPlace.lon, osm_id: selectedPlace.osm_id, osm_type: selectedPlace.osm_type };
-// ... (código existente sin cambios)
-        }
-        if (memoryData.Tipo === 'Musica' && selectedMusicTrack) {
-// ... (código existente sin cambios)
-            memoryData.CancionData = { trackId: selectedMusicTrack.trackId, artistName: selectedMusicTrack.artistName, trackName: selectedMusicTrack.trackName, artworkUrl60: selectedMusicTrack.artworkUrl60, trackViewUrl: selectedMusicTrack.trackViewUrl };
-            memoryData.CancionInfo = `${selectedMusicTrack.trackName} - ${selectedMusicTrack.artistName}`;
-// ... (código existente sin cambios)
+        await saveDayName(diaId, newName);
+        
+        // Actualizar estado local
+        const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
+        if (dayIndex !== -1) {
+            state.allDaysData[dayIndex].Nombre_Especial = newName || "Unnamed Day";
         }
         
-        // Mantener URL de imagen si no se cambia
-// ... (código existente sin cambios)
-        if (memoryData.Tipo === 'Imagen' && !imageFile && editingMemoryId) {
-            const existingMem = currentMemories.find(m => m.id === editingMemoryId);
-// ... (código existente sin cambios)
-            if (existingMem?.ImagenURL) {
-                memoryData.ImagenURL = existingMem.ImagenURL;
-// ... (código existente sin cambios)
+        ui.showModalStatus('save-status', 'Nombre guardado', false);
+        drawCurrentMonth(); // Redibujar por si el nombre cambió
+        
+    } catch (err) {
+        console.error("Error guardando nombre:", err);
+        ui.showModalStatus('save-status', `Error: ${err.message}`, true);
+    }
+}
+
+/**
+ * Recibe los datos del formulario de memoria (desde ui.js) y los guarda.
+ * @param {string} diaId - El ID del día.
+ * @param {Object} memoryData - Los datos del formulario.
+ * @param {boolean} isEditing - True si es una actualización.
+ */
+async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
+    
+    try {
+        // 1. Convertir fecha string a Timestamp (lógica de negocio)
+        try {
+            const dateParts = memoryData.Fecha_Original.split('-'); // YYYY-MM-DD
+            const utcDate = new Date(Date.UTC(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2])));
+            if (isNaN(utcDate.getTime())) throw new Error('Fecha inválida');
+            memoryData.Fecha_Original = utcDate; // store.js lo convertirá
+        } catch (e) {
+            throw new Error('Formato de fecha original inválido.');
+        }
+        
+        // 2. Lógica de subida de imagen (TODO)
+        if (memoryData.Tipo === 'Imagen' && memoryData.file) {
+            // ... lógica de subida ...
+            // memoryData.ImagenURL = await uploadImage(memoryData.file);
+        }
+
+        // 3. Guardar en Firestore
+        const memoryId = isEditing ? memoryData.id : null;
+        await saveMemory(diaId, memoryData, memoryId);
+        
+        // 4. Actualizar UI
+        ui.showModalStatus('memoria-status', isEditing ? 'Memoria actualizada' : 'Memoria guardada', false);
+        ui.resetMemoryForm();
+        
+        // 5. Recargar la lista de memorias en el modal
+        const updatedMemories = await loadMemoriesForDay(diaId);
+        // ui.js debe tener una función para actualizar solo la lista
+        // _renderMemoryList(document.getElementById('edit-memorias-list'), updatedMemories, true, diaId);
+        
+        // 6. Actualizar el grid (para el punto azul)
+        const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
+        if (dayIndex !== -1 && !state.allDaysData[dayIndex].tieneMemorias) {
+            state.allDaysData[dayIndex].tieneMemorias = true;
+            drawCurrentMonth();
+        }
+        
+    } catch (err) {
+        console.error("Error guardando memoria:", err);
+        ui.showModalStatus('memoria-status', `Error: ${err.message}`, true);
+        // Reactivar el botón si falla
+        const saveBtn = document.getElementById('save-memoria-btn');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = isEditing ? 'Actualizar Memoria' : 'Añadir Memoria';
+        }
+    }
+}
+
+/**
+ * Borra una memoria.
+ * @param {string} diaId - El ID del día.
+ * @param {string} memId - El ID de la memoria.
+ */
+async function handleDeleteMemory(diaId, memId) {
+    try {
+        await deleteMemory(diaId, memId);
+        ui.showModalStatus('memoria-status', 'Memoria borrada', false);
+        
+        // Recargar la lista de memorias
+        const updatedMemories = await loadMemoriesForDay(diaId);
+        // ui.js debe tener una función para actualizar solo la lista
+        // _renderMemoryList(document.getElementById('edit-memorias-list'), updatedMemories, true, diaId);
+
+        // Comprobar si era la última memoria y actualizar el grid
+        if (updatedMemories.length === 0) {
+            const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
+            if (dayIndex !== -1) {
+                state.allDaysData[dayIndex].tieneMemorias = false;
+                drawCurrentMonth();
             }
         }
-
-        // 4. Guardar en el Store
-// ... (código existente sin cambios)
-        await saveMemory(diaId, memoryData, editingMemoryId);
         
-        // 5. Actualizar UI
-// ... (código existente sin cambios)
-        ui.showSaveMemoryStatus(editingMemoryId ? 'Updated!' : 'Saved!');
-        ui.resetMemoryForm();
-// ... (código existente sin cambios)
-        editingMemoryId = null;
-        selectedMusicTrack = null;
-// ... (código existente sin cambios)
-        selectedPlace = null;
-        
-        // Recargar listas
-// ... (código existente sin cambios)
-        await loadAndDrawMemories(diaId, 'edit-memorias-list');
-        await loadAndDrawMemories(diaId, 'preview-memorias-list');
-
-    } catch (e) {
-// ... (código existente sin cambios)
-        ui.showSaveMemoryStatus(`Error: ${e.message}`, true);
-        console.error("Save/Update Error:", e);
+    } catch (err) {
+        console.error("Error borrando memoria:", err);
+        ui.showModalStatus('memoria-status', `Error: ${err.message}`, true);
     }
 }
 
-// --- 7. ¡NUEVO! Controladores del Almacén (Store) ---
+/**
+ * (Hack) Busca una memoria y le dice a la UI que rellene el formulario.
+ * @param {string} memId - El ID de la memoria.
+ */
+async function handleEditMemoryClick(memId) {
+    if (!memId) return;
+    // Esto sigue siendo un anti-patrón (la UI no debería llamar al controlador así)
+    // pero es necesario porque la UI no tiene el estado.
+    
+    // Le pedimos a store.js que encuentre la memoria
+    const memory = await findMemoryById(memId); // Asumimos que esta función existe
+    
+    if (memory) {
+        ui.fillFormForEdit(memory);
+    } else {
+        ui.showModalStatus('memoria-status', 'Error: No se encontró la memoria para editar.', true);
+    }
+}
 
-/** Se llama al hacer clic en el botón 'Store' del footer. */
-function handleStoreClick() {
-    console.log("Store button clicked");
-    // Abre el modal selector y le pasa el controlador de categorías
-    ui.openStoreModal(handleStoreCategoryClick);
+
+// --- 4. Lógica de API Externa (Controlador) ---
+
+/**
+ * Llama al módulo API para buscar música y pasa los resultados a la UI.
+ * @param {string} term - Término de búsqueda.
+ */
+async function handleMusicSearch(term) {
+    try {
+        const tracks = await searchiTunes(term);
+        ui.showMusicResults(tracks);
+    } catch (err) {
+        console.error("Error en búsqueda de iTunes:", err);
+        // ui.js debería tener una función showErrorMusicResults
+        // ui.showMusicResultsError(err.message);
+    }
 }
 
 /**
- * Se llama al hacer clic en una categoría en el modal 'Store'.
- * @param {string} type - El tipo de memoria (ej. 'Lugar', 'Nombre_Especial').
- * @param {string} title - El título legible (ej. '📍 Lugares').
+ * Llama al módulo API para buscar lugares y pasa los resultados a la UI.
+ * @param {string} term - Término de búsqueda.
  */
-function handleStoreCategoryClick(type, title) {
-    console.log("Store category clicked:", type);
+async function handlePlaceSearch(term) {
+    try {
+        const places = await searchNominatim(term);
+        ui.showPlaceResults(places);
+    } catch (err) {
+        console.error("Error en búsqueda de Nominatim:", err);
+        // ui.showPlaceResultsError(err.message);
+    }
+}
+
+// --- 5. Lógica del "Almacén" (Controlador) ---
+
+/**
+ * Maneja el clic en una categoría del Almacén.
+ * @param {string} type - 'Nombres', 'Lugar', 'Musica', 'Texto', 'Imagen'
+ */
+async function handleStoreCategoryClick(type) {
+    console.log("Cargando Almacén para:", type);
     
     // Resetear estado de paginación
-    storeCurrentType = type;
-    storeLastDoc = null;
-    storeIsLoading = false;
+    state.store.currentType = type;
+    state.store.lastVisible = null;
+    state.store.isLoading = true;
     
     // Abrir el modal de lista
-    ui.openStoreListModal(title, handleStoreLoadMore); // Pasa el callback para 'Cargar Más'
+    const title = `Almacén: ${type}`;
+    ui.openStoreListModal(title);
     
-    // Cargar la primera página de resultados
-    loadAndShowStoreList(true); // true = es la primera carga
-}
-
-/** Se llama al hacer clic en 'Cargar Más' en el modal de lista. */
-function handleStoreLoadMore() {
-    if (storeIsLoading) return;
-    
-    console.log("Loading more for:", storeCurrentType);
-    loadAndShowStoreList(false); // false = no es la primera carga
+    try {
+        let result;
+        if (type === 'Nombres') {
+            result = await getNamedDays(10); // Límite de 10
+        } else {
+            result = await getMemoriesByType(type, 10); // Límite de 10
+        }
+        
+        // Actualizar estado de paginación
+        state.store.lastVisible = result.lastVisible;
+        state.store.isLoading = false;
+        
+        // Enviar datos a la UI
+        ui.updateStoreList(result.items, false, result.hasMore); // false = reemplazar
+        
+    } catch (err) {
+        console.error(`Error cargando categoría ${type}:`, err);
+        // TODO: Mostrar error en el modal de lista
+        ui.updateStoreList([], false, false); // Limpiar lista
+        // Mostrar el error de Firebase (enlace del índice)
+        if (err.code === 'failed-precondition') {
+            alert("Error de Firebase: " + err.message);
+        }
+    }
 }
 
 /**
- * Lógica principal para cargar y mostrar la lista del almacén paginada.
- * @param {boolean} isFirstLoad - Si es la primera carga (para limpiar la lista).
+ * Carga la siguiente página de resultados en el Almacén.
  */
-async function loadAndShowStoreList(isFirstLoad) {
-    if (storeIsLoading || (storeLastDoc === null && !isFirstLoad)) {
-        console.log("No more results to load.");
-        return; // Ya no hay más
-    }
+async function handleStoreLoadMore() {
+    const { currentType, lastVisible, isLoading } = state.store;
     
-    storeIsLoading = true;
-    if (isFirstLoad) {
-        ui.showStoreListLoading();
-    } else {
-        ui.setStoreLoadMoreLoading();
-    }
+    if (isLoading || !currentType || !lastVisible) return;
+    
+    console.log("Cargando más...", currentType);
+    state.store.isLoading = true;
     
     try {
-        let results;
-        // Llama a la función de 'store' adecuada
-        if (storeCurrentType === 'Nombre_Especial') {
-            results = await getNamedDays(storeLastDoc);
+        let result;
+        if (currentType === 'Nombres') {
+            result = await getNamedDays(10, lastVisible);
         } else {
-            results = await getMemoriesByType(storeCurrentType, storeLastDoc);
+            result = await getMemoriesByType(currentType, 10, lastVisible);
         }
         
-        // Actualiza el estado de paginación
-        storeLastDoc = results.lastDoc;
+        // Actualizar estado
+        state.store.lastVisible = result.lastVisible;
+        state.store.isLoading = false;
         
-        // Añadir el 'diaNombre' a las memorias (si no lo tienen)
-        const memoriesConNombre = results.memories.map(mem => {
-            if (!mem.diaNombre) {
-                const dia = allDaysData.find(d => d.id === mem.diaId);
-                mem.diaNombre = dia ? dia.Nombre_Dia : 'Día Desconocido';
-            }
-            return mem;
-        });
+        // Enviar datos a la UI (modo append)
+        ui.updateStoreList(result.items, true, result.hasMore); // true = añadir
         
-        // Pasa los resultados a la UI
-        ui.drawStoreList(memoriesConNombre, !!storeLastDoc, (memoria) => {
-            // Callback para clic en un item de la lista
-            console.log("Store item clicked:", memoria);
-            const dia = allDaysData.find(d => d.id === memoria.diaId);
-            if (dia) {
-                ui.closeStoreListModal();
-                ui.closeStoreModal();
-                handleDayClick(dia); // Abre el preview de ese día
-            }
-        });
-        
-    } catch (e) {
-        console.error("Error loading store list:", e);
-        if (e.message.includes("requires an index")) {
-            ui.showAppError("Error: La base de datos necesita un índice. Revisa la consola (F12) para ver el enlace y crearlo en Firebase.");
-        } else {
-            ui.showAppError(`Error: ${e.message}`);
-        }
-    } finally {
-        storeIsLoading = false;
+    } catch (err) {
+        console.error(`Error cargando más ${currentType}:`, err);
+        state.store.isLoading = false;
+        // TODO: Mostrar error
     }
 }
 
+/**
+ * Maneja el clic en un item de la lista del Almacén (navega a ese día).
+ * @param {string} diaId - El ID del día (ej. "05-14").
+ */
+function handleStoreItemClick(diaId) {
+    const dia = state.allDaysData.find(d => d.id === diaId);
+    if (!dia) {
+        console.error("No se encontró el día:", diaId);
+        return;
+    }
+    
+    // Cerrar todos los modales del Almacén
+    ui.closeStoreListModal();
+    ui.closeStoreModal();
+    
+    // Navegar a ese mes y abrir el día
+    const monthIndex = parseInt(dia.id.substring(0, 2), 10) - 1;
+    if (state.currentMonthIndex !== monthIndex) {
+        state.currentMonthIndex = monthIndex;
+        drawCurrentMonth();
+    }
+    
+    setTimeout(() => {
+        handleDayClick(dia);
+    }, 100);
+    
+    window.scrollTo(0, 0);
+}
 
-// --- Arrancar la Aplicación ---
+
+// --- 6. Ejecución Inicial ---
 checkAndRunApp();
 
