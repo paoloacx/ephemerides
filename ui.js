@@ -1,8 +1,10 @@
 /*
- * Módulo ui.js (v4.0)
+ * Módulo ui.js (v4.1)
  * Responsable de TODA la manipulación del DOM.
  * No sabe nada de Firebase. Solo recibe datos y callbacks.
  * ¡Ahora usa Google Material Icons!
+ *
+ * v4.1: Corrige SyntaxError en showDeleteConfirm (línea 673)
  */
 
 // --- Estado Interno y Selectores ---
@@ -670,7 +672,7 @@ function showDeleteConfirm(text, onConfirm) {
     textEl.textContent = text;
     
     // Asignar nuevos listeners
-    yesBtn.onclick = ()D => {
+    yesBtn.onclick = () => { // <-- ¡ERROR CORREGIDO AQUÍ! (Era '()D =>')
         dialog.style.display = 'none';
         onConfirm();
     };
@@ -1027,21 +1029,25 @@ function _populateMemoryList(listDiv, memories, mode, handlers) {
 
     // Asignar listeners de edición/borrado si estamos en modo 'edit'
     if (mode === 'edit' && handlers) {
-        listDiv.addEventListener('click', (event) => {
+        // Limpiar listeners antiguos usando delegación de eventos
+        // Clonar el nodo es más simple para este caso de uso
+        const oldListDiv = listDiv;
+        const newListDiv = oldListDiv.cloneNode(true);
+        oldListDiv.parentNode.replaceChild(newListDiv, oldListDiv);
+
+        newListDiv.addEventListener('click', (event) => {
             const editButton = event.target.closest('.edit-btn');
             if (editButton) {
                 handlers.onEditMemory(editButton.dataset.memoriaId);
-                return; // Evitar bubbling
+                return;
             }
             
             const deleteButton = event.target.closest('.delete-btn');
             if (deleteButton) {
                 handlers.onDeleteMemory(deleteButton.dataset.memoriaId);
-                return; // Evitar bubbling
+                return;
             }
         });
-        // Clonar para limpiar listeners antiguos (solución simple)
-        // listDiv.replaceWith(listDiv.cloneNode(true)); 
     }
 }
 
@@ -1116,7 +1122,7 @@ function createMemoryItemHTML(mem, context) {
             icon = 'image';
             contentHTML += `<strong>Foto</strong>`;
             if (mem.ImagenURL && context !== 'spotlight') {
-                contentHTML += `<img src="${memI.ImagenURL}" style="width: 100%; max-height: 150px; object-fit: cover; margin-top: 8px; border-radius: 5px;" alt="Memoria" onerror="this.style.display='none'">`;
+                contentHTML += `<img src="${mem.ImagenURL}" style="width: 100%; max-height: 150px; object-fit: cover; margin-top: 8px; border-radius: 5px;" alt="Memoria" onerror="this.style.display='none'">`;
             }
             if (mem.Descripcion) {
                 contentHTML += `<small style="font-weight:normal; color: #555; margin-top: 4px;">${mem.Descripcion}</small>`;
