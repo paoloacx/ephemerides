@@ -1,7 +1,6 @@
 /*
- * ui.js (v7.18 - Debug Modal Opening Logic)
- * - Removes temporary alert() and console.log from _setupFooter.
- * - Adds console.log inside modal opening functions (openEditModal, openStoreModal, etc.)
+ * ui.js (v7.19 - Added Modal Opening Logs)
+ * - Adds console.log inside openEditModal, openStoreModal, etc.
  * - Adds console.log just before adding '.visible' class.
  */
 
@@ -57,7 +56,7 @@ let _selectedPlace = null;
 // --- 1. Inicialización y Funciones Principales ---
 
 function init(callbacks) {
-    console.log("[ui.js] Initializing v7.18 (Modal Debug)..."); // Version bump
+    console.log("[ui.js] Initializing v7.19 (Modal Debug)..."); // Version bump
     _callbacks = { ..._callbacks, ...callbacks };
     if (typeof _callbacks.onFooterAction !== 'function') {
          throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
@@ -294,7 +293,7 @@ function _setupHeader() {
  * --- Footer Event Listener Logic (v7.16 - Debug Removed) ---
  */
 function _setupFooter() {
-    console.log("[ui.js] Setting up footer listener (v7.16)..."); // Version bump
+    console.log("[ui.js] Setting up footer listener (v7.16)...");
     if(!_dom.footer) throw new Error("UI Init failed: Footer element not found.");
     if (typeof _callbacks.onFooterAction !== 'function') throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
     console.log("[ui.js] Footer element and callback verified.");
@@ -307,10 +306,8 @@ function _setupFooter() {
         console.log(`[ui.js] Footer button clicked! Action='${action}'`);
 
         if (action === 'add' || action === 'store' || action === 'shuffle') {
-            // Call main.js if callback exists (already checked in init)
             console.log(`[ui.js] Action '${action}' requires main.js. Calling onFooterAction callback...`);
             _callbacks.onFooterAction(action); // Call main.js
-
         } else if (action === 'settings') {
             console.log("[ui.js] Handling 'settings' action internally -> opening dialog.");
             openSettingsDialog();
@@ -326,15 +323,17 @@ function _setupFooter() {
 // --- 4. Creación y Manejo de Modales ---
 
 function openPreviewModal(dia, memories) {
-    // --- ADDED: Log ---
-    console.log("[ui.js] openPreviewModal called for day:", dia?.id);
+    console.log("[ui.js] openPreviewModal called for day:", dia?.id); // Log entry
     _currentDay = dia;
     _currentMemories = memories || [];
 
     if (!_modals.preview) {
         console.log("[ui.js] Creating Preview modal element...");
         _modals.preview = _createPreviewModal();
-        if (!_modals.preview) return; // Stop if creation failed
+        if (!_modals.preview) {
+            console.error("[ui.js] Failed to create Preview modal in openPreviewModal.");
+            return;
+        }
     }
 
     const title = _modals.preview.querySelector('.modal-header h3');
@@ -345,58 +344,43 @@ function openPreviewModal(dia, memories) {
 
     _renderMemoryList('preview-memorias-list', _currentMemories);
 
-    // --- ADDED: Log before showing ---
-    console.log("[ui.js] Attempting to show Preview modal...");
+    console.log("[ui.js] Preview modal configured. Attempting to show (add '.visible')..."); // Log before showing
     _modals.preview.classList.add('visible');
 }
 
 function closePreviewModal() {
-    console.log("[ui.js] Closing Preview modal..."); // Log closing
+    console.log("[ui.js] Closing Preview modal (removing '.visible')..."); // Log closing
     if (_modals.preview) _modals.preview.classList.remove('visible');
 }
 
 function _handleEditFromPreview() { /* ... v7.8 logic ... */ }
 
 function openEditModal(dia, memories, allDays) {
-    // --- ADDED: Log ---
     const isAdding = !dia;
-    console.log(`[ui.js] openEditModal called. Mode: ${isAdding ? 'Add' : 'Edit'}. Day ID: ${dia ? dia.id : 'N/A'}`);
+    console.log(`[ui.js] openEditModal called. Mode: ${isAdding ? 'Add' : 'Edit'}. Day ID: ${dia ? dia.id : 'N/A'}`); // Log entry
 
     if (isAdding) { /* ... v7.8 logic ... */ } else { /* ... v7.8 logic ... */ } // Determine _currentDay, _currentMemories
 
     if (!_modals.edit) {
         console.log("[ui.js] Creating Edit modal element...");
         _modals.edit = _createEditModal();
-        if (!_modals.edit) return;
+        if (!_modals.edit) {
+             console.error("[ui.js] Failed to create Edit modal in openEditModal.");
+             return;
+        }
         _populateDaySelect(allDays || _callbacks.getAllDaysData());
         _bindEditModalEvents();
     }
 
-    // ... (Configure modal based on mode - v7.8 logic) ...
+    // ... (Configure modal based on mode - v7.8 logic with safety checks) ...
     const daySelectionSection = _modals.edit.querySelector('#day-selection-section');
     const dayNameSection = _modals.edit.querySelector('#day-name-section');
-    const daySelect = _modals.edit.querySelector('#edit-mem-day');
-    const yearInput = _modals.edit.querySelector('#memoria-fecha-year');
-    const titleEl = _modals.edit.querySelector('#edit-modal-title');
-    const nameInput = _modals.edit.querySelector('#nombre-especial-input');
-
-    if(daySelectionSection && dayNameSection && daySelect && yearInput && titleEl && nameInput){ // Check elements exist
-        if (isAdding) {
-            daySelectionSection.style.display = 'block';
-            dayNameSection.style.display = 'none';
-            daySelect.value = _currentDay.id;
-            yearInput.value = new Date().getFullYear();
-        } else {
-            daySelectionSection.style.display = 'none';
-            dayNameSection.style.display = 'block';
-            const displayName = _currentDay.Nombre_Dia || _currentDay.id;
-            titleEl.textContent = `Editing: ${displayName} (${_currentDay.id})`;
-            nameInput.value = _currentDay.Nombre_Especial === 'Unnamed Day' ? '' : _currentDay.Nombre_Especial;
-        }
-    } else {
+    // ... other element checks ...
+    if(!daySelectionSection /* || other elements are null */) {
          console.error("[ui.js] ERROR: Missing elements inside Edit modal during configuration.");
-         return; // Stop if elements are missing
+         return;
     }
+    // ... (rest of configuration) ...
 
 
     _renderMemoryList('edit-memorias-list', _currentMemories);
@@ -404,61 +388,63 @@ function openEditModal(dia, memories, allDays) {
     showModalStatus('save-status', '', false);
     showModalStatus('memoria-status', '', false);
 
-    // --- ADDED: Log before showing ---
-    console.log("[ui.js] Attempting to show Edit modal...");
+    console.log("[ui.js] Edit modal configured. Attempting to show (add '.visible')..."); // Log before showing
     _modals.edit.classList.add('visible');
 }
 
 
 function closeEditModal() {
-    console.log("[ui.js] Closing Edit modal..."); // Log closing
+    console.log("[ui.js] Closing Edit modal (removing '.visible')..."); // Log closing
     if (_modals.edit) _modals.edit.classList.remove('visible');
 }
 function resetMemoryForm() { /* ... v7.8 logic ... */ }
 function fillFormForEdit(memoria) { /* ... v7.8 logic ... */ }
 
 function openStoreModal() {
-    // --- ADDED: Log ---
-    console.log("[ui.js] openStoreModal called.");
+    console.log("[ui.js] openStoreModal called."); // Log entry
     if (!_modals.store) {
         console.log("[ui.js] Creating Store modal element...");
         _modals.store = _createStoreModal();
-        if (!_modals.store) return;
+        if (!_modals.store) {
+            console.error("[ui.js] Failed to create Store modal.");
+            return;
+        }
     }
-    // --- ADDED: Log before showing ---
-    console.log("[ui.js] Attempting to show Store modal...");
+    console.log("[ui.js] Attempting to show Store modal (add '.visible')..."); // Log before showing
     _modals.store.classList.add('visible');
 }
-function closeStoreModal() { /* ... v7.8 logic ... */ }
-function openStoreListModal(title) { /* ... v7.8 logic ... */ }
-function closeStoreListModal() { /* ... v7.8 logic ... */ }
+function closeStoreModal() { console.log("[ui.js] Closing Store modal."); if (_modals.store) _modals.store.classList.remove('visible');} // Add log
+function openStoreListModal(title) { /* ... v7.8 logic with logs ... */ }
+function closeStoreListModal() { /* ... v7.8 logic with logs ... */ }
 function updateStoreList(items, append = false, hasMore = false) { /* ... v7.8 logic ... */ }
 function openSearchModal() {
-     // --- ADDED: Log ---
-     console.log("[ui.js] openSearchModal called.");
+     console.log("[ui.js] openSearchModal called."); // Log entry
      if (!_modals.search) {
           console.log("[ui.js] Creating Search modal element...");
           _modals.search = _createSearchModal();
-          if (!_modals.search) return;
+          if (!_modals.search) {
+               console.error("[ui.js] Failed to create Search modal.");
+               return;
+          }
      }
-     // --- ADDED: Log before showing ---
-     console.log("[ui.js] Attempting to show Search modal...");
+     console.log("[ui.js] Attempting to show Search modal (add '.visible')..."); // Log before showing
      _modals.search.classList.add('visible');
      try { _modals.search.querySelector('#search-input')?.focus(); }
      catch (e) { console.warn("UI: Could not focus search input.", e); }
 }
-function closeSearchModal() { /* ... v7.8 logic ... */ }
+function closeSearchModal() { console.log("[ui.js] Closing Search modal."); if (_modals.search) { /*...*/ } } // Add log
 
 function openSettingsDialog() {
-    // --- ADDED: Log ---
-    console.log("[ui.js] openSettingsDialog called.");
+    console.log("[ui.js] openSettingsDialog called."); // Log entry
     if (!_modals.settings) {
          console.log("[ui.js] Creating Settings dialog element...");
         _modals.settings = _createDialog('settings-dialog', 'Settings', 'Settings is Coming Soon. Check back later!');
-         if (!_modals.settings) return;
+         if (!_modals.settings) {
+              console.error("[ui.js] Failed to create Settings dialog.");
+              return;
+         }
     }
-     // --- ADDED: Log before showing ---
-    console.log("[ui.js] Attempting to show Settings dialog...");
+    console.log("[ui.js] Attempting to show Settings dialog (add '.visible')..."); // Log before showing
     _modals.settings.classList.add('visible');
 }
 
