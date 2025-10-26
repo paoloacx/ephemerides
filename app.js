@@ -1,41 +1,29 @@
-/* app.js - v10.15 - Syntax Fix + Reverted Load Logic + Simplified Spotlight Query */
+/* app.js - v10.16 - Optimized Month Loading + Firebase Config Module */
 
-// Importaciones
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+// Importaciones de Firebase SDK (solo las funciones, no la inicialización)
 import {
-    getFirestore, collection, getDocs, doc, updateDoc,
-    writeBatch, setDoc, deleteDoc, Timestamp, query, orderBy, addDoc, limit // Asegurarse que limit está importado
+    collection, getDocs, doc, updateDoc,
+    writeBatch, setDoc, deleteDoc, Timestamp, query, orderBy, addDoc, limit,
+    where, documentId // Añadir where y documentId
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import {
-    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+    GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
-// --- Firebase Config ---
-const firebaseConfig = {
-  apiKey: "AIzaSyBrd-8qaBfSplBjj74MNuKP8UWYmr8RaJA",
-  authDomain: "ephemerides-2005.firebaseapp.com",
-  projectId: "ephemerides-2005",
-  storageBucket: "ephemerides-2005.firebasestorage.app",
-  messagingSenderId: "360961314777",
-  appId: "1:360961314777:web:809d9e66535acb292d13c8",
-  measurementId: "G-BZC9FRYCJW"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
+// ¡CAMBIO! Importar servicios inicializados desde el nuevo módulo
+import { db, auth, storage } from './firebase-config.js';
 
 // --- Global Variables & Constants ---
-// Asignar al inicio, confiando en que el script está al final del body
 const appContent = document.getElementById("app-content");
 const monthNameDisplayEl = document.getElementById("month-name-display");
 
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // Includes leap year Feb 29
 
-let allDaysData = [];
+// ¡CAMBIO! Usar un objeto para guardar los datos por mes
+let monthlyDaysData = {}; // Objeto para almacenar arrays de días por índice de mes (0-11)
+
 let currentMonthIndex = new Date().getMonth();
 let currentMemories = [];
 let editingMemoryId = null;
@@ -46,122 +34,200 @@ let currentUser = null;
 let map = null;
 let mapMarker = null;
 
-// --- SVG Icons ---
+// --- SVG Icons (Sin cambios) ---
 const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/></svg>`;
 const deleteIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0 -1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m3 0l-.5 8.5a.5.5 0 1 0 .998.06l.5-8.5a.5.5 0 1 0-.998.06m3 .5l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06Z"/></svg>`;
 const pencilIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-pencil-fill" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/></svg>`;
 const loginIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0z"/><path fill-rule="evenodd" d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708z"/></svg>`;
 
-// --- Auth ---
+// --- Auth (Sin cambios) ---
 onAuthStateChanged(auth, (user) => { currentUser = user; updateLoginUI(user); if (user) { console.log("User logged in:", user.displayName); } else { console.log("User logged out."); } });
 function updateLoginUI(user) { const loginBtn = document.getElementById('login-btn'); const userInfo = document.getElementById('user-info'); const userName = document.getElementById('user-name'); const userImg = document.getElementById('user-img'); if (user) { if (userInfo) userInfo.style.display = 'flex'; if (userName) userName.textContent = user.displayName || user.email || 'User'; if (userImg) userImg.src = user.photoURL || 'https://placehold.co/30x30/ccc/fff?text=?'; if (loginBtn) { loginBtn.innerHTML = loginIconSVG; loginBtn.title = "Logout"; loginBtn.onclick = handleLogout; } } else { if (userInfo) userInfo.style.display = 'none'; if (loginBtn) { loginBtn.innerHTML = `<img src="https://lh3.googleusercontent.com/COxitqgJr1sJnIDe8-jiKhxDx1OLUbq VilNfRHXkvdR8VdVAbkuQGcuSgs5nbDbpaE8nhzo6g=s0-w24-h24-p-k-rw-no" alt="G" style="width: 24px; height: 24px; border-radius: 50%;">`; loginBtn.title = "Login with Google"; loginBtn.onclick = handleLogin; } } }
 async function handleLogin() { const provider = new GoogleAuthProvider(); try { await signInWithPopup(auth, provider); } catch (error) { console.error("Google Sign-In Error:", error); alert(`Login failed: ${error.message}`); } }
 async function handleLogout() { try { await signOut(auth); } catch (error) { console.error("Sign-out Error:", error); alert(`Logout failed: ${error.message}`); } }
 
-// --- Check/Repair DB ---
-async function checkAndRunApp() {
-    console.log("Starting Check/Repair v10.15..."); // Asegúrate que esta versión coincide
+// --- App Initialization ---
+async function initializeAppCore() {
+    console.log("Starting App Initialization v10.16...");
 
-    // Chequeo inicial crítico
     if (!appContent || !monthNameDisplayEl) {
-        console.error("Error crítico: #app-content o #month-name-display son null al inicio.");
+        console.error("Critical Error: #app-content or #month-name-display are null at init.");
         document.body.innerHTML = "<p style='color:red; padding:20px;'>Error: HTML elements missing. Cannot start app.</p>";
         return;
     }
 
-    appContent.innerHTML = "<p>Verifying database...</p>";
+    appContent.innerHTML = "<p>Loading calendar...</p>";
     try {
-        const diasRef = collection(db, "Dias");
-        const checkSnapshot = await getDocs(diasRef);
-        const currentDocCount = checkSnapshot.size;
+        // Cargar y dibujar el mes inicial
+        await loadAndDrawMonth(currentMonthIndex);
 
-        console.log(`Docs in 'Dias': ${currentDocCount}`);
-        if (currentDocCount < 366) {
-            console.warn(`Repairing... Found ${currentDocCount} docs, expected 366.`);
-             await generateCleanDatabase();
-        } else {
-            console.log("DB verified (>= 366 days).");
-        }
+        // Configurar navegación y footer UNA VEZ al inicio
+        configurarNavegacion();
+        configurarFooter();
 
-        await loadDataAndDrawCalendar();
-
+        // Configurar otros listeners iniciales
         const refreshBtn = document.getElementById('refresh-btn');
         if (refreshBtn) { refreshBtn.onclick = () => window.location.reload(); }
-        updateLoginUI(auth.currentUser);
-    } catch (e) { appContent.innerHTML = `<p class="error">Critical error during startup: ${e.message}</p>`; console.error(e); }
-}
-
-async function generateCleanDatabase() {
-    if (!appContent) { console.error("Cannot show status: appContent is null."); return; }
-    console.log("--- Starting Regeneration ---");
-    // ... (resto sin cambios) ...
-    const diasRef = collection(db, "Dias"); try { console.log("Deleting 'Dias'..."); appContent.innerHTML = "<p>Deleting old data...</p>"; const oldDocsSnapshot = await getDocs(diasRef); if (!oldDocsSnapshot.empty) { let batch = writeBatch(db); let deleteCount = 0; for (const docSnap of oldDocsSnapshot.docs) {
- batch.delete(docSnap.ref); deleteCount++; if (deleteCount >= 400) { console.log(`Committing delete batch (${deleteCount})...`); await batch.commit(); batch = writeBatch(db); deleteCount = 0; } } if (deleteCount > 0) { console.log(`Committing final delete batch (${deleteCount})...`); await batch.commit(); } console.log(`Deletion complete (${oldDocsSnapshot.size}).`); } else { console.log("'Dias' collection was already empty."); } } catch(e) { console.error("Error deleting collection:", e); throw e; }
-    console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>"; let genBatch = writeBatch(db); let ops = 0, created = 0; try { for (let m = 0; m < 12; m++) { const monthNum = m + 1, monthStr = monthNum.toString().padStart(2, '0'); const numDays = daysInMonth[m]; for (let d = 1; d <= numDays; d++) { const dayStr = d.toString().padStart(2, '0'); const diaId = `${monthStr}-${dayStr}`; const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day", hasMemories: false };
- const docRef = doc(db, "Dias", diaId); genBatch.set(docRef, diaData); ops++; created++; if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`; if (ops >= 400) { console.log(`Committing generate batch (${ops})...`); await genBatch.commit(); genBatch = writeBatch(db); ops = 0; } } } if (ops > 0) { console.log(`Committing final generate batch (${ops})...`); await batch.commit(); } console.log(`--- Regeneration complete: ${created} days created ---`); appContent.innerHTML = `<p class="success">✅ DB regenerated: ${created} days!</p>`; } catch(e) { console.error("Error generating days:", e); throw e; }
-}
-
-// --- Load/Draw Calendar ---
-// Volvemos a la lógica de v10.9 (la de los logs)
-async function loadDataAndDrawCalendar() {
-    console.log("Log 1: Entering loadDataAndDrawCalendar function...");
-    if (!appContent) { console.error("#app-content is null in loadDataAndDrawCalendar"); return; }
-
-    appContent.innerHTML = "<p>Loading calendar...</p>"; // <-- Mensaje que se queda
-    try {
-        console.log("Log 2: Attempting to fetch 'Dias' collection from Firestore...");
-        const diasSnapshot = await getDocs(collection(db, "Dias"));
-        console.log(`Log 3: Firestore fetch successful. Received ${diasSnapshot.size} documents.`);
-
-        allDaysData = [];
-        diasSnapshot.forEach((doc) => {
-            if (doc.id?.length === 5 && doc.id.includes('-')) allDaysData.push({ id: doc.id, ...doc.data() });
-        });
-        if (allDaysData.length === 0) throw new Error("Database empty or invalid after loading.");
-        console.log(`Log 4: Processed ${allDaysData.length} valid day documents.`);
-
-        allDaysData.sort((a, b) => a.id.localeCompare(b.id));
-        console.log("Log 4.5: Data sorted.");
-
-        console.log("Log 5: Calling dibujarMesActual...");
-        await dibujarMesActual();
-        console.log("Log 6: Returned from dibujarMesActual.");
-
-        console.log("Log 7: Calling configurarNavegacion...");
-        configurarNavegacion();
-         console.log("Log 8: Calling configurarFooter...");
-        configurarFooter();
-        console.log("Log 9: loadDataAndDrawCalendar finished successfully.");
+        updateLoginUI(auth.currentUser); // Actualizar UI de login inicial
 
     } catch (e) {
-        console.error("Log Error: Error occurred within loadDataAndDrawCalendar:", e);
-        if (appContent) {
-             if (e.code && e.code.startsWith('failed-precondition')) {
-                appContent.innerHTML = `<p class="error">Error loading calendar data: Missing Firestore index. Please check browser console (F12) for a link to create it.</p>`;
-             } else {
-                appContent.innerHTML = `<p class="error">Error loading calendar data: ${e.message}</p>`;
-             }
+        appContent.innerHTML = `<p class="error">Critical error during initialization: ${e.message}</p>`;
+        console.error("Initialization Error:", e);
+        // Podríamos intentar reparar la DB si la carga inicial falla estrepitosamente
+        if (e.message.includes("Failed to fetch") || e.message.includes("offline")) {
+           appContent.innerHTML += "<p>Could not connect to database. Check internet connection.</p>"
+        } else if (monthlyDaysData[currentMonthIndex]?.length === 0) { // Si falló la carga del mes inicial
+            console.warn("Initial month load failed, attempting DB regeneration...");
+            try {
+                await generateCleanDatabase();
+                await loadAndDrawMonth(currentMonthIndex); // Intentar cargar de nuevo
+            } catch (regenError) {
+                appContent.innerHTML = `<p class="error">DB regeneration failed: ${regenError.message}</p>`;
+                console.error("Regeneration Error:", regenError);
+            }
         }
     }
 }
 
+// --- Data Loading and Drawing Logic ---
 
-// --- Configuración ---
+async function loadAndDrawMonth(monthIndex) {
+    console.log(`Attempting to load/draw month index: ${monthIndex}`);
+    if (!appContent) { console.error("#app-content is null in loadAndDrawMonth"); return; }
+    appContent.innerHTML = `<p>Loading ${monthNames[monthIndex]}...</p>`; // Show loading message for the specific month
+
+    // Verificar si los datos del mes ya están cargados
+    if (monthlyDaysData[monthIndex]) {
+        console.log(`Month ${monthIndex} data already loaded. Drawing...`);
+        await dibujarMes(monthIndex); // Dibujar con datos existentes
+        return;
+    }
+
+    // Si no están cargados, obtenerlos de Firestore
+    console.log(`Fetching data for month index ${monthIndex} from Firestore...`);
+    try {
+        const monthNumber = monthIndex + 1;
+        const monthStr = monthNumber.toString().padStart(2, '0');
+        const daysInTargetMonth = daysInMonth[monthIndex]; // Obtener el número real de días
+        const startDate = `${monthStr}-01`;
+        const endDate = `${monthStr}-${daysInTargetMonth.toString().padStart(2, '0')}`; // Usar el número correcto de días
+
+        const diasRef = collection(db, "Dias");
+        // Consulta por rango de IDs de documento (MM-DD)
+        const q = query(diasRef,
+                        where(documentId(), ">=", startDate),
+                        where(documentId(), "<=", endDate));
+
+        const diasSnapshot = await getDocs(q);
+        console.log(`Firestore fetch for month ${monthIndex} successful. Received ${diasSnapshot.size} documents.`);
+
+        const fetchedDays = [];
+        diasSnapshot.forEach((doc) => {
+            // Validar ID por si acaso (aunque la query debería ser precisa)
+            if (doc.id.startsWith(monthStr + "-")) {
+                 fetchedDays.push({ id: doc.id, ...doc.data() });
+            }
+        });
+
+        if (fetchedDays.length === 0 && monthIndex === new Date().getMonth()) {
+            // Si es el mes actual y no hay datos, podría ser la primera vez o un error
+             console.warn(`No data found for the initial month (${monthIndex}). DB might be empty.`);
+             // Aquí podríamos decidir si intentar regenerar o simplemente mostrar "No data"
+             // Por ahora, mostraremos el mensaje y dejaremos que dibujarMes maneje el array vacío
+        }
+
+        // Ordenar los días obtenidos
+        fetchedDays.sort((a, b) => a.id.localeCompare(b.id));
+
+        // Guardar los datos en nuestro objeto
+        monthlyDaysData[monthIndex] = fetchedDays;
+        console.log(`Stored data for month ${monthIndex}.`);
+
+        // Dibujar el mes con los nuevos datos
+        await dibujarMes(monthIndex);
+
+    } catch (error) {
+        console.error(`Error loading data for month ${monthIndex}:`, error);
+        if (appContent) {
+            appContent.innerHTML = `<p class="error">Error loading data for ${monthNames[monthIndex]}: ${error.message}</p>`;
+        }
+    }
+}
+
+async function dibujarMes(monthIndex) {
+    console.log(`Drawing month index: ${monthIndex}`);
+    if (!monthNameDisplayEl || !appContent) {
+        console.error("Global elements monthNameDisplayEl or appContent are null in dibujarMes!");
+        return;
+    }
+
+    monthNameDisplayEl.textContent = monthNames[monthIndex];
+    const diasDelMes = monthlyDaysData[monthIndex] || []; // Usar array vacío si no hay datos
+
+    console.log(`Found ${diasDelMes.length} days locally for month ${monthIndex}.`);
+
+    // Asegurarse de limpiar el contenido anterior antes de dibujar
+    appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div><div id="today-memory-spotlight"></div>`;
+
+    const grid = document.getElementById("grid-dias");
+    if (!grid) {
+        console.error("#grid-dias element not found after setting innerHTML!");
+        return;
+    }
+
+    if (diasDelMes.length === 0) {
+        grid.innerHTML = `<p>No days found for ${monthNames[monthIndex]}.</p>`;
+         // Aún así, actualizamos el spotlight por si acaso
+         await updateTodayMemorySpotlight();
+        return;
+    }
+
+    // Dibujar los botones del día
+    diasDelMes.forEach(dia => {
+        const btn = document.createElement("button");
+        btn.className = "dia-btn";
+        btn.innerHTML = `<span class="dia-numero">${parseInt(dia.id.substring(3), 10)}</span>`; // Mostrar número sin ceros iniciales
+        btn.dataset.diaId = dia.id;
+        btn.addEventListener('click', () => abrirModalPreview(dia));
+
+        if (dia.hasMemories) {
+            btn.classList.add('tiene-memorias');
+        }
+        grid.appendChild(btn);
+    });
+    console.log(`Rendered ${diasDelMes.length} day buttons for month ${monthIndex}.`);
+
+    // Actualizar el spotlight (siempre se llama, pero solo mostrará algo relevante si es el mes/día actual)
+    await updateTodayMemorySpotlight();
+
+    console.log(`Finished drawing month ${monthIndex}.`);
+}
+
+
+// --- Configuración (Llamadas una vez al inicio) ---
 function configurarNavegacion() {
-    console.log("Attempting to configure navigation...");
+    console.log("Configuring navigation (once)...");
     try {
         const prevBtn = document.getElementById("prev-month");
         const nextBtn = document.getElementById("next-month");
 
         if (prevBtn) {
-            prevBtn.onclick = () => { currentMonthIndex = (currentMonthIndex - 1 + 12) % 12; dibujarMesActual(); };
+            prevBtn.onclick = () => {
+                currentMonthIndex = (currentMonthIndex - 1 + 12) % 12;
+                console.log("Prev month clicked, new index:", currentMonthIndex);
+                loadAndDrawMonth(currentMonthIndex); // Cargar y dibujar el nuevo mes
+            };
             console.log("Prev month button configured.");
         } else {
             console.error("#prev-month button not found!");
         }
 
         if (nextBtn) {
-            nextBtn.onclick = () => { currentMonthIndex = (currentMonthIndex + 1) % 12; dibujarMesActual(); };
+            nextBtn.onclick = () => {
+                currentMonthIndex = (currentMonthIndex + 1) % 12;
+                console.log("Next month clicked, new index:", currentMonthIndex);
+                loadAndDrawMonth(currentMonthIndex); // Cargar y dibujar el nuevo mes
+            };
             console.log("Next month button configured.");
         } else {
             console.error("#next-month button not found!");
@@ -172,30 +238,86 @@ function configurarNavegacion() {
 }
 
 function configurarFooter() {
-    console.log("Attempting to configure footer...");
-    try {
+    console.log("Configuring footer (once)...");
+     try {
         const btnHoy = document.getElementById('btn-hoy');
         const btnBuscar = document.getElementById('btn-buscar');
         const btnShuffle = document.getElementById('btn-shuffle');
         const btnAddMemory = document.getElementById('btn-add-memory');
 
         if (btnHoy) {
-            btnHoy.onclick = () => { const today = new Date(); const todayMonth = today.getMonth(); const todayDay = today.getDate(); const todayId = `${(todayMonth + 1).toString().padStart(2, '0')}-${todayDay.toString().padStart(2, '0')}`; const todayDia = allDaysData.find(d => d.id === todayId); if (todayDia) { if (currentMonthIndex !== todayMonth) { currentMonthIndex = todayMonth; dibujarMesActual(); setTimeout(() => abrirModalPreview(todayDia), 50); } else { abrirModalPreview(todayDia); } window.scrollTo(0, 0); } else { alert("Error: Could not find data for today."); } };
+            btnHoy.onclick = () => {
+                const today = new Date();
+                const todayMonth = today.getMonth();
+                // Usar los datos ya cargados si existen, o cargar el mes si es necesario
+                const todayId = `${(todayMonth + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+
+                const navigateAndOpen = () => {
+                    const monthData = monthlyDaysData[todayMonth];
+                    if (monthData) {
+                         const todayDia = monthData.find(d => d.id === todayId);
+                         if (todayDia) {
+                             abrirModalPreview(todayDia);
+                             window.scrollTo(0, 0);
+                         } else {
+                             alert("Error: Could not find data for today within the loaded month.");
+                         }
+                    } else {
+                         alert("Error: Today's month data not loaded yet.");
+                    }
+                };
+
+                if (currentMonthIndex !== todayMonth) {
+                    currentMonthIndex = todayMonth;
+                    loadAndDrawMonth(currentMonthIndex).then(navigateAndOpen); // Esperar a que cargue y luego abrir
+                } else {
+                    navigateAndOpen(); // Ya estamos en el mes correcto
+                }
+            };
             console.log("Today button configured.");
         } else { console.error("#btn-hoy not found!"); }
 
         if (btnBuscar) {
-            btnBuscar.onclick = () => { const searchTerm = prompt("Search memories:"); if (searchTerm?.trim()) { buscarMemorias(searchTerm.trim().toLowerCase()); } };
+            btnBuscar.onclick = () => {
+                const searchTerm = prompt("Search memories (requires loading all data):");
+                if (searchTerm?.trim()) {
+                    // Advertencia: La búsqueda requiere cargar todos los datos si no están ya
+                    buscarMemorias(searchTerm.trim().toLowerCase());
+                }
+            };
              console.log("Search button configured.");
         } else { console.error("#btn-buscar not found!"); }
 
         if (btnShuffle) {
-            btnShuffle.onclick = () => { if (allDaysData.length > 0) { const randomIndex = Math.floor(Math.random() * allDaysData.length); const randomDia = allDaysData[randomIndex]; const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1; if (currentMonthIndex !== randomMonthIndex) { currentMonthIndex = randomMonthIndex; dibujarMesActual(); setTimeout(() => abrirModalPreview(randomDia), 50); } else { abrirModalPreview(randomDia); } window.scrollTo(0, 0); } };
+            btnShuffle.onclick = async () => { // Hacer async para posible carga
+                // Necesita cargar todos los datos para hacer shuffle real
+                 console.warn("Shuffle requires loading all data if not present.");
+                 await loadAllDataIfNeeded(); // Función auxiliar para cargar todo si es necesario
+
+                 if (Object.keys(monthlyDaysData).length === 0) return; // Si no hay datos, salir
+
+                 const allDaysFlat = Object.values(monthlyDaysData).flat();
+                 if (allDaysFlat.length > 0) {
+                     const randomIndex = Math.floor(Math.random() * allDaysFlat.length);
+                     const randomDia = allDaysFlat[randomIndex];
+                     const randomMonthIndex = parseInt(randomDia.id.substring(0, 2), 10) - 1;
+
+                     if (currentMonthIndex !== randomMonthIndex) {
+                         currentMonthIndex = randomMonthIndex;
+                         // No necesitamos 'loadAndDrawMonth' aquí porque 'loadAllDataIfNeeded' ya cargó todo
+                         await dibujarMes(currentMonthIndex); // Solo dibujar
+                         setTimeout(() => abrirModalPreview(randomDia), 50);
+                     } else {
+                         abrirModalPreview(randomDia);
+                     }
+                     window.scrollTo(0, 0);
+                 }
+            };
              console.log("Shuffle button configured.");
         } else { console.error("#btn-shuffle not found!"); }
 
         if (btnAddMemory) {
-            btnAddMemory.onclick = () => { abrirModalEdicion(null); };
+            btnAddMemory.onclick = () => { abrirModalEdicion(null); }; // Asume que el mes actual está cargado para el default
              console.log("Add Memory button configured.");
         } else { console.error("#btn-add-memory not found!"); }
 
@@ -204,53 +326,61 @@ function configurarFooter() {
     }
 }
 
-// --- Dibujar Mes Actual ---
-async function dibujarMesActual() {
-    console.log("Entering dibujarMesActual...");
-    if (!monthNameDisplayEl || !appContent) {
-        console.error("Global elements monthNameDisplayEl or appContent are null in dibujarMesActual!");
-        return;
-    }
-    monthNameDisplayEl.textContent = monthNames[currentMonthIndex];
-    const monthNumberTarget = currentMonthIndex + 1;
-    console.log(`Drawing month ${monthNumberTarget}`);
-    const diasDelMes = allDaysData.filter(dia => parseInt(dia.id.substring(0, 2), 10) === monthNumberTarget );
-    console.log(`Found ${diasDelMes.length} days for month.`);
 
-    appContent.innerHTML = `<div class="calendario-grid" id="grid-dias"></div><div id="today-memory-spotlight"></div>`;
+// --- Helper para cargar todos los datos (para búsqueda/shuffle) ---
+async function loadAllDataIfNeeded() {
+    const totalMonths = 12;
+    const loadedMonths = Object.keys(monthlyDaysData).length;
 
-    const grid = document.getElementById("grid-dias");
-    if (!grid) {
-        console.error("#grid-dias element not found immediately after setting innerHTML!");
-        return;
-    }
-    if (diasDelMes.length === 0) { grid.innerHTML = "<p>No days found.</p>"; return; }
-    const diasEsperados = daysInMonth[currentMonthIndex];
-    if (diasDelMes.length !== diasEsperados) console.warn(`ALERT: Found ${diasDelMes.length}/${diasEsperados} for ${monthNames[currentMonthIndex]}.`);
-
-    diasDelMes.forEach(dia => {
-        const btn = document.createElement("button");
-        btn.className = "dia-btn";
-        btn.innerHTML = `<span class="dia-numero">${dia.id.substring(3)}</span>`;
-        btn.dataset.diaId = dia.id;
-        btn.addEventListener('click', () => abrirModalPreview(dia));
-
-        if (dia.hasMemories) {
-            btn.classList.add('tiene-memorias');
+    if (loadedMonths < totalMonths) {
+        console.log("Need to load remaining months data...");
+        if(appContent) appContent.innerHTML = "<p>Loading all data for search/shuffle...</p>";
+        const promises = [];
+        for (let i = 0; i < totalMonths; i++) {
+            if (!monthlyDaysData[i]) {
+                // Similar a loadAndDrawMonth pero sin dibujar, solo cargar
+                const monthNumber = i + 1;
+                const monthStr = monthNumber.toString().padStart(2, '0');
+                const daysInTargetMonth = daysInMonth[i];
+                const startDate = `${monthStr}-01`;
+                const endDate = `${monthStr}-${daysInTargetMonth.toString().padStart(2, '0')}`;
+                const diasRef = collection(db, "Dias");
+                const q = query(diasRef, where(documentId(), ">=", startDate), where(documentId(), "<=", endDate));
+                promises.push(getDocs(q).then(snapshot => {
+                    const fetchedDays = [];
+                    snapshot.forEach(doc => fetchedDays.push({ id: doc.id, ...doc.data() }));
+                    fetchedDays.sort((a, b) => a.id.localeCompare(b.id));
+                    monthlyDaysData[i] = fetchedDays;
+                    console.log(`Loaded data for month ${i}`);
+                }).catch(err => console.error(`Failed to load month ${i}:`, err)));
+            }
         }
-        grid.appendChild(btn);
-    });
-    console.log(`Rendered ${diasDelMes.length} day buttons.`);
-
-    // Llamar a updateTodayMemorySpotlight SIN await para que no bloquee el renderizado inicial
-    updateTodayMemorySpotlight(); // No esperamos aquí
-
-    console.log("Finished dibujarMesActual.");
+        await Promise.all(promises);
+        console.log("All month data loaded.");
+         // Volver a dibujar el mes actual por si acaso la UI estaba en estado de carga
+         if(appContent) await dibujarMes(currentMonthIndex);
+    } else {
+        console.log("All month data is already loaded.");
+    }
 }
 
-// --- Spotlight ---
-// Definición ASEGURADA de updateTodayMemorySpotlight
+
+// --- Database Regeneration (Sin cambios) ---
+async function generateCleanDatabase() {
+    // ... (igual que antes, opera sobre toda la colección 'Dias') ...
+    if (!appContent) { console.error("Cannot show status: appContent is null."); return; }
+    console.log("--- Starting Regeneration ---");
+    const diasRef = collection(db, "Dias"); try { console.log("Deleting 'Dias'..."); appContent.innerHTML = "<p>Deleting old data...</p>"; const oldDocsSnapshot = await getDocs(diasRef); if (!oldDocsSnapshot.empty) { let batch = writeBatch(db); let deleteCount = 0; for (const docSnap of oldDocsSnapshot.docs) {
+ batch.delete(docSnap.ref); deleteCount++; if (deleteCount >= 400) { console.log(`Committing delete batch (${deleteCount})...`); await batch.commit(); batch = writeBatch(db); deleteCount = 0; } } if (deleteCount > 0) { console.log(`Committing final delete batch (${deleteCount})...`); await batch.commit(); } console.log(`Deletion complete (${oldDocsSnapshot.size}).`); } else { console.log("'Dias' collection was already empty."); } } catch(e) { console.error("Error deleting collection:", e); throw e; }
+    console.log("Generating 366 clean days..."); appContent.innerHTML = "<p>Generating 366 clean days...</p>"; let genBatch = writeBatch(db); let ops = 0, created = 0; try { for (let m = 0; m < 12; m++) { const monthNum = m + 1, monthStr = monthNum.toString().padStart(2, '0'); const numDays = daysInMonth[m]; for (let d = 1; d <= numDays; d++) { const dayStr = d.toString().padStart(2, '0'); const diaId = `${monthStr}-${dayStr}`; const diaData = { Nombre_Dia: `${d} ${monthNames[m]}`, Icono: '', Nombre_Especial: "Unnamed Day", hasMemories: false };
+ const docRef = doc(db, "Dias", diaId); genBatch.set(docRef, diaData); ops++; created++; if(created % 50 === 0) appContent.innerHTML = `<p>Generating ${created}/366...</p>`; if (ops >= 400) { console.log(`Committing generate batch (${ops})...`); await genBatch.commit(); genBatch = writeBatch(db); ops = 0; } } } if (ops > 0) { console.log(`Committing final generate batch (${ops})...`); await batch.commit(); } console.log(`--- Regeneration complete: ${created} days created ---`); appContent.innerHTML = `<p class="success">✅ DB regenerated: ${created} days!</p>`; } catch(e) { console.error("Error generating days:", e); throw e; }
+
+}
+
+
+// --- Spotlight (Consulta Simplificada v10.14) ---
 async function updateTodayMemorySpotlight() {
+    // ... (igual que en v10.14) ...
     const spotlightDiv = document.getElementById('today-memory-spotlight');
     if (!spotlightDiv) {
         console.log("Spotlight div not found, skipping update.");
@@ -258,17 +388,30 @@ async function updateTodayMemorySpotlight() {
     }
 
     const today = new Date();
-    const todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-    const todayDay = allDaysData.find(d => d.id === todayId);
+    const todayMonthIndex = today.getMonth(); // Índice 0-11
+    const todayId = `${(todayMonthIndex + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+
+    // Solo mostrar spotlight si estamos viendo el mes actual
+    if (currentMonthIndex !== todayMonthIndex) {
+         spotlightDiv.innerHTML = ''; // Limpiar si no es el mes actual
+         spotlightDiv.style.display = 'none'; // Ocultar
+         console.log("Not current month, hiding spotlight.");
+         return;
+    }
+    spotlightDiv.style.display = 'block'; // Asegurarse que es visible si es el mes actual
+
+    // Buscar el día en los datos ya cargados para este mes
+    const monthData = monthlyDaysData[currentMonthIndex];
+    const todayDay = monthData ? monthData.find(d => d.id === todayId) : null;
 
     if (!todayDay) {
-        spotlightDiv.innerHTML = `<div class="spotlight-content"><p>Could not find today's data.</p></div>`;
+        spotlightDiv.innerHTML = `<div class="spotlight-content"><p>Could not find today's data in loaded month.</p></div>`;
         return;
     }
 
     try {
         const todayMemoriesRef = collection(db, "Dias", todayDay.id, "Memorias");
-        // Consulta simplificada (v10.14)
+        // Consulta simplificada
         const q = query(todayMemoriesRef, orderBy("Fecha_Original", "desc"), limit(1));
         console.log("Querying for today's spotlight memory...");
         const snapshot = await getDocs(q);
@@ -310,16 +453,91 @@ async function updateTodayMemorySpotlight() {
 }
 
 
-// --- Resto de funciones (Búsqueda, Modales, CRUD, etc.) ---
-// Asegurarse de que todas las definiciones están aquí y son correctas
-
+// --- Búsqueda (Ahora necesita cargar todo si es necesario) ---
 async function buscarMemorias(term) {
     console.log("Searching:", term);
     if (!appContent) { console.error("appContent is null in buscarMemorias"); return; }
 
-    appContent.innerHTML = `<p>Searching for "${term}"...</p>`; let results = []; try { for (const dia of allDaysData) { const memSnapshot = await getDocs(collection(db, "Dias", dia.id, "Memorias")); memSnapshot.forEach(memDoc => { const memoria = { diaId: dia.id, diaNombre: dia.Nombre_Dia, id: memDoc.id, ...memDoc.data() }; let searchableText = memoria.Descripcion || ''; if(memoria.LugarNombre) searchableText += ' ' + memoria.LugarNombre; if(memoria.CancionInfo) searchableText += ' ' + memoria.CancionInfo; if (searchableText.toLowerCase().includes(term)) { results.push(memoria); } }); } if (results.length === 0) { appContent.innerHTML = `<p>No results for "${term}".</p>`; } else { console.log(`Found ${results.length}.`); results.sort((a, b) => (b.Fecha_Original?.toDate() ?? 0) - (a.Fecha_Original?.toDate() ?? 0)); appContent.innerHTML = `<h3>Results for "${term}" (${results.length}):</h3>`; const resultsList = document.createElement('div'); resultsList.id = 'search-results-list'; results.forEach(mem => { const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item search-result'; let fechaStr = 'Unknown date'; if (mem.Fecha_Original?.toDate) { try { fechaStr = mem.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) { /* fallback */ } } let contentHTML = `<small><b>${mem.diaNombre} (${mem.diaId})</b> - ${fechaStr}</small>`; switch (mem.Tipo) { case 'Lugar': contentHTML += `📍 ${memoria.LugarNombre || 'Place'}`; break; case 'Musica': if (memoria.CancionData?.trackName) contentHTML += `🎵 <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`; else contentHTML += `🎵 ${memoria.CancionInfo || 'Music'}`; break; case 'Imagen': contentHTML += `🖼️ Image`; if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank">View</a>)`; if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`; break; default: contentHTML += memoria.Descripcion || ''; break; } itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>`; itemDiv.style.cursor = 'pointer'; itemDiv.onclick = () => { const monthIndex = parseInt(mem.diaId.substring(0, 2), 10) - 1; if (monthIndex >= 0) { currentMonthIndex = monthIndex; dibujarMesActual(); const targetDia = allDaysData.find(d => d.id === mem.diaId); if(targetDia) setTimeout(() => abrirModalPreview(targetDia), 50); window.scrollTo(0, 0); } }; resultsList.appendChild(itemDiv); }); appContent.appendChild(resultsList); } } catch (e) { if (appContent) appContent.innerHTML = `<p class="error">Search error: ${e.message}</p>`; console.error(e); }
+    appContent.innerHTML = `<p>Loading data for search...</p>`;
+    await loadAllDataIfNeeded(); // Asegurarse de que todos los datos están cargados
+    appContent.innerHTML = `<p>Searching for "${term}" in all data...</p>`;
+
+    let results = [];
+    try {
+        // Iterar sobre los datos cargados en monthlyDaysData
+        for (const monthIndex in monthlyDaysData) {
+            const monthDays = monthlyDaysData[monthIndex];
+            for (const dia of monthDays) {
+                 // La búsqueda de memorias sigue necesitando ir a Firestore
+                 // OJO: Esto puede ser lento si hay muchas memorias.
+                 // Una optimización futura sería cargar *también* las memorias junto con los días.
+                 const memSnapshot = await getDocs(collection(db, "Dias", dia.id, "Memorias"));
+                 memSnapshot.forEach(memDoc => {
+                     const memoria = { diaId: dia.id, diaNombre: dia.Nombre_Dia, id: memDoc.id, ...memDoc.data() };
+                     let searchableText = memoria.Descripcion || '';
+                     if(memoria.LugarNombre) searchableText += ' ' + memoria.LugarNombre;
+                     if(memoria.CancionInfo) searchableText += ' ' + memoria.CancionInfo;
+                     if (searchableText.toLowerCase().includes(term)) {
+                         results.push(memoria);
+                     }
+                 });
+            }
+        }
+
+        // Mostrar resultados (igual que antes)
+        if (results.length === 0) { appContent.innerHTML = `<p>No results for "${term}".</p>`; }
+        else {
+             console.log(`Found ${results.length} memories.`);
+             results.sort((a, b) => (b.Fecha_Original?.toDate() ?? 0) - (a.Fecha_Original?.toDate() ?? 0));
+             appContent.innerHTML = `<h3>Results for "${term}" (${results.length}):</h3>`;
+             const resultsList = document.createElement('div');
+             resultsList.id = 'search-results-list';
+             results.forEach(mem => {
+                 const itemDiv = document.createElement('div'); itemDiv.className = 'memoria-item search-result';
+                 let fechaStr = 'Unknown date'; if (mem.Fecha_Original?.toDate) { try { fechaStr = mem.Fecha_Original.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch(e) {} }
+                 let contentHTML = `<small><b>${mem.diaNombre} (${mem.diaId})</b> - ${fechaStr}</small>`;
+                 switch (mem.Tipo) { /* ... (igual que antes) ... */
+                     case 'Lugar': contentHTML += `📍 ${memoria.LugarNombre || 'Place'}`; break;
+                     case 'Musica': if (memoria.CancionData?.trackName) contentHTML += `🎵 <strong>${memoria.CancionData.trackName}</strong> by ${memoria.CancionData.artistName}`; else contentHTML += `🎵 ${memoria.CancionInfo || 'Music'}`; break;
+                     case 'Imagen': contentHTML += `🖼️ Image`; if (memoria.ImagenURL) contentHTML += ` (<a href="${memoria.ImagenURL}" target="_blank">View</a>)`; if (memoria.Descripcion) contentHTML += `<br>${memoria.Descripcion}`; break;
+                     default: contentHTML += memoria.Descripcion || ''; break;
+                 }
+                 itemDiv.innerHTML = `<div class="memoria-item-content">${contentHTML}</div>`; itemDiv.style.cursor = 'pointer';
+                 itemDiv.onclick = () => {
+                     const monthIndexOnClick = parseInt(mem.diaId.substring(0, 2), 10) - 1;
+                     if (currentMonthIndex !== monthIndexOnClick) {
+                         currentMonthIndex = monthIndexOnClick;
+                         // No necesitamos cargar, ya está todo cargado por la búsqueda
+                         dibujarMes(currentMonthIndex).then(() => {
+                             const targetDia = monthlyDaysData[currentMonthIndex]?.find(d => d.id === mem.diaId);
+                             if(targetDia) setTimeout(() => abrirModalPreview(targetDia), 50);
+                             window.scrollTo(0, 0);
+                         });
+                     } else {
+                         const targetDia = monthlyDaysData[currentMonthIndex]?.find(d => d.id === mem.diaId);
+                         if(targetDia) abrirModalPreview(targetDia);
+                         window.scrollTo(0, 0);
+                     }
+                 };
+                 resultsList.appendChild(itemDiv);
+             });
+             appContent.appendChild(resultsList);
+        }
+    } catch (e) {
+        if (appContent) appContent.innerHTML = `<p class="error">Search error: ${e.message}</p>`;
+        console.error("Search Error:", e);
+    }
 }
 
+
+// --- Modales y CRUD (Sin cambios funcionales mayores respecto a v10.15) ---
+// ... (Copiar funciones abrirModalPreview, cerrarModalPreview, abrirModalEdicion, cerrarModalEdicion,
+//      cargarYMostrarMemorias, attachMemoryActionListeners, initMapIfNeeded, handleMemoryTypeChangeUnified,
+//      buscarBSOUnified, buscarLugarUnified, startEditMemoriaUnified, handleMemoryFormSubmit,
+//      confirmDeleteMemoriaUnified, deleteMemoriaUnified, resetMemoryFormUnified, guardarNombreEspecial
+//      desde la v10.15) ...
+
+// --- Copiado desde v10.15 ---
 async function abrirModalPreview(dia) {
     console.log("Opening preview for:", dia.id);
     let modal = document.getElementById('preview-modal');
@@ -342,7 +560,7 @@ async function abrirModalPreview(dia) {
     if (editBtn) {
         const diaToEdit = dia;
         const newEditBtn = editBtn.cloneNode(true);
-        if (editBtn.parentNode) { // Check if parent exists before replacing
+        if (editBtn.parentNode) {
            editBtn.parentNode.replaceChild(newEditBtn, editBtn);
         } else {
            console.error("Parent node of edit button not found");
@@ -351,7 +569,10 @@ async function abrirModalPreview(dia) {
         newEditBtn.addEventListener('click', () => {
              console.log("Preview edit button clicked for:", diaToEdit.id);
              cerrarModalPreview();
-             setTimeout(() => abrirModalEdicion(diaToEdit), 250);
+             // Pasar el objeto 'dia' correcto a abrirModalEdicion
+             const currentMonthDays = monthlyDaysData[currentMonthIndex];
+             const fullDiaObject = currentMonthDays ? currentMonthDays.find(d => d.id === diaToEdit.id) : diaToEdit; // Usar el objeto completo si está cargado
+             setTimeout(() => abrirModalEdicion(fullDiaObject || diaToEdit), 250);
         });
     } else {
         console.error("Edit button not found in preview modal.");
@@ -374,16 +595,36 @@ async function abrirModalEdicion(dia) {
     const isAdding = !dia;
     console.log(isAdding ? "Opening unified modal: ADD mode" : `Opening unified modal: EDIT mode for ${dia?.id}`);
 
-    if (isAdding) {
-        const today = new Date();
-        const todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-        currentlyOpenDay = allDaysData.find(d => d.id === todayId) || allDaysData[0];
-         if (!currentlyOpenDay) { console.error("No day data found to default to."); alert("Error: No calendar data loaded."); return; }
-        console.log("Defaulting Add mode to day:", currentlyOpenDay.id);
-    } else {
-        currentlyOpenDay = dia;
-    }
+     // Determinar el día a usar (ya sea el pasado, o el de hoy si es 'Add')
+     let targetDay;
+     if (isAdding) {
+         const today = new Date();
+         const todayMonthIdx = today.getMonth();
+         const todayId = `${(todayMonthIdx + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+         // Buscar en los datos cargados del mes actual
+         const currentMonthDays = monthlyDaysData[todayMonthIdx];
+         targetDay = currentMonthDays ? currentMonthDays.find(d => d.id === todayId) : null;
+
+         // Si no se encontró (mes no cargado o error), intentar con el primer día del mes actual como fallback
+         if (!targetDay && monthlyDaysData[currentMonthIndex]) {
+              targetDay = monthlyDaysData[currentMonthIndex] ? monthlyDaysData[currentMonthIndex][0] : null; // Fallback al primer día del mes visible
+         }
+         // Si AÚN no hay día, es un problema mayor
+         if (!targetDay) {
+              console.error("No day data available to default to for Add mode.");
+              alert("Error: Calendar data not loaded. Cannot add memory.");
+              return;
+         }
+         console.log("Defaulting Add mode to day:", targetDay.id);
+     } else {
+         targetDay = dia;
+     }
+
+     // Guardar el día que estamos editando/añadiendo
+     currentlyOpenDay = targetDay;
+
      if (!currentlyOpenDay?.id) { console.error("Invalid day data for modal:", currentlyOpenDay); alert("Error loading day data."); return; }
+
 
     let modal = document.getElementById('edit-add-modal');
     if (!modal) {
@@ -430,7 +671,27 @@ async function abrirModalEdicion(dia) {
             </div>`;
 
         document.body.appendChild(modal);
-        const daySelect = document.getElementById('edit-mem-day'); if (daySelect && daySelect.options.length === 0) { allDaysData.forEach(d => { const o=document.createElement('option'); o.value=d.id; o.textContent=d.Nombre_Dia; daySelect.appendChild(o); }); }
+
+        // Poblar el select de días UNA SOLA VEZ con los datos disponibles
+        const daySelectElement = document.getElementById('edit-mem-day');
+        if (daySelectElement && daySelectElement.options.length === 0) {
+            // Intentar poblar con todos los meses cargados hasta ahora
+            Object.values(monthlyDaysData).flat().sort((a,b)=> a.id.localeCompare(b.id)).forEach(d => {
+                const o=document.createElement('option');
+                o.value=d.id;
+                o.textContent=d.Nombre_Dia; // Podríamos añadir el ID MM-DD aquí si ayuda
+                daySelectElement.appendChild(o);
+            });
+             // Si sigue vacío (primera carga y aún no hay datos), añadir al menos el día actual si se pudo determinar
+            if (daySelectElement.options.length === 0 && currentlyOpenDay) {
+                 const o=document.createElement('option');
+                 o.value=currentlyOpenDay.id;
+                 o.textContent=currentlyOpenDay.Nombre_Dia;
+                 daySelectElement.appendChild(o);
+            }
+        }
+
+
         document.getElementById('close-edit-add-btn').onclick = () => cerrarModalEdicion();
         modal.onclick = (e) => { if (e.target.id === 'edit-add-modal') cerrarModalEdicion(); };
         document.getElementById('confirm-delete-no').onclick = () => { const d = document.getElementById('confirm-delete-dialog'); if(d) d.style.display = 'none'; };
@@ -442,6 +703,7 @@ async function abrirModalEdicion(dia) {
         document.getElementById('save-name-btn').onclick = () => { if(currentlyOpenDay) guardarNombreEspecial(currentlyOpenDay.id, document.getElementById('nombre-especial-input').value.trim()); };
     }
 
+    // Configurar visibilidad y valores iniciales según modo Add/Edit
     const daySelectionSection = document.getElementById('day-selection-section');
     const dayNameSection = document.getElementById('day-name-section');
     const daySelect = document.getElementById('edit-mem-day');
@@ -454,31 +716,41 @@ async function abrirModalEdicion(dia) {
     if (isAdding) {
         if(daySelectionSection) daySelectionSection.style.display = 'block';
         if(dayNameSection) dayNameSection.style.display = 'none';
+        // Seleccionar el día por defecto en el <select>
         if (daySelect && currentlyOpenDay) daySelect.value = currentlyOpenDay.id;
         if(yearInput) yearInput.value = new Date().getFullYear();
         if (formTitle) formTitle.textContent = "Add New Memory";
         if (memoriesList) memoriesList.innerHTML = '<p class="list-placeholder">Add memories below.</p>';
-        currentMemories = [];
+        currentMemories = []; // Limpiar memorias al añadir nuevo
     } else {
         if(daySelectionSection) daySelectionSection.style.display = 'none';
         if(dayNameSection) dayNameSection.style.display = 'block';
         if (titleEl) titleEl.textContent = `Editing: ${currentlyOpenDay.Nombre_Dia} (${currentlyOpenDay.id})`;
         if (nameInput) nameInput.value = currentlyOpenDay.Nombre_Especial === 'Unnamed Day' ? '' : currentlyOpenDay.Nombre_Especial;
         if (formTitle) formTitle.textContent = "Add/Edit Memories";
+        // Cargar las memorias del día seleccionado para editar
         await cargarYMostrarMemorias(currentlyOpenDay.id, 'edit-memorias-list');
     }
-    resetMemoryFormUnified(); handleMemoryTypeChangeUnified();
+
+    resetMemoryFormUnified(); // Limpiar el formulario
+    handleMemoryTypeChangeUnified(); // Ajustar campos visibles según tipo
+
+    // Limpiar mensajes de estado
     const saveStatus = document.getElementById('save-status');
     const memoriaStatus = document.getElementById('memoria-status');
     if (saveStatus) saveStatus.textContent = '';
     if (memoriaStatus) memoriaStatus.textContent = '';
     const confirmDialog = document.getElementById('confirm-delete-dialog'); if(confirmDialog) confirmDialog.style.display = 'none';
+
+    // Mostrar modal
     modal.style.display = 'flex'; setTimeout(() => modal.classList.add('visible'), 10);
 
+    // Inicializar mapa si es necesario
     if (document.getElementById('leaflet-map')) {
         initMapIfNeeded();
     }
 }
+
 
 function cerrarModalEdicion() {
     const modal = document.getElementById('edit-add-modal'); if (modal) { modal.classList.remove('visible'); setTimeout(() => { modal.style.display = 'none'; }, 200); }
@@ -795,10 +1067,18 @@ async function handleMemoryFormSubmit(event) {
 
         const diaRef = doc(db, "Dias", diaId);
         await updateDoc(diaRef, { hasMemories: true });
-        const dayIndex = allDaysData.findIndex(d => d.id === diaId);
-        if (dayIndex !== -1) allDaysData[dayIndex].hasMemories = true;
 
-        await dibujarMesActual(); // Esperar a que termine de dibujar antes de continuar
+        // Actualizar el estado local en monthlyDaysData
+        const diaMonthIndex = parseInt(diaId.substring(0, 2), 10) - 1;
+        if (monthlyDaysData[diaMonthIndex]) {
+             const dayIndexInMonth = monthlyDaysData[diaMonthIndex].findIndex(d => d.id === diaId);
+             if (dayIndexInMonth !== -1) {
+                 monthlyDaysData[diaMonthIndex][dayIndexInMonth].hasMemories = true;
+             }
+        }
+
+
+        await dibujarMes(diaMonthIndex); // Redibujar el mes afectado
 
         resetMemoryFormUnified();
         await cargarYMostrarMemorias(diaId, 'edit-memorias-list');
@@ -809,7 +1089,7 @@ async function handleMemoryFormSubmit(event) {
         if(previewList && currentlyOpenDay?.id === diaId && previewModal?.style.display === 'flex') {
             await cargarYMostrarMemorias(diaId, 'preview-memorias-list');
         }
-        await updateTodayMemorySpotlight(); // Esperar a que termine
+        await updateTodayMemorySpotlight();
     } catch (e) {
         console.error("Save/Update Error:", e);
         statusDiv.textContent = `Error: ${e.message}`;
@@ -840,14 +1120,22 @@ async function deleteMemoriaUnified(diaId, memoriaId) {
 
         const memoriasRef = collection(db, "Dias", diaId, "Memorias");
         const snapshot = await getDocs(memoriasRef);
-        if (snapshot.empty) {
-            const diaRef = doc(db, "Dias", diaId);
-            await updateDoc(diaRef, { hasMemories: false });
-            const dayIndex = allDaysData.findIndex(d => d.id === diaId);
-            if (dayIndex !== -1) allDaysData[dayIndex].hasMemories = false;
+        let hasRemainingMemories = !snapshot.empty;
+
+        // Actualizar hasMemories en el documento 'Dias'
+        const diaRef = doc(db, "Dias", diaId);
+        await updateDoc(diaRef, { hasMemories: hasRemainingMemories });
+
+        // Actualizar el estado local en monthlyDaysData
+        const diaMonthIndex = parseInt(diaId.substring(0, 2), 10) - 1;
+         if (monthlyDaysData[diaMonthIndex]) {
+             const dayIndexInMonth = monthlyDaysData[diaMonthIndex].findIndex(d => d.id === diaId);
+             if (dayIndexInMonth !== -1) {
+                 monthlyDaysData[diaMonthIndex][dayIndexInMonth].hasMemories = hasRemainingMemories;
+             }
         }
 
-        await dibujarMesActual(); // Esperar a que termine
+        await dibujarMes(diaMonthIndex); // Redibujar el mes afectado
 
         s.textContent='Deleted!';
         s.className='success';
@@ -859,7 +1147,7 @@ async function deleteMemoriaUnified(diaId, memoriaId) {
         if(pL&&currentlyOpenDay?.id===diaId&&pM?.style.display==='flex'){
             await cargarYMostrarMemorias(diaId,'preview-memorias-list');
         }
-        await updateTodayMemorySpotlight(); // Esperar a que termine
+        await updateTodayMemorySpotlight();
     } catch(e){
         console.error("Delete Error:",e);
         s.textContent=`Error: ${e.message}`;
@@ -902,17 +1190,34 @@ async function guardarNombreEspecial(diaId, nuevoNombre) {
         const r=doc(db,"Dias",diaId);
         const v=nuevoNombre||"Unnamed Day";
         await updateDoc(r,{Nombre_Especial:v});
-        const i=allDaysData.findIndex(d=>d.id===diaId);
-        if(i!==-1)allDaysData[i].Nombre_Especial=v;
+
+        // Actualizar estado local
+        const diaMonthIndex = parseInt(diaId.substring(0, 2), 10) - 1;
+        if (monthlyDaysData[diaMonthIndex]) {
+             const dayIndexInMonth = monthlyDaysData[diaMonthIndex].findIndex(d => d.id === diaId);
+             if (dayIndexInMonth !== -1) {
+                 monthlyDaysData[diaMonthIndex][dayIndexInMonth].Nombre_Especial = v;
+             }
+        }
+        if(currentlyOpenDay&&currentlyOpenDay.id===diaId)currentlyOpenDay.Nombre_Especial=v;
+
+
         s.textContent="Name Saved!";
         s.className='success';
-        if(currentlyOpenDay&&currentlyOpenDay.id===diaId)currentlyOpenDay.Nombre_Especial=v;
-        setTimeout(async ()=>{ // Hacer la función interna async
+
+        setTimeout(async ()=>{
              if (s) s.textContent='';
-             await dibujarMesActual(); // Esperar
+             await dibujarMes(diaMonthIndex); // Redibujar mes afectado
         },1200);
+
         const pT=document.getElementById('preview-title'),pM=document.getElementById('preview-modal');
-        if(pT&&currentlyOpenDay&&currentlyOpenDay.id===diaId&&pM?.style.display==='flex') pT.textContent=`${currentlyOpenDay.Nombre_Dia} ${v!=='Unnamed Day'?'('+v+')':''}`;
+        if(pT && document.getElementById('preview-modal')?.style.display==='flex') { // Chequear si el modal preview está abierto
+            // Rebuscar el objeto dia actualizado por si acaso
+             const updatedDay = monthlyDaysData[diaMonthIndex]?.find(d => d.id === diaId);
+             if (updatedDay) {
+                pT.textContent=`${updatedDay.Nombre_Dia} ${v!=='Unnamed Day'?'('+v+')':''}`;
+             }
+        }
     } catch(e){
         s.textContent=`Error: ${e.message}`;
         s.className='error';
@@ -933,5 +1238,5 @@ window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
 
 // --- Start App ---
-checkAndRunApp(); // Llamar directamente
+initializeAppCore(); // Llamar a la nueva función de inicialización
 
