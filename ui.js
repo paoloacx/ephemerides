@@ -5,6 +5,7 @@
  * - Adds checks in open...Modal functions before adding '.visible'.
  * - Corrects close button ID in _createEditModal HTML.
  * - Ensures _bindEditModalEvents finds the close button.
+ * - Adds logging to day button onclick assignment.
  */
 
 // --- Estado Interno del Módulo ---
@@ -191,7 +192,11 @@ function drawCalendar(monthName, days, todayId) {
             const dayNumber = parseInt(dayNumberStr, 10);
             btn.innerHTML = `<span class="dia-numero">${isNaN(dayNumber) ? '?' : dayNumber}</span>`;
             btn.dataset.diaId = dia.id;
-            btn.onclick = () => _handleDayClick(dia);
+            // --- ADDED: Log inside handler assignment ---
+            btn.onclick = () => {
+                console.log(`[ui.js] Day button ${dia.id} clicked! Calling _handleDayClick.`);
+                _handleDayClick(dia);
+            };
 
             fragment.appendChild(btn);
             buttonsCreated++;
@@ -581,6 +586,8 @@ function _bindEditModalEvents() {
     try {
         // --- FIX: Ensure selector matches the corrected ID in HTML ---
         const closeBtn = _modals.edit.querySelector('#close-edit-add-btn'); // Correct ID
+        // --- ADDED: Log ---
+        console.log("[ui.js] Attempting to find close button #close-edit-add-btn:", closeBtn);
         if (closeBtn) {
             console.log("[ui.js] Attaching close event to #close-edit-add-btn...");
             closeBtn.onclick = closeEditModal; // Assign function directly
@@ -635,7 +642,16 @@ function _createStoreModal() {
         modal.className = 'modal-overlay';
         console.log("[ui.js] _createStoreModal: Base div OK.");
         try {
-            modal.innerHTML = `...`; // Same HTML
+            // Added type="button"
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Store</h3>
+                        <button type="button" class="modal-close-btn" title="Close"><span class="material-icons-outlined">close</span></button>
+                    </div>
+                    <div class="modal-content-scrollable" style="padding: 0;"> </div>
+                </div>
+            `;
             console.log("[ui.js] _createStoreModal: innerHTML OK.");
         } catch (htmlError) { throw htmlError; }
 
@@ -650,12 +666,9 @@ function _createStoreModal() {
                     if (btn instanceof Node) {
                         fragment.appendChild(btn);
                     } else {
-                         // Log specific error if button creation failed
                          console.error(`[ui.js] ERROR: _createStoreCategoryButton for '${cat.type}' did not return a valid Node.`);
-                         // Optionally skip this category or add an error placeholder
                     }
                 });
-                // --- FIX: Only append if fragment has children ---
                 if (fragment.hasChildNodes()) {
                     scrollableDiv.appendChild(fragment);
                     console.log("[ui.js] _createStoreModal: Categories added OK.");
@@ -690,12 +703,11 @@ function _createStoreCategoryButton(type, icon, label) {
         btn.type = 'button'; // Set type
         btn.className = 'store-category-btn';
         btn.innerHTML = `<span class="material-icons-outlined">${icon}</span><span>${label}</span>`;
-        // Ensure callback exists before assigning
         if(typeof _callbacks.onStoreCategoryClick === 'function') {
             btn.onclick = () => _callbacks.onStoreCategoryClick(type);
         } else {
              console.error(`UI: Cannot attach click listener for store category '${type}', callback missing!`);
-             btn.disabled = true; // Disable button if callback is missing
+             btn.disabled = true;
         }
         return btn; // Return the button element
     } catch (e) {
@@ -715,6 +727,7 @@ function _createDialog(id, title, message) {
         dialogOverlay.className = 'dialog-overlay';
         console.log("[ui.js] _createDialog: Base div OK.");
         try {
+            // Added type="button"
             dialogOverlay.innerHTML = `
                 <div class="dialog-content">
                     <h4>${title}</h4>
