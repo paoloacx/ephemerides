@@ -1,8 +1,7 @@
 /*
- * style.css (v20)
- * - Header: Better text shadow for H1
- * - Day Buttons: Moved memory dot to top stripe
- * - Modals: Added style for preview modal's edit button
+ * style.css (v21)
+ * - Header: Reverted H1 font to default, restored original text-shadow
+ * - Spotlight: Added styles for year box and improved alignment
  */
 
 body {
@@ -42,14 +41,14 @@ header {
 }
 header h1 {
     margin: 0;
-    color: #000000; 
-    /* CHANGED: Softer, slightly blurred white shadow */
-    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7);
-    font-family: 'Playfair Display', serif;
-    text-transform: uppercase;
-    font-weight: 700;
-    font-size: 22px;
-    letter-spacing: 1px;
+    /* CHANGED: Reverted font, restored original shadow */
+    color: #ffffff; 
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.5); 
+    /* REMOVED: font-family: 'Playfair Display', serif; */
+    font-size: 20px; /* Original size */
+    font-weight: bold; /* Original weight */
+    text-transform: none; /* Original transform */
+    letter-spacing: normal; /* Original spacing */
 }
 .header-icon-btn {
     flex-shrink: 0;
@@ -69,8 +68,8 @@ header h1 {
 
 #header-search-btn {
     left: 10px; 
-    color: #000; 
-    opacity: 0.6;
+    color: #fff; /* White icon */
+    opacity: 0.8;
 }
 #header-search-btn:hover { opacity: 1; }
 
@@ -86,7 +85,7 @@ header h1 {
 #user-info {
     display: flex;
     align-items: center;
-    cursor: pointer;
+    cursor: pointer; /* Clickable */
     padding: 2px;
     border-radius: 50px;
     transition: background-color 0.2s;
@@ -184,8 +183,9 @@ main { padding: 10px; }
     min-height: 40px;
 }
 .spotlight-memory-item {
+    /* CHANGED: Use flex for alignment */
     display: flex;
-    align-items: center;
+    align-items: center; /* Vertically align icon and text */
     padding: 8px 5px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     color: #f0f0f0;
@@ -194,24 +194,39 @@ main { padding: 10px; }
 }
 .spotlight-memory-item:last-child { border-bottom: none; }
 .spotlight-memory-item:hover { background-color: rgba(255, 255, 255, 0.05); }
+
+/* NEW: Styles for the year box */
+.spotlight-year-box {
+    background-color: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    margin-right: 8px; /* Space between year and icon */
+    white-space: nowrap; /* Prevent wrapping */
+    line-height: 1.4; /* Adjust line height */
+}
+
 .spotlight-memory-item .material-icons-outlined {
-    font-size: 20px;
-    margin-right: 10px;
+    font-size: 18px; /* Slightly smaller icon */
     color: #ccc;
+    margin-right: 8px; /* Space between icon and text */
 }
 .spotlight-memory-content {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.3;
+    /* REMOVED: display: flex, flex-direction: column */
+    line-height: 1.4; /* Adjust line height */
+    flex-grow: 1; /* Take remaining space */
 }
-.spotlight-memory-content small {
-    font-size: 11px;
-    color: #aaa;
-    text-transform: uppercase;
-}
+/* REMOVED: .spotlight-memory-content small (year is now in its own box) */
 .spotlight-memory-content span {
     font-size: 14px;
     font-weight: 500;
+}
+/* Hide default icon if specific one is used */
+.spotlight-memory-content span .material-icons-outlined {
+    display: none;
 }
 
 
@@ -252,7 +267,6 @@ main { padding: 10px; }
     height: 10px; 
     background-color: #e57373; 
     border-bottom: 1px solid #c62828;
-    /* CHANGED: Add z-index */
     z-index: 1;
 }
 
@@ -279,7 +293,6 @@ main { padding: 10px; }
 .dia-btn-today::before {
     background-color: #ffffff;
     border-bottom: 1px solid #ddd;
-    /* z-index: 1; (inherited) */
 }
 
 .dia-btn-today .dia-numero {
@@ -290,7 +303,6 @@ main { padding: 10px; }
 .dia-btn.tiene-memorias::after {
     content: '';
     position: absolute;
-    /* CHANGED: Positioned at top */
     top: 3px; 
     left: 50%;
     transform: translateX(-50%);
@@ -299,8 +311,7 @@ main { padding: 10px; }
     border-radius: 50%;
     background-color: #4aa2d8; 
     box-shadow: 0 0 2px rgba(0,0,0,0.3);
-    /* CHANGED: Above stripe */
-    z-index: 2; 
+    z-index: 2; /* Above stripe */
 }
 .dia-btn-today.tiene-memorias::after {
     background-color: #fff; 
@@ -355,8 +366,7 @@ main { padding: 10px; }
 
 .modal-header {
     display: flex;
-    /* CHANGED: Make space for edit button */
-    justify-content: flex-end; /* Align items to the right */
+    justify-content: flex-end; 
     align-items: center;
     padding: 12px 15px;
     border-bottom: 1px solid #ccc;
@@ -368,10 +378,8 @@ main { padding: 10px; }
     font-weight: bold;
     color: #333;
     line-height: 1.2; 
-    /* CHANGED: Allow space */
     flex-grow: 1; 
     text-align: center; 
-    /* Nudge left to center (since close is 44px, edit is 44px) */
     padding-left: 44px; /* Space of close button */
 }
 .modal-close-btn {
@@ -382,36 +390,33 @@ main { padding: 10px; }
     color: #888;
     line-height: 0;
     opacity: 0.8;
-    /* CHANGED: Ensure it has a size */
     width: 34px; 
     height: 34px;
     flex-shrink: 0;
 }
 .modal-close-btn:hover { color: #000; opacity: 1; }
 
-/* NEW: Style for Edit button in Preview Modal */
 .modal-header .header-edit-btn {
     background: none;
     border: none;
     padding: 5px;
     cursor: pointer;
-    color: #007aff; /* Blue, like a link */
+    color: #007aff; 
     line-height: 0;
     opacity: 1;
     width: 34px;
     height: 34px;
     flex-shrink: 0;
-    display: none; /* Hidden by default */
+    display: none; 
 }
 .modal-header .header-edit-btn.visible {
-    display: block; /* Show if logged in */
+    display: block; 
 }
 .modal-header .header-edit-btn:hover { color: #0056b3; }
 .modal-header .header-edit-btn .material-icons-outlined { 
     font-size: 24px; 
     margin-top: 2px;
 }
-/* End Preview Edit Button */
 
 .modal-content-scrollable {
     overflow-y: auto;
@@ -730,7 +735,7 @@ main { padding: 10px; }
 }
 
 
-/* --- NEW: iOS-like Dialog Box --- */
+/* --- iOS-like Dialog Box --- */
 .dialog-overlay {
     position: fixed;
     top: 0; left: 0;
