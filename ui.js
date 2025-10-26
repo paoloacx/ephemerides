@@ -1,7 +1,7 @@
 /*
- * ui.js (v7.16 - Remove Footer Debug, Verify Callback Storage)
- * - Removes temporary alert() and console.log from _setupFooter.
- * - Adds a log in init() to confirm _callbacks object structure after assignment.
+ * ui.js (v7.17 - Footer Callback Debug & Try/Catch)
+ * - Adds console.log to verify callback existence just before calling.
+ * - Wraps the callback execution in a try/catch block.
  */
 
 // --- Estado Interno del Módulo ---
@@ -56,20 +56,14 @@ let _selectedPlace = null;
 // --- 1. Inicialización y Funciones Principales ---
 
 function init(callbacks) {
-    console.log("[ui.js] Initializing v7.16..."); // Version bump
-    // 1. Store Callbacks
-    console.log("[ui.js] Step 1: Storing callbacks...");
+    console.log("[ui.js] Initializing v7.17 (Footer Debug)..."); // Version bump
     _callbacks = { ..._callbacks, ...callbacks };
-     // --- ADDED: Log the structure AFTER merging ---
-     console.log("[ui.js] Callbacks stored. Verifying 'onFooterAction':", typeof _callbacks.onFooterAction);
-     // Verify essential callback exists
     if (typeof _callbacks.onFooterAction !== 'function') {
-         console.error("[ui.js] FATAL: Required callback 'onFooterAction' is missing or not a function!");
          throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
     }
+    console.log("[ui.js] Callbacks stored. Verifying 'onFooterAction':", typeof _callbacks.onFooterAction);
 
-    // 2. Find DOM Elements
-    console.log("[ui.js] Step 2: Finding essential DOM elements...");
+    console.log("[ui.js] Finding essential DOM elements...");
     _dom.appContent = document.getElementById('app-content');
     _dom.footer = document.querySelector('.footer-dock');
 
@@ -84,8 +78,7 @@ function init(callbacks) {
     _dom.spotlightList = document.getElementById('today-memory-spotlight');
     console.log("[ui.js] DOM element finding complete.");
 
-    // 3. Setup Event Listeners
-    console.log("[ui.js] Step 3: Setting up event listeners...");
+    console.log("[ui.js] Setting up event listeners...");
     let setupError = null;
     try { _setupNavigation(); } catch (e) { console.error("Nav setup error:", e); if(!setupError) setupError = e; }
     try { _setupHeader(); } catch (e) { console.error("Header setup error:", e); if(!setupError) setupError = e; }
@@ -214,7 +207,7 @@ function drawCalendar(monthName, days, todayId) {
 
 function updateSpotlight(headerText, memories) {
     // ... (logic from v7.11) ...
-    console.log(`[ui.js] Updating spotlight. Header: "${headerText}". Memories: ${memories ? memories.length : 0}`);
+     console.log(`[ui.js] Updating spotlight. Header: "${headerText}". Memories: ${memories ? memories.length : 0}`);
     if (_dom.spotlightHeader) {
         _dom.spotlightHeader.textContent = headerText;
     } else {
@@ -297,10 +290,10 @@ function _setupHeader() {
 }
 
 /**
- * --- Footer Event Listener Logic (Confirmed v7.11 Correctness, removed debug) ---
+ * --- Footer Event Listener Logic (v7.15 with Debug Logs) ---
  */
 function _setupFooter() {
-    console.log("[ui.js] Setting up footer listener (v7.16 - debug removed)..."); // Version bump
+    console.log("[ui.js] Setting up footer listener (v7.15 DEBUG)..."); // Version bump
     if(!_dom.footer) throw new Error("UI Init failed: Footer element not found.");
     if (typeof _callbacks.onFooterAction !== 'function') throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
     console.log("[ui.js] Footer element and callback verified.");
@@ -313,15 +306,27 @@ function _setupFooter() {
         console.log(`[ui.js] Footer button clicked! Action='${action}'`);
 
         if (action === 'add' || action === 'store' || action === 'shuffle') {
-            // --- REMOVED DEBUG ---
-            // console.log(`[ui.js] DEBUG: Is onFooterAction a function? `, typeof _callbacks.onFooterAction === 'function');
-            // alert(`UI trying to call main.js for action: ${action}`);
-            // --- END REMOVED ---
+            // --- DEBUG: Verify callback existence right before calling ---
+            const callbackExists = typeof _callbacks.onFooterAction === 'function';
+            console.log(`[ui.js] DEBUG: Action '${action}' requires main.js. Verifying callback... Is onFooterAction a function? `, callbackExists);
+            // --- END DEBUG ---
 
-            // Call main.js if callback exists (already checked in init)
-            console.log(`[ui.js] Action '${action}' requires main.js. Calling onFooterAction callback...`);
-            _callbacks.onFooterAction(action); // Call main.js
-
+            if (callbackExists) {
+                console.log(`[ui.js] --- Calling _callbacks.onFooterAction('${action}')... ---`);
+                try {
+                    // --- Call main.js ---
+                    _callbacks.onFooterAction(action);
+                    console.log(`[ui.js] --- _callbacks.onFooterAction('${action}') called successfully (no immediate error). ---`);
+                } catch (callbackError) {
+                     // --- Catch errors DURING callback execution ---
+                     console.error(`[ui.js] !!! ERROR occurred *during* onFooterAction callback for '${action}':`, callbackError);
+                     alert(`Error executing action '${action}': ${callbackError.message}`);
+                }
+            } else {
+                 // This shouldn't happen based on init check, but is a safeguard
+                 console.error(`[ui.js] ERROR: Cannot execute action '${action}': onFooterAction callback is missing or invalid *at click time*!`);
+                 alert(`Error: Action '${action}' callback is missing.`);
+            }
         } else if (action === 'settings') {
             console.log("[ui.js] Handling 'settings' action internally -> opening dialog.");
             openSettingsDialog();
