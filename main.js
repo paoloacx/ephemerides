@@ -1,15 +1,17 @@
 /*
- * main.js (v3.2)
+ * main.js (v3.4)
  * Controlador principal de Ephemerides.
  * Orquesta los módulos: auth, store, api, ui.
  * Gestiona el estado de la aplicación.
  */
 
 // --- Importaciones de Módulos ---
-import { initFirebase } from './firebase.js';
-import { auth, initAuthListener, handleLogin, handleLogout } from './auth.js';
+// CORRECCIÓN: Importamos 'db' y 'auth' desde firebase.js
+import { initFirebase, db, auth } from './firebase.js'; 
+// CORRECCIÓN: 'auth' ya no se importa desde aquí
+import { initAuthListener, handleLogin, handleLogout } from './auth.js';
 import { 
-    store, 
+    // CORRECCIÓN: 'store' (la variable) no se importa, solo las funciones
     checkAndRunApp as storeCheckAndRun,
     loadAllDaysData,
     loadMemoriesForDay,
@@ -22,6 +24,7 @@ import {
     getNamedDays,
     findMemoryById // Asumiendo que store.js tiene esta función
 } from './store.js';
+// CORRECCIÓN: 'api' (la variable) no se importa
 import { searchiTunes, searchNominatim } from './api.js';
 import { ui } from './ui.js';
 
@@ -46,11 +49,11 @@ let state = {
  * Función principal que arranca la aplicación.
  */
 async function checkAndRunApp() {
-    console.log("Iniciando Ephemerides v3.2 (Modular)...");
+    console.log("Iniciando Ephemerides v3.4 (Modular)...");
     
     try {
         // Mostrar mensaje de carga inicial
-        ui.setLoading("Verificando base de datos...", true); // <-- CORRECCIÓN AQUÍ
+        ui.setLoading("Verificando base de datos...", true);
 
         // Inicializar Firebase (esto es síncrono)
         initFirebase();
@@ -189,9 +192,9 @@ async function handleDayClick(dia) {
     // TODO: ¿Permitir que el usuario logueado también vea "Preview" primero?
     
     // Cargar las memorias para este día
-    ui.setLoading("Cargando memorias...", true); // Usar un loader de modal?
+    // ui.setLoading("Cargando memorias...", true); // Esto oculta el grid, mejor un loader en el modal
     const memories = await loadMemoriesForDay(dia.id);
-    ui.setLoading(null, false); // Limpiar loader principal
+    // ui.setLoading(null, false); // Limpiar loader principal
     
     if (state.currentUser) {
         // Usuario logueado: Abrir modal de edición
@@ -211,6 +214,7 @@ function handleFooterAction(action, payload) {
     switch (action) {
         case 'add':
             // Abrir modal de edición en modo "Añadir" (dia=null)
+            // Asume que no hay memorias que cargar (array vacío)
             ui.openEditModal(null, [], state.allDaysData);
             break;
             
@@ -346,7 +350,14 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
         // 5. Recargar la lista de memorias en el modal
         const updatedMemories = await loadMemoriesForDay(diaId);
         // ui.js debe tener una función para actualizar solo la lista
-        // _renderMemoryList(document.getElementById('edit-memorias-list'), updatedMemories, true, diaId);
+        // (La función _renderMemoryList no es pública, main.js no debería llamarla)
+        // Solución:
+        ui.openEditModal(
+            state.allDaysData.find(d => d.id === diaId),
+            updatedMemories,
+            state.allDaysData
+        );
+        
         
         // 6. Actualizar el grid (para el punto azul)
         const dayIndex = state.allDaysData.findIndex(d => d.id === diaId);
@@ -379,8 +390,13 @@ async function handleDeleteMemory(diaId, memId) {
         
         // Recargar la lista de memorias
         const updatedMemories = await loadMemoriesForDay(diaId);
-        // ui.js debe tener una función para actualizar solo la lista
-        // _renderMemoryList(document.getElementById('edit-memorias-list'), updatedMemories, true, diaId);
+        
+        // Volver a renderizar la lista en el modal
+        ui.openEditModal(
+            state.allDaysData.find(d => d.id === diaId),
+            updatedMemories,
+            state.allDaysData
+        );
 
         // Comprobar si era la última memoria y actualizar el grid
         if (updatedMemories.length === 0) {
@@ -403,11 +419,10 @@ async function handleDeleteMemory(diaId, memId) {
  */
 async function handleEditMemoryClick(memId) {
     if (!memId) return;
-    // Esto sigue siendo un anti-patrón (la UI no debería llamar al controlador así)
-    // pero es necesario porque la UI no tiene el estado.
     
     // Le pedimos a store.js que encuentre la memoria
-    const memory = await findMemoryById(memId); // Asumimos que esta función existe
+    // Esta función necesita ser creada en store.js
+    const memory = await findMemoryById(memId); 
     
     if (memory) {
         ui.fillFormForEdit(memory);
@@ -487,7 +502,8 @@ async function handleStoreCategoryClick(type) {
         ui.updateStoreList([], false, false); // Limpiar lista
         // Mostrar el error de Firebase (enlace del índice)
         if (err.code === 'failed-precondition') {
-            alert("Error de Firebase: " + err.message);
+            console.error("¡ÍNDICE DE FIREBASE REQUERIDO!", err.message);
+            alert("Error de Firebase: Se requiere un índice. Revisa la consola (F12) para ver el enlace de creación.");
         }
     }
 }
