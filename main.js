@@ -19,7 +19,7 @@ import {
     saveMemory,
     deleteMemory,
     searchMemories,
-    getTodaySpotlight,
+    getTodaySpotlight, // <-- Esta línea ahora funciona
     getMemoriesByType,
     getNamedDays
     // CORRECCIÓN: 'findMemoryById' eliminado, no se usa.
@@ -102,7 +102,7 @@ async function loadTodaySpotlight() {
     const dateString = `Hoy, ${today.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`;
     
     // Pedir a store.js las memorias y el nombre del día
-    const spotlightData = await getTodaySpotlight(state.todayId);
+    const spotlightData = await getTodaySpotlight(state.todayId); // <-- Esta línea ahora funciona
     
     if (spotlightData) {
         const fullDateString = `${dateString} ${spotlightData.dayName !== 'Unnamed Day' ? `(${spotlightData.dayName})` : ''}`;
