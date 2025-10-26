@@ -1,8 +1,7 @@
 /*
- * ui.js (v6.0 - English Translation)
+ * ui.js (v6.1 - Login Click Fix)
  * User Interface (DOM) Module.
  * Handles drawing, modal creation, and DOM events.
- * Knows nothing about Firestore.
  */
 
 // --- Internal State ---
@@ -108,19 +107,17 @@ function updateLoginUI(user) {
     if (!loginSection) return;
 
     if (user) {
-        // User logged in
+        // --- NUEVO: Clic en Avatar para Logout ---
         loginSection.innerHTML = `
-            <div id="user-info">
+            <div id="user-info" title="Logout" style="cursor: pointer;">
                 <img id="user-img" src="${user.photoURL || 'https://placehold.co/30x30/ccc/fff?text=?'}" alt="Avatar">
-                <!-- Hiding name as requested -->
                 <span id="user-name" style="display: none;">${user.displayName || 'User'}</span>
             </div>
-            <button id="login-btn" class="header-icon-btn" title="Logout">
-                <span class="material-icons-outlined">logout</span>
-            </button>
+            <!-- Botón de Logout eliminado -->
         `;
-        const logoutBtn = document.getElementById('login-btn');
-        if (logoutBtn) logoutBtn.onclick = () => _callbacks.onLogout();
+        // Añadir evento al avatar
+        const userInfo = document.getElementById('user-info');
+        if (userInfo) userInfo.onclick = () => _callbacks.onLogout();
         
     } else {
         // User logged out
@@ -681,7 +678,6 @@ function _createMemoryItemHTML(mem, mode = 'preview') {
             if (mem.CancionData) {
                 content = `<strong>${mem.CancionData.trackName}</strong><br><small style="font-weight:normal;color:#555;">${mem.CancionData.artistName}</small>`;
                 if (mem.CancionData.artworkUrl60 && mode !== 'spotlight') {
-                    // Note: 'memoria' is not defined, should be 'mem'
                     artwork = `<img src="${mem.CancionData.artworkUrl60}" class="memoria-artwork">`;
                 }
             } else {
@@ -713,7 +709,6 @@ function _createMemoryItemHTML(mem, mode = 'preview') {
                 <span>${(mem.Tipo === 'Music' && mem.CancionData) ? mem.CancionData.trackName : (mem.LugarNombre || mem.Descripcion || mem.CancionInfo)}</span>
             </div>
         `;
-        // Click on spotlight item opens the day
         itemEl.onclick = () => _callbacks.onStoreItemClick(mem.diaId);
         return itemEl;
     }
@@ -751,7 +746,7 @@ function _createMemoryItemHTML(mem, mode = 'preview') {
 /**
  * (Private) Creates HTML for a "Store" list item.
  * @param {Object} item - Memory or day object.
- * @returns {HTMLElement}
+ *img src="https://lh3.googleusercontent.com/COxitqgJr1sJnIDe8-jiKhxDx1OLUbq VilNfRHXkvdR8VdVAbkuQGcuSgs5nbDbpaE8nhzo6g=s0-w32-h32-p-k-rw-no" * @returns {HTMLElement}
  */
 function _createStoreListItem(item) {
     const itemEl = document.createElement('div');
@@ -847,12 +842,10 @@ function _createPreviewModal() {
     // Events
     modal.querySelector('.modal-cancel-btn').onclick = () => closePreviewModal();
     modal.querySelector('.modal-close-btn').onclick = () => {
-        // On "Edit" click, close this and open edit modal
         if (_currentDay) {
             closePreviewModal();
             setTimeout(() => {
-                // main.js will pass allDays
-                _callbacks.onDayClick(_currentDay); // Re-trigger day click logic
+                _callbacks.onDayClick(_currentDay);
             }, 200);
         }
     };
