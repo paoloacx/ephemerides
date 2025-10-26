@@ -1,8 +1,6 @@
 /*
- * ui.js (v7.14 - Definite SyntaxError Fix in _setupFooter)
- * - Corrects the typo '.doc' to '.dock-button[data-action]'.
- * - Removes the temporary green border from drawCalendar.
- * - Includes previous fixes.
+ * ui.js (v7.15 - Footer Callback Debug & Verification)
+ * - Adds console.log and alert() before calling onFooterAction in _setupFooter.
  */
 
 // --- Estado Interno del Módulo ---
@@ -57,7 +55,7 @@ let _selectedPlace = null;
 // --- 1. Inicialización y Funciones Principales ---
 
 function init(callbacks) {
-    console.log("[ui.js] Initializing v7.14 (SyntaxError Fix)..."); // Version bump
+    console.log("[ui.js] Initializing v7.15 (Footer Debug)..."); // Version bump
     _callbacks = { ..._callbacks, ...callbacks };
     if (typeof _callbacks.onFooterAction !== 'function') {
          throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
@@ -83,9 +81,7 @@ function init(callbacks) {
     let setupError = null;
     try { _setupNavigation(); } catch (e) { console.error("Nav setup error:", e); if(!setupError) setupError = e; }
     try { _setupHeader(); } catch (e) { console.error("Header setup error:", e); if(!setupError) setupError = e; }
-    // --- THIS CALL CONTAINS THE FIX ---
     try { _setupFooter(); } catch (e) { console.error("Footer setup error:", e); if(!setupError) setupError = e; }
-    // --- END FIX ---
 
     if (setupError) {
          throw new Error(`UI Init failed during listener setup: ${setupError.message}`);
@@ -149,7 +145,7 @@ function updateLoginUI(user) {
 // --- 2. Renderizado del Contenido Principal ---
 
 /**
- * --- RESTORED VERSION ---
+ * --- Restored Drawing Logic ---
  * Draws the actual calendar grid.
  */
 function drawCalendar(monthName, days, todayId) {
@@ -165,9 +161,6 @@ function drawCalendar(monthName, days, todayId) {
         console.error("[ui.js] ERROR in drawCalendar: #app-content element not found!");
         return;
     }
-    // --- REMOVED DEBUG BORDER ---
-    // _dom.appContent.style.border = "none";
-    // _dom.appContent.style.minHeight = "auto";
     _dom.appContent.innerHTML = ''; // Clear previous
 
     const grid = document.createElement('div');
@@ -299,33 +292,37 @@ function _setupHeader() {
 }
 
 /**
- * --- DEFINITIVELY CORRECTED FINAL TIME (v7.14): Footer Event Listener Logic ---
- * Fixes the selector typo and ensures reliable callback execution.
+ * --- Footer Event Listener Logic (Confirmed v7.11 Correctness with DEBUG log) ---
  */
 function _setupFooter() {
-    console.log("[ui.js] Setting up footer listener (v7.14)..."); // Version bump
-    if(!_dom.footer) {
-         console.error("[ui.js] FATAL: Footer element (.footer-dock) not found.");
-         throw new Error("UI Init failed: Footer element not found.");
-    }
-    if (typeof _callbacks.onFooterAction !== 'function') {
-         console.error("[ui.js] FATAL: onFooterAction callback is missing!");
-         throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
-    }
+    console.log("[ui.js] Setting up footer listener (v7.14 DEBUG)..."); // Version bump
+    if(!_dom.footer) throw new Error("UI Init failed: Footer element not found.");
+    if (typeof _callbacks.onFooterAction !== 'function') throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
     console.log("[ui.js] Footer element and callback verified.");
 
     _dom.footer.addEventListener('click', (e) => {
-        // --- THE FIX: Use the CORRECT selector ---
         const button = e.target.closest('.dock-button[data-action]');
-        // --- END FIX ---
-        if (!button) return; // Click wasn't on a relevant button
+        if (!button) return;
 
         const action = button.dataset.action;
         console.log(`[ui.js] Footer button clicked! Action='${action}'`);
 
         if (action === 'add' || action === 'store' || action === 'shuffle') {
-            console.log(`[ui.js] Action '${action}' requires main.js. Calling onFooterAction callback...`);
-            _callbacks.onFooterAction(action); // Call main.js
+            // --- DEBUG ---
+            console.log(`[ui.js] DEBUG: Checking callback before calling for action '${action}'. Is onFooterAction a function? `, typeof _callbacks.onFooterAction === 'function');
+            // --- TEMPORARY ALERT ---
+            alert(`UI trying to call main.js for action: ${action}`);
+            // --- END DEBUG ---
+
+            // Call main.js if callback exists
+            if (typeof _callbacks.onFooterAction === 'function') {
+                console.log(`[ui.js] Action '${action}' requires main.js. Calling onFooterAction callback...`);
+                _callbacks.onFooterAction(action);
+            } else {
+                 // This shouldn't happen due to the check in init(), but good safety
+                 console.error(`[ui.js] Cannot execute action '${action}': onFooterAction callback is missing or invalid!`);
+                 alert(`Error: Action '${action}' is not properly configured.`);
+            }
         } else if (action === 'settings') {
             console.log("[ui.js] Handling 'settings' action internally -> opening dialog.");
             openSettingsDialog();
@@ -383,7 +380,7 @@ function _createDialog(id, title, message) { /* ... v7.8 logic ... */ }
 export const ui = {
     init,
     updateLoginUI,
-    drawCalendar, // Exporting the *restored* drawing function
+    drawCalendar, // Exporting the restored drawing function
     updateSpotlight,
     openPreviewModal,
     closePreviewModal,
