@@ -4,23 +4,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ephemerides</title>
-    <!-- Actualizado a v14 (Tema Lino Oscuro + Modales Beige) -->
+    
+    <!-- Leaflet CSS (para Mapas) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+        
+    <!-- Estilo principal (v14) -->
     <link rel="stylesheet" href="style.css?v=14">
     
-    <!-- Leaflet CSS (Corregido 'integrity') -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-     xintegrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
-     crossorigin=""/>
-    <!-- Leaflet JS (Corregido 'integrity') -->
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
-     xintegrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
-     crossorigin=""></script>
-    
     <style>
-        body, button, input, textarea, select { /* Apply font globally */
+        /* Estilos base para forzar la fuente iOS */
+        body, button, input, textarea, select {
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
         }
+        /* Contenedor del mapa Leaflet */
+        #leaflet-map {
+            height: 250px;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #999;
+            margin-top: 10px;
+        }
+        /* Botones del Almacén */
+        .store-category-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: left;
+            background-color: rgba(255,255,255,0.7);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .store-category-btn:hover {
+            background-color: rgba(255,255,255,0.9);
+        }
+        /* Botón de volver en lista de almacén */
+        #store-list-back-btn {
+            background: none;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            color: #fff; /* Ajustado en CSS para el modal */
+            line-height: 0;
+            opacity: 0.8;
+            margin-right: 10px;
+        }
+        #store-list-back-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        #store-list-header {
+            display: flex;
+            align-items: center;
+        }
+        #store-list-title {
+            flex-grow: 1;
+        }
     </style>
+
+    <!-- Leaflet JS (para Mapas) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
 </head>
 <body>
 
@@ -40,7 +91,7 @@
                 <span id="user-name"></span>
             </div>
             <button id="login-btn" class="header-login-btn" title="Login with Google">
-                <img src="https://lh3.googleusercontent.com/COxitqgJr1sJnIDe8-jiKhxDx1OLUbq VilNfRHXkvdR8VdVAbkuQGcuSgs5nbDbpaE8nhzo6g=s0-w24-h24-p-k-rw-no" alt="G" style="width: 24px; height: 24px; border-radius: 50%;">
+                <!-- El contenido se rellena con JS -->
             </button>
         </div>
     </header>
@@ -53,21 +104,22 @@
 
     <main id="app-content">
         <p>Loading...</p>
-        <!-- El contenido se generará aquí, incluyendo el spotlight y el grid -->
     </main>
 
     <footer class="footer-dock">
-         <!-- Order: Add, Today, Shuffle, Search -->
+         <!-- Orden: Add, Store, Shuffle, Search -->
          <button class="dock-button" id="btn-add-memory" title="Add Memory">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>
             <span>Add</span>
         </button>
-        <button class="dock-button" id="btn-hoy" title="Today">
-             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"> <path d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm-3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm-5 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5z"/> <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/> </svg>
-            <span>Today</span>
-        </button>
-        <button class="dock-button" id="btn-shuffle" title="Shuffle">
-             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M0 3.5A.5.5 0 0 1 .5 3H1c2.202 0 3.827 1.24 4.874 2.418.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 4.24 10.798 3 13 3h.5a.5.5 0 0 1 0 1H13c-1.798 0-3.173 1.01-4.126 2.082A9.6 9.6 0 0 0 7.556 8a9.6 9.6 0 0 0 1.317 .918C9.828 9.99 11.204 11 13 11h.5a.5.5 0 0 1 0 1H13c-2.202 0-3.827-1.24-4.874-2.418A10.6 10.6 0 0 1 7 9.05c-.26.43-.636.98-1.126 1.532C4.827 11.76 3.202 13 1 13h-.5a.5.5 0 0 1 0-1H1c1.798 0 3.173-1.01 4.126-2.082A9.6 9.6 0 0 0 6.445 8a9.6 9.6 0 0 0-1.317-.918C4.172 6.01 2.796 5 1 5h-.5a.5.5 0 0 1 0-1z"/><path d="M13 5.466V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192zm0 9v-3.932a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192z"/></svg>
+        <button class="dock-button" id="btn-store" title="Almacén">
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M.5 1a.5.5 0 0 0 0 1h1.11l.401 1.607 1.498 7.985A.5.5 0 0 0 4 12h1a.5.5 0 0 1 0 1H4a2 2 0 0 1-1.99-1.834L.5 2.11V2a.5.5 0 0 0-.5-.5zM3.14 5l.5 2.5h11l.5-2.5H3.14zM5 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0zm9-1a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM.5 3a.5.5 0 0 0 0 1h15a.5.5 0 0 0 0-1H.5z"/>
+            </svg>
+            <span>Almacén</span>
+         </button>
+         <button class="dock-button" id="btn-shuffle" title="Shuffle">
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M0 3.5A.5.5 0 0 1 .5 3H1c2.202 0 3.827 1.24 4.874 2.418.49.552.865 1.102 1.126 1.532.26-.43.636-.98 1.126-1.532C9.173 4.24 10.798 3 13 3h.5a.5.5 0 0 1 0 1H13c-1.798 0-3.173 1.01-4.126 2.082A9.6 9.6 0 0 0 7.556 8a9.6 9.6 0 0 0 1.317.918C9.828 9.99 11.204 11 13 11h.5a.5.5 0 0 1 0 1H13c-2.202 0-3.827-1.24-4.874-2.418A10.6 10.6 0 0 1 7 9.05c-.26.43-.636.98-1.126 1.532C4.827 11.76 3.202 13 1 13h-.5a.5.5 0 0 1 0-1H1c1.798 0 3.173-1.01 4.126-2.082A9.6 9.6 0 0 0 6.445 8a9.6 9.6 0 0 0-1.317-.918C4.172 6.01 2.796 5 1 5h-.5a.5.5 0 0 1 0-1z"/><path d="M13 5.466V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192zm0 9v-3.932a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192z"/></svg>
              <span>Shuffle</span>
          </button>
          <button class="dock-button" id="btn-buscar" title="Search">
@@ -76,8 +128,8 @@
          </button>
     </footer>
 
-    <!-- ¡CAMBIO! Actualizado para cargar main.js -->
-    <script type="module" src="main.js?v=24"></script>
+    <!-- Módulos de la App (v3.2) -->
+    <script type="module" src="main.js?v=3.2"></script>
 
 </body>
 </html>
