@@ -1,5 +1,5 @@
 /*
- * main.js (v3.5 - Corregido)
+ * main.js (v3.4)
  * Controlador principal de Ephemerides.
  * Orquesta los módulos: auth, store, api, ui.
  * Gestiona el estado de la aplicación.
@@ -19,10 +19,10 @@ import {
     saveMemory,
     deleteMemory,
     searchMemories,
-    getTodaySpotlight, // <-- Esta línea ahora funciona
+    getTodaySpotlight,
     getMemoriesByType,
-    getNamedDays
-    // CORRECCIÓN: 'findMemoryById' eliminado, no se usa.
+    getNamedDays,
+    findMemoryById // Asumiendo que store.js tiene esta función
 } from './store.js';
 // CORRECCIÓN: 'api' (la variable) no se importa
 import { searchiTunes, searchNominatim } from './api.js';
@@ -30,7 +30,6 @@ import { ui } from './ui.js';
 
 // --- Estado Global de la App ---
 let state = {
-// ... (resto del estado sin cambios) ...
     allDaysData: [],
     currentMonthIndex: new Date().getMonth(),
     currentUser: null,
@@ -45,13 +44,12 @@ let state = {
 };
 
 // --- 1. Inicialización de la App ---
-// ... (checkAndRunApp, loadTodaySpotlight, drawCurrentMonth sin cambios) ...
 
 /**
  * Función principal que arranca la aplicación.
  */
 async function checkAndRunApp() {
-    console.log("Iniciando Ephemerides v3.5 (Modular)...");
+    console.log("Iniciando Ephemerides v3.4 (Modular)...");
     
     try {
         // Mostrar mensaje de carga inicial
@@ -102,7 +100,7 @@ async function loadTodaySpotlight() {
     const dateString = `Hoy, ${today.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}`;
     
     // Pedir a store.js las memorias y el nombre del día
-    const spotlightData = await getTodaySpotlight(state.todayId); // <-- Esta línea ahora funciona
+    const spotlightData = await getTodaySpotlight(state.todayId);
     
     if (spotlightData) {
         const fullDateString = `${dateString} ${spotlightData.dayName !== 'Unnamed Day' ? `(${spotlightData.dayName})` : ''}`;
@@ -126,7 +124,6 @@ function drawCurrentMonth() {
     ui.drawCalendar(monthName, diasDelMes, state.todayId);
 }
 
-
 // --- 2. Callbacks y Manejadores de Eventos ---
 
 /**
@@ -135,7 +132,6 @@ function drawCurrentMonth() {
  */
 function getUICallbacks() {
     return {
-// ... (resto de callbacks sin cambios) ...
         // Navegación y Footer
         onMonthChange: handleMonthChange,
         onDayClick: handleDayClick,
@@ -166,7 +162,6 @@ function getUICallbacks() {
  * @param {Object} user - El objeto de usuario de Firebase, o null.
  */
 function handleAuthStateChange(user) {
-// ... (sin cambios) ...
     state.currentUser = user;
     ui.updateLoginUI(user);
     console.log("Estado de autenticación cambiado:", user ? user.uid : "Logged out");
@@ -179,7 +174,6 @@ function handleAuthStateChange(user) {
  * @param {string} direction - 'prev' o 'next'.
  */
 function handleMonthChange(direction) {
-// ... (sin cambios) ...
     if (direction === 'prev') {
         state.currentMonthIndex = (state.currentMonthIndex - 1 + 12) % 12;
     } else {
@@ -194,7 +188,6 @@ function handleMonthChange(direction) {
  * @param {Object} dia - El objeto de día clicado.
  */
 async function handleDayClick(dia) {
-// ... (sin cambios) ...
     // Si el usuario está logueado, abre "Editar", si no, abre "Preview".
     // TODO: ¿Permitir que el usuario logueado también vea "Preview" primero?
     
@@ -219,7 +212,6 @@ async function handleDayClick(dia) {
  */
 function handleFooterAction(action, payload) {
     switch (action) {
-// ... (resto de casos sin cambios) ...
         case 'add':
             // Abrir modal de edición en modo "Añadir" (dia=null)
             // Asume que no hay memorias que cargar (array vacío)
@@ -238,11 +230,10 @@ function handleFooterAction(action, payload) {
             handleSearchClick();
             break;
         
-        // CORRECCIÓN: Este caso se ha eliminado.
-        // La lógica se mueve a ui.js
-        // case 'edit-memory':
-        //     handleEditMemoryClick(payload); // payload es el memId
-        //     break;
+        // Este es un "hack" llamado desde ui.js para rellenar el formulario
+        case 'edit-memory':
+            handleEditMemoryClick(payload); // payload es el memId
+            break;
             
         default:
             console.warn("Acción de footer desconocida:", action);
@@ -253,7 +244,6 @@ function handleFooterAction(action, payload) {
  * Navega a un día aleatorio.
  */
 function handleShuffleClick() {
-// ... (sin cambios) ...
     if (state.allDaysData.length === 0) return;
     
     const randomIndex = Math.floor(Math.random() * state.allDaysData.length);
@@ -277,7 +267,6 @@ function handleShuffleClick() {
  * Pide un término de búsqueda y muestra los resultados.
  */
 async function handleSearchClick() {
-// ... (sin cambios) ...
     const searchTerm = prompt("Buscar en todas las memorias:");
     if (!searchTerm || searchTerm.trim() === '') return;
     
@@ -307,7 +296,6 @@ async function handleSearchClick() {
  * @param {string} newName - El nuevo nombre.
  */
 async function handleSaveDayName(diaId, newName) {
-// ... (sin cambios) ...
     try {
         await saveDayName(diaId, newName);
         
@@ -333,7 +321,6 @@ async function handleSaveDayName(diaId, newName) {
  * @param {boolean} isEditing - True si es una actualización.
  */
 async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
-// ... (sin cambios) ...
     
     try {
         // 1. Convertir fecha string a Timestamp (lógica de negocio)
@@ -397,7 +384,6 @@ async function handleSaveMemorySubmit(diaId, memoryData, isEditing) {
  * @param {string} memId - El ID de la memoria.
  */
 async function handleDeleteMemory(diaId, memId) {
-// ... (sin cambios) ...
     try {
         await deleteMemory(diaId, memId);
         ui.showModalStatus('memoria-status', 'Memoria borrada', false);
@@ -427,8 +413,23 @@ async function handleDeleteMemory(diaId, memId) {
     }
 }
 
-// CORRECCIÓN: Función eliminada. La lógica se ha movido a ui.js
-// async function handleEditMemoryClick(memId) { ... }
+/**
+ * (Hack) Busca una memoria y le dice a la UI que rellene el formulario.
+ * @param {string} memId - El ID de la memoria.
+ */
+async function handleEditMemoryClick(memId) {
+    if (!memId) return;
+    
+    // Le pedimos a store.js que encuentre la memoria
+    // Esta función necesita ser creada en store.js
+    const memory = await findMemoryById(memId); 
+    
+    if (memory) {
+        ui.fillFormForEdit(memory);
+    } else {
+        ui.showModalStatus('memoria-status', 'Error: No se encontró la memoria para editar.', true);
+    }
+}
 
 
 // --- 4. Lógica de API Externa (Controlador) ---
@@ -438,7 +439,6 @@ async function handleDeleteMemory(diaId, memId) {
  * @param {string} term - Término de búsqueda.
  */
 async function handleMusicSearch(term) {
-// ... (sin cambios) ...
     try {
         const tracks = await searchiTunes(term);
         ui.showMusicResults(tracks);
@@ -454,7 +454,6 @@ async function handleMusicSearch(term) {
  * @param {string} term - Término de búsqueda.
  */
 async function handlePlaceSearch(term) {
-// ... (sin cambios) ...
     try {
         const places = await searchNominatim(term);
         ui.showPlaceResults(places);
@@ -471,7 +470,6 @@ async function handlePlaceSearch(term) {
  * @param {string} type - 'Nombres', 'Lugar', 'Musica', 'Texto', 'Imagen'
  */
 async function handleStoreCategoryClick(type) {
-// ... (sin cambios) ...
     console.log("Cargando Almacén para:", type);
     
     // Resetear estado de paginación
@@ -514,7 +512,6 @@ async function handleStoreCategoryClick(type) {
  * Carga la siguiente página de resultados en el Almacén.
  */
 async function handleStoreLoadMore() {
-// ... (sin cambios) ...
     const { currentType, lastVisible, isLoading } = state.store;
     
     if (isLoading || !currentType || !lastVisible) return;
@@ -549,7 +546,6 @@ async function handleStoreLoadMore() {
  * @param {string} diaId - El ID del día (ej. "05-14").
  */
 function handleStoreItemClick(diaId) {
-// ... (sin cambios) ...
     const dia = state.allDaysData.find(d => d.id === diaId);
     if (!dia) {
         console.error("No se encontró el día:", diaId);
