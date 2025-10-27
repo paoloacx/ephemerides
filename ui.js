@@ -1,941 +1,1217 @@
 /*
- * ui.js (v7.22 - Final Modal Creation, Close Button, Spotlight Undefined, Day Clicks Fix)
- * - Corrects HTML structure/selectors in _createStoreModal and _createDialog.
- * - Corrects Close button ID/Selector matching between _createEditModal and _bindEditModalEvents.
- * - Fixes _createMemoryItemHTML to handle undefined memory properties safely.
- * - Adds robust error handling/logging inside _createPreviewModal and _handleDayClick.
- * - Ensures all modal buttons have type="button" where appropriate.
+ * ui.js (v4.3 - Corregido)
+ * Módulo de interfaz de usuario.
+ * Se encarga de TODA la manipulación del DOM.
+ * Recibe datos y "callbacks" (funciones) de main.js.
  */
 
-// --- Estado Interno del Módulo ---
-const _dom = {
-    appContent: null,
-    monthNameDisplay: null,
-    navPrev: null,
-    navNext: null,
-    footer: null,
-    spotlightHeader: null,
-    spotlightList: null,
-};
+// --- Variables privadas del módulo (Estado de la UI) ---
+let callbacks = {}; // Almacena las funciones de main.js
+let _currentDay = null; // El día abierto en el modal de edición
+let _currentMemories = []; // Las memorias del día abierto
+let _allDaysData = []; // Referencia a todos los días (para el <select>)
+let _isEditingMemory = false; // Estado del formulario (Añadir vs Editar)
 
-const _modals = {
-    preview: null,
-    edit: null,
-    store: null,
-    storeList: null,
-    search: null,
-    settings: null,
-};
+// --- Funciones de Inicialización ---
 
-// Default callbacks
-let _callbacks = {
-    isUserLoggedIn: () => { console.warn("[ui.js] WARN: isUserLoggedIn callback missing"); return false; },
-    onEditFromPreview: (dia, memories) => console.warn("[ui.js] WARN: onEditFromPreview callback missing"),
-    loadMemoriesForDay: async (diaId) => { console.warn("[ui.js] WARN: loadMemoriesForDay callback missing"); return []; },
-    getAllDaysData: () => { console.warn("[ui.js] WARN: getAllDaysData callback missing"); return []; },
-    getTodayId: () => { console.warn("[ui.js] WARN: getTodayId callback missing"); return ''; },
-    onMonthChange: (dir) => console.warn("[ui.js] WARN: onMonthChange callback missing"),
-    onFooterAction: (action) => console.warn(`[ui.js] WARN: onFooterAction callback missing for action: ${action}`),
-    onLogin: () => console.warn("[ui.js] WARN: onLogin callback missing"),
-    onLogout: () => console.warn("[ui.js] WARN: onLogout callback missing"),
-    onSaveDayName: (diaId, name) => console.warn("[ui.js] WARN: onSaveDayName callback missing"),
-    onSaveMemory: (diaId, data, isEditing) => console.warn("[ui.js] WARN: onSaveMemory callback missing"),
-    onDeleteMemory: (diaId, memId) => console.warn("[ui.js] WARN: onDeleteMemory callback missing"),
-    onSearchMusic: (term) => console.warn("[ui.js] WARN: onSearchMusic callback missing"),
-    onSearchPlace: (term) => console.warn("[ui.js] WARN: onSearchPlace callback missing"),
-    onStoreCategoryClick: (type) => console.warn("[ui.js] WARN: onStoreCategoryClick callback missing"),
-    onStoreLoadMore: () => console.warn("[ui.js] WARN: onStoreLoadMore callback missing"),
-    onStoreItemClick: (diaId) => console.warn("[ui.js] WARN: onStoreItemClick callback missing"),
-    onSearchSubmit: (term) => console.warn("[ui.js] WARN: onSearchSubmit callback missing"),
-};
-
-let _currentDay = null;
-let _currentMemories = [];
-let _isEditingMemory = false;
-let _selectedMusicTrack = null;
-let _selectedPlace = null;
-
-
-// --- 1. Inicialización y Funciones Principales ---
-
-function init(callbacks) {
-    console.log("[ui.js] Initializing v7.22..."); // Version bump
-    _callbacks = { ..._callbacks, ...callbacks };
-    if (typeof _callbacks.onFooterAction !== 'function') {
-         throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
-    }
-    console.log("[ui.js] Callbacks stored.");
-
-    console.log("[ui.js] Finding essential DOM elements...");
-    _dom.appContent = document.getElementById('app-content');
-    _dom.footer = document.querySelector('.footer-dock');
-
-    if (!_dom.appContent) throw new Error("UI Init failed: #app-content not found.");
-    if (!_dom.footer) throw new Error("UI Init failed: .footer-dock not found.");
-    console.log("[ui.js] Critical elements found.");
-
-    _dom.monthNameDisplay = document.getElementById('month-name-display');
-    _dom.navPrev = document.getElementById('prev-month');
-    _dom.navNext = document.getElementById('next-month');
-    _dom.spotlightHeader = document.getElementById('spotlight-date-header');
-    _dom.spotlightList = document.getElementById('today-memory-spotlight');
-    console.log("[ui.js] DOM element finding complete.");
-
-    console.log("[ui.js] Setting up event listeners...");
-    let setupError = null;
-    try { _setupNavigation(); } catch (e) { console.error("Nav setup error:", e); if(!setupError) setupError = e; }
-    try { _setupHeader(); } catch (e) { console.error("Header setup error:", e); if(!setupError) setupError = e; }
-    try { _setupFooter(); } catch (e) { console.error("Footer setup error:", e); if(!setupError) setupError = e; }
-
-    if (setupError) {
-         throw new Error(`UI Init failed during listener setup: ${setupError.message}`);
-    }
-    console.log("[ui.js] Event listeners OK.");
-    console.log("[ui.js] Initialization function (init) completed successfully.");
-}
-
-
-function updateLoginUI(user) {
-    // ... (logic from v7.11) ...
-     const loginSection = document.getElementById('login-section');
-    if (!loginSection) {
-         console.warn("UI: #login-section not found, cannot update login UI.");
-         return;
-    }
-
-    if (user) {
-        loginSection.innerHTML = `
-            <div id="user-info" title="Logout (Click Avatar)">
-                <img id="user-img" src="${user.photoURL || 'https://placehold.co/30x30/ccc/fff?text=?'}" alt="Avatar">
-                <span id="user-name">${user.displayName || 'User'}</span>
-            </div>
-        `;
-        const userInfoDiv = document.getElementById('user-info');
-        if (userInfoDiv) {
-             userInfoDiv.onclick = () => {
-                 console.log("UI: Logout triggered by avatar click.");
-                 if (typeof _callbacks.onLogout === 'function') {
-                     _callbacks.onLogout();
-                 } else {
-                     console.error("UI: onLogout callback is missing or not a function!");
-                 }
-            }
-        } else {
-             console.warn("UI: #user-info element not found after setting innerHTML (Logout).");
-        }
-
-    } else {
-        loginSection.innerHTML = `
-            <button type="button" id="login-btn" class="header-icon-btn" title="Login with Google">
-                <span class="material-icons-outlined">login</span>
-            </button>
-        `;
-        const loginBtn = document.getElementById('login-btn');
-        if (loginBtn) {
-             loginBtn.onclick = () => {
-                 console.log("UI: Login triggered.");
-                 if (typeof _callbacks.onLogin === 'function') {
-                     _callbacks.onLogin();
-                 } else {
-                     console.error("UI: onLogin callback is missing or not a function!");
-                 }
-            }
-        } else {
-             console.warn("UI: #login-btn element not found after setting innerHTML (Login).");
-        }
-    }
-}
-
-// --- 2. Renderizado del Contenido Principal ---
-
-function drawCalendar(monthName, days, todayId) {
-    // ... (Restored logic from v7.14) ...
-    console.log(`[ui.js] Drawing calendar grid for ${monthName}. Received ${days ? days.length : 'NO'} days.`);
-
-    if (_dom.monthNameDisplay) {
-        _dom.monthNameDisplay.textContent = monthName;
-    } else {
-        console.warn("[ui.js] WARNING: #month-name-display not found.");
-    }
-
-    if (!_dom.appContent) {
-        console.error("[ui.js] ERROR in drawCalendar: #app-content element not found!");
-        return;
-    }
-    _dom.appContent.innerHTML = ''; // Clear previous
-
-    const grid = document.createElement('div');
-    grid.className = 'calendario-grid';
-
-    if (!days || days.length === 0) {
-        grid.innerHTML = "<p>No days found for this month.</p>";
-        _dom.appContent.appendChild(grid);
-        console.warn(`[ui.js] No days data for ${monthName}. Displayed empty message.`);
-        return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    let buttonsCreated = 0;
-    console.log("[ui.js] Starting loop to create day buttons...");
-    try {
-        days.forEach((dia, index) => {
-            if (!dia || typeof dia !== 'object' || !dia.id || typeof dia.id !== 'string' || dia.id.length !== 5) {
-                 console.warn(`[ui.js] Skipping invalid day object at index ${index}:`, dia);
-                 return;
-            }
-            const btn = document.createElement("button");
-            btn.type = "button"; // Ensure type is button
-            btn.className = "dia-btn";
-            if (dia.id === todayId) btn.classList.add('dia-btn-today');
-            if (dia.tieneMemorias === true) btn.classList.add('tiene-memorias');
-            const dayNumberStr = dia.id.substring(3);
-            const dayNumber = parseInt(dayNumberStr, 10);
-            btn.innerHTML = `<span class="dia-numero">${isNaN(dayNumber) ? '?' : dayNumber}</span>`;
-            btn.dataset.diaId = dia.id;
-            // --- Log inside handler ---
-            btn.onclick = () => {
-                console.log(`[ui.js] Day button ${dia.id} clicked! Calling _handleDayClick.`);
-                _handleDayClick(dia);
-            };
-
-            fragment.appendChild(btn);
-            buttonsCreated++;
-        });
-        console.log("[ui.js] Finished loop creating day buttons.");
-        _dom.appContent.appendChild(grid); // Add grid container first
-        grid.appendChild(fragment); // Add buttons to grid
-        console.log(`[ui.js] Appended calendar grid with ${buttonsCreated} buttons.`);
-
-    } catch (loopError) {
-         console.error("[ui.js] ERROR during drawCalendar button creation loop:", loopError);
-         _dom.appContent.innerHTML = `<p style="color:red;">Error creating calendar view: ${loopError.message}</p>`;
-    }
-}
-
-
-function updateSpotlight(headerText, memories) {
-    // ... (logic from v7.11) ...
-     console.log(`[ui.js] Updating spotlight. Header: "${headerText}". Memories: ${memories ? memories.length : 0}`);
-    if (_dom.spotlightHeader) {
-        _dom.spotlightHeader.textContent = headerText;
-    } else {
-         console.warn("[ui.js] WARNING: #spotlight-date-header not found.");
-    }
-
-    if (!_dom.spotlightList) {
-         console.warn("[ui.js] WARNING: #today-memory-spotlight not found.");
-         return;
-    }
-
-    _dom.spotlightList.innerHTML = ''; // Clear previous items
-    if (!memories || memories.length === 0) {
-        _dom.spotlightList.innerHTML = `<p class="list-placeholder">No memories for today.</p>`;
-        return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    let itemsCreated = 0;
-    memories.forEach(mem => {
-        if (!mem || typeof mem !== 'object') {
-             console.warn("[ui.js] Skipping invalid memory object in updateSpotlight:", mem);
-             return;
-        }
-
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'spotlight-memory-item';
-
-        const diaId = mem.diaId || _callbacks.getTodayId();
-        if (!diaId) {
-             console.error("[ui.js] Cannot determine diaId for spotlight item:", mem);
-             return;
-        }
-        itemDiv.dataset.diaId = diaId;
-
-        itemDiv.innerHTML = _createMemoryItemHTML(mem, 'spotlight'); // Use corrected generator
-
-        itemDiv.onclick = () => {
-            const diaData = {
-                id: itemDiv.dataset.diaId,
-                Nombre_Dia: mem.Nombre_Dia || itemDiv.dataset.diaId
-            };
-            _handleDayClick(diaData);
-        };
-
-        fragment.appendChild(itemDiv);
-        itemsCreated++;
-    });
-    _dom.spotlightList.appendChild(fragment);
-    console.log(`[ui.js] Updated spotlight with ${itemsCreated} memory items.`);
-}
-
-
-// --- 3. Conexión de Eventos Estáticos ---
-
-function _setupNavigation() {
-    console.log("[ui.js] Setting up navigation listeners...");
-    if (_dom.navPrev) {
-         if (typeof _callbacks.onMonthChange === 'function') {
-            _dom.navPrev.onclick = () => { _callbacks.onMonthChange('prev'); }
-            console.log("[ui.js] Prev month listener attached.");
-         } else { console.error("UI ERROR: onMonthChange callback missing!"); }
-    } else { console.warn("UI WARNING: #prev-month button not found."); }
-
-    if (_dom.navNext) {
-         if (typeof _callbacks.onMonthChange === 'function') {
-             _dom.navNext.onclick = () => { _callbacks.onMonthChange('next'); }
-             console.log("[ui.js] Next month listener attached.");
-         } else { console.error("UI ERROR: onMonthChange callback missing!"); }
-    } else { console.warn("UI WARNING: #next-month button not found."); }
-}
-
-function _setupHeader() {
-    console.log("[ui.js] Setting up header listeners...");
-    const searchBtn = document.getElementById('header-search-btn');
-    if (searchBtn) {
-        searchBtn.onclick = () => { openSearchModal(); }
-        console.log("[ui.js] Header search listener attached.");
-    } else { console.warn("UI WARNING: #header-search-btn not found."); }
+/**
+ * Inicializa el módulo de UI y conecta los callbacks de main.js
+ * @param {Object} mainCallbacks - Objeto con todas las funciones de main.js
+ */
+function init(mainCallbacks) {
+    console.log("UI Module init (v4.3)");
+    callbacks = mainCallbacks;
+    
+    // Conectar eventos estáticos (navegación, footer, etc.)
+    _bindNavEvents();
+    _bindFooterEvents();
+    _bindLoginEvents(); // Conecta el botón de login del header
+    _bindGlobalListeners(); // Clics para cerrar modales
 }
 
 /**
- * --- Footer Event Listener Logic (Confirmed v7.11 Correctness) ---
+ * Conecta los eventos de navegación (mes anterior/siguiente)
  */
-function _setupFooter() {
-    console.log("[ui.js] Setting up footer listener (v7.16 logic)...");
-    if(!_dom.footer) throw new Error("UI Init failed: Footer element not found.");
-    if (typeof _callbacks.onFooterAction !== 'function') throw new Error("UI Init failed: Required callback 'onFooterAction' is missing.");
-    console.log("[ui.js] Footer element and callback verified.");
+function _bindNavEvents() {
+    const prevBtn = document.getElementById('prev-month');
+    const nextBtn = document.getElementById('next-month');
+    
+    if (prevBtn) {
+        prevBtn.onclick = () => {
+            if (callbacks.onMonthChange) callbacks.onMonthChange('prev');
+        };
+    }
+    if (nextBtn) {
+        nextBtn.onclick = () => {
+            if (callbacks.onMonthChange) callbacks.onMonthChange('next');
+        };
+    }
+}
 
-    _dom.footer.addEventListener('click', (e) => {
-        const button = e.target.closest('.dock-button[data-action]');
-        if (!button) return;
+/**
+ * Conecta los eventos del footer dock
+ */
+function _bindFooterEvents() {
+    document.getElementById('btn-add-memory')?.addEventListener('click', () => {
+        if (callbacks.onFooterAction) callbacks.onFooterAction('add');
+    });
+    document.getElementById('btn-store')?.addEventListener('click', () => {
+        if (callbacks.onFooterAction) callbacks.onFooterAction('store');
+    });
+    document.getElementById('btn-shuffle')?.addEventListener('click', () => {
+        if (callbacks.onFooterAction) callbacks.onFooterAction('shuffle');
+    });
+    document.getElementById('btn-search')?.addEventListener('click', () => {
+        if (callbacks.onFooterAction) callbacks.onFooterAction('search');
+    });
+}
 
-        const action = button.dataset.action;
-        console.log(`[ui.js] Footer button clicked! Action='${action}'`);
-
-        if (action === 'add' || action === 'store' || action === 'shuffle') {
-            console.log(`[ui.js] Action '${action}' requires main.js. Calling onFooterAction callback...`);
-            _callbacks.onFooterAction(action); // Call main.js
-        } else if (action === 'settings') {
-            console.log("[ui.js] Handling 'settings' action internally -> opening dialog.");
-            openSettingsDialog();
-        } else {
-            console.warn(`[ui.js] Click on footer button with unknown action: ${action}`);
+/**
+ * Conecta los eventos de login/logout
+ */
+function _bindLoginEvents() {
+    // El botón se crea dinámicamente, usamos delegación en el header
+    const header = document.querySelector('header');
+    header?.addEventListener('click', (e) => {
+        const loginBtn = e.target.closest('#login-btn');
+        if (!loginBtn) return;
+        
+        const action = loginBtn.dataset.action;
+        if (action === 'login' && callbacks.onLogin) {
+            callbacks.onLogin();
+        } else if (action === 'logout' && callbacks.onLogout) {
+            callbacks.onLogout();
         }
     });
-    console.log("[ui.js] Footer listener attached successfully.");
 }
 
+/**
+ * Añade listeners globales (ej. cerrar modales al hacer clic fuera)
+ */
+function _bindGlobalListeners() {
+    document.body.addEventListener('click', (e) => {
+        // Cerrar modales si se hace clic en el fondo
+        if (e.target.classList.contains('modal-preview')) closePreviewModal();
+        if (e.target.classList.contains('modal-edit')) closeEditModal();
+        if (e.target.classList.contains('modal-store')) closeStoreModal();
+        if (e.target.classList.contains('modal-store-list')) closeStoreListModal();
+    });
+}
 
+// --- Funciones de Renderizado Principal ---
 
-// --- 4. Creación y Manejo de Modales ---
+/**
+ * Muestra un mensaje de carga en el 'app-content'
+ * @param {string} message - El mensaje a mostrar
+ * @param {boolean} show - Mostrar u ocultar
+ */
+function setLoading(message, show) {
+    const appContent = document.getElementById('app-content');
+    if (!appContent) return;
 
-function openPreviewModal(dia, memories) {
-    console.log("[ui.js] openPreviewModal called for day:", dia?.id);
-    _currentDay = dia;
-    _currentMemories = memories || [];
-
-    if (!_modals.preview) {
-        console.log("[ui.js] Creating Preview modal element...");
-        _modals.preview = _createPreviewModal(); // Has try/catch
-        if (!_modals.preview) {
-             console.error("[ui.js] FAILED TO CREATE Preview modal in openPreviewModal.");
-             alert("Error opening preview. Check console.");
-             return; // Stop if creation failed
-        }
+    if (show) {
+        appContent.innerHTML = `<p class="loading-message">${message}</p>`;
+    } else {
+        // Se limpia automáticamente al llamar a drawCalendar
+        // Pero lo dejamos por si se usa en otros sitios
+        const loading = appContent.querySelector('.loading-message');
+        if (loading) loading.remove();
     }
-
-    const title = _modals.preview.querySelector('.modal-header h3');
-    const editBtn = _modals.preview.querySelector('.header-edit-btn');
-    const displayName = dia.Nombre_Dia || dia.id;
-    if(title) title.textContent = `${displayName} ${dia.Nombre_Especial && dia.Nombre_Especial !== 'Unnamed Day' ? `(${dia.Nombre_Especial})` : ''}`;
-    if(editBtn) editBtn.classList.toggle('visible', _callbacks.isUserLoggedIn());
-
-    _renderMemoryList('preview-memorias-list', _currentMemories);
-
-    console.log("[ui.js] Preview modal configured. Attempting to show (add '.visible')...");
-    _modals.preview.classList.add('visible');
-    console.log("[ui.js] Preview modal should be visible now.");
 }
 
+/**
+ * Actualiza la UI de login/logout en el header
+ * @param {Object} user - El objeto de usuario de Firebase (o null)
+ */
+function updateLoginUI(user) {
+    const loginBtn = document.getElementById('login-btn');
+    const userInfo = document.getElementById('user-info');
+    const userName = document.getElementById('user-name');
+    const userImg = document.getElementById('user-img');
 
-function closePreviewModal() {
-    console.log("[ui.js] Closing Preview modal (removing '.visible')...");
-    if (_modals.preview) _modals.preview.classList.remove('visible');
-}
+    if (!loginBtn || !userInfo || !userName || !userImg) return;
 
-function _handleEditFromPreview() { /* ... v7.8 logic ... */ }
-
-function openEditModal(dia, memories, allDays) {
-    const isAdding = !dia;
-    console.log(`[ui.js] openEditModal called. Mode: ${isAdding ? 'Add' : 'Edit'}. Day ID: ${dia ? dia.id : 'N/A'}`);
-
-    if (isAdding) { /* ... v7.8 logic ... */ } else { /* ... v7.8 logic ... */ } // Determine _currentDay, _currentMemories
-
-    if (!_modals.edit) {
-        console.log("[ui.js] Creating Edit modal element...");
-        _modals.edit = _createEditModal(); // Has try/catch
-        if (!_modals.edit) return; // Stop if creation failed
-        _populateDaySelect(allDays || _callbacks.getAllDaysData());
-        _bindEditModalEvents(); // Has try/catch now
+    if (user) {
+        userInfo.style.display = 'flex';
+        userName.textContent = user.displayName || 'Usuario';
+        userImg.src = user.photoURL || `https://placehold.co/30x30/ccc/fff?text=${user.displayName ? user.displayName[0] : '?'}`;
+        // Recrear el botón para logout
+        _createLoginButton(true);
+    } else {
+        userInfo.style.display = 'none';
+        // Recrear el botón para login
+        _createLoginButton(false);
     }
-
-    // ... (Configure modal based on mode - v7.8 logic with safety checks) ...
-    console.log("[ui.js] Configuring Edit modal content...");
-    // ... find elements safely ...
-    const daySelectionSection = _modals.edit.querySelector('#day-selection-section');
-     // ... other elements ...
-    if(!daySelectionSection /* || other elements are null */) {
-         console.error("[ui.js] ERROR: Missing elements inside Edit modal during configuration!");
-         return; // Stop
-    }
-    // ... (rest of configuration) ...
-
-
-    _renderMemoryList('edit-memorias-list', _currentMemories);
-    resetMemoryForm();
-    showModalStatus('save-status', '', false);
-    showModalStatus('memoria-status', '', false);
-
-    console.log("[ui.js] Edit modal configured. Attempting to show (add '.visible')...");
-    _modals.edit.classList.add('visible');
-    console.log("[ui.js] Edit modal should be visible now.");
 }
 
+/**
+ * Dibuja la cuadrícula del calendario para un mes
+ * @param {string} monthName - Nombre del mes (ej. "Octubre")
+ * @param {Array} days - Array de objetos de día para ese mes
+ * @param {string} todayId - ID del día de hoy (ej. "10-26")
+ */
+function drawCalendar(monthName, days, todayId) {
+    const monthNameDisplay = document.getElementById('month-name-display');
+    const appContent = document.getElementById('app-content');
+    
+    if (monthNameDisplay) monthNameDisplay.textContent = monthName;
+    if (!appContent) return;
 
-function closeEditModal() {
-    console.log("[ui.js] closeEditModal called (removing '.visible')...");
-    if (_modals.edit) _modals.edit.classList.remove('visible');
-}
-function resetMemoryForm() { /* ... v7.8 logic ... */ }
-function fillFormForEdit(memoria) { /* ... v7.8 logic ... */ }
-
-function openStoreModal() {
-    console.log("[ui.js] openStoreModal called.");
-    if (!_modals.store) {
-        console.log("[ui.js] Creating Store modal element...");
-        _modals.store = _createStoreModal(); // Has try/catch now
-        if (!_modals.store) return; // Stop if creation failed
-    }
-    console.log("[ui.js] Attempting to show Store modal (add '.visible')...");
-    _modals.store.classList.add('visible');
-    console.log("[ui.js] Store modal should be visible now.");
-}
-function closeStoreModal() { console.log("[ui.js] Closing Store modal."); if (_modals.store) _modals.store.classList.remove('visible');}
-function openStoreListModal(title) { /* ... v7.8 logic with logs ... */ }
-function closeStoreListModal() { /* ... v7.8 logic with logs ... */ }
-function updateStoreList(items, append = false, hasMore = false) { /* ... v7.8 logic ... */ }
-function openSearchModal() {
-     console.log("[ui.js] openSearchModal called.");
-     if (!_modals.search) {
-          console.log("[ui.js] Creating Search modal element...");
-          _modals.search = _createSearchModal(); // Has try/catch now
-          if (!_modals.search) return; // Stop if creation failed
-     }
-     console.log("[ui.js] Attempting to show Search modal (add '.visible')...");
-     _modals.search.classList.add('visible');
-      console.log("[ui.js] Search modal should be visible now.");
-     try { _modals.search.querySelector('#search-input')?.focus(); }
-     catch (e) { console.warn("UI: Could not focus search input.", e); }
-}
-function closeSearchModal() { console.log("[ui.js] Closing Search modal."); if (_modals.search) { /*...*/ } }
-
-function openSettingsDialog() {
-    console.log("[ui.js] openSettingsDialog called.");
-    if (!_modals.settings) {
-         console.log("[ui.js] Creating Settings dialog element...");
-        _modals.settings = _createDialog('settings-dialog', 'Settings', 'Settings is Coming Soon. Check back later!'); // Has try/catch now
-         if (!_modals.settings) return; // Stop if creation failed
-    }
-    console.log("[ui.js] Attempting to show Settings dialog (add '.visible')...");
-    _modals.settings.classList.add('visible');
-    console.log("[ui.js] Settings dialog should be visible now.");
+    const grid = document.createElement('div');
+    grid.className = 'calendario-grid';
+    
+    days.forEach(dia => {
+        const btn = document.createElement('button');
+        btn.className = 'dia-btn';
+        btn.innerHTML = `<span class="dia-numero">${parseInt(dia.id.substring(3))}</span>`;
+        
+        // Añadir clases de estado
+        if (dia.id === todayId) btn.classList.add('dia-btn-today');
+        if (dia.tieneMemorias) btn.classList.add('tiene-memorias');
+        
+        btn.addEventListener('click', () => {
+            if (callbacks.onDayClick) callbacks.onDayClick(dia);
+        });
+        
+        grid.appendChild(btn);
+    });
+    
+    appContent.innerHTML = ''; // Limpiar "Loading..." o el grid anterior
+    appContent.appendChild(grid);
 }
 
-// --- 5. Lógica de UI interna (Helpers) ---
-async function _handleDayClick(dia) {
-    // --- ADDED: Logs ---
-    if (!dia || !dia.id) {
-        console.error("UI: Invalid day object passed to _handleDayClick:", dia);
+/**
+ * Actualiza el widget "Spotlight"
+ * @param {string} title - El título (ej. "Hoy, 26 de octubre")
+ * @param {Array} memories - Array de objetos de memoria
+ */
+function updateSpotlight(title, memories) {
+    const titleEl = document.getElementById('spotlight-date-header');
+    const listEl = document.getElementById('today-memory-spotlight');
+
+    if (titleEl) titleEl.textContent = title;
+    if (!listEl) return;
+    
+    listEl.innerHTML = ''; // Limpiar
+    
+    if (!memories || memories.length === 0) {
+        listEl.innerHTML = '<p class="list-placeholder">No hay memorias destacadas.</p>';
         return;
     }
-    console.log(`[ui.js] _handleDayClick: Handling click for day ${dia.id}.`);
+    
+    memories.forEach(mem => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'spotlight-memory-item';
+        // Usamos la misma función de renderizado que los modales
+        itemEl.innerHTML = createMemoryItemHTML(mem, false); // false = no mostrar acciones
+        
+        // Hacemos que el item sea clicable para ir a ese día
+        itemEl.addEventListener('click', () => {
+            if (callbacks.onStoreItemClick) callbacks.onStoreItemClick(mem.diaId);
+        });
+        
+        listEl.appendChild(itemEl);
+    });
+}
 
-    try {
-        console.log(`[ui.js] _handleDayClick: Loading memories for ${dia.id}...`);
-        // Use the callback provided by main.js
-        const memories = await _callbacks.loadMemoriesForDay(dia.id);
-        console.log(`[ui.js] _handleDayClick: Memories loaded for ${dia.id} (${memories ? memories.length : 0}). Calling openPreviewModal...`);
 
-        // Ensure 'dia' object has Nombre_Dia for the preview title
-        if (!dia.Nombre_Dia) {
-             const allDays = _callbacks.getAllDaysData();
-             const dayData = allDays.find(d => d.id === dia.id);
-             dia.Nombre_Dia = dayData ? dayData.Nombre_Dia : dia.id; // Use name or fallback to ID
-             console.log(`[ui.js] _handleDayClick: Added Nombre_Dia '${dia.Nombre_Dia}' to day object.`);
-        }
-        openPreviewModal(dia, memories); // Always open Preview first
+// --- Modal: Vista Previa (Preview) ---
 
-    } catch (error) {
-        console.error(`[ui.js] ERROR in _handleDayClick while loading memories for ${dia.id}:`, error);
-        alert(`Error loading memories for ${dia.Nombre_Dia || dia.id}. Please check console.`);
-    }
- }
-function _createMemoryItemHTML(memoria, context) {
-    // --- FIXED: Handle undefined properties ---
-    let contentHTML = '';
-    let artworkHTML = '';
+let previewModal = null;
+function createPreviewModal() {
+    if (previewModal) return; // Ya existe
 
-    let yearStr = '????';
-    try {
-        if (memoria?.Fecha_Original?.toDate) {
-            yearStr = memoria.Fecha_Original.toDate().getFullYear().toString();
-        } else if (typeof memoria?.Fecha_Original === 'string' && memoria.Fecha_Original.length >= 4) {
-            yearStr = memoria.Fecha_Original.substring(0, 4);
-            if (!/^\d{4}$/.test(yearStr)) yearStr = '????';
-        } else if (memoria?.Fecha_Original instanceof Date) {
-             yearStr = memoria.Fecha_Original.getFullYear().toString();
-        }
-    } catch (e) {
-        console.warn("UI: Error extracting year:", memoria?.Fecha_Original, e);
-    }
-
-    let icon = 'notes';
-    switch (memoria?.Tipo) {
-        case 'Place': icon = 'place'; break;
-        case 'Music': icon = 'music_note'; break;
-        case 'Image': icon = 'image'; break;
-        default: icon = 'notes'; break;
-    }
-
-    const tipo = memoria?.Tipo || 'Text'; // Default to Text if missing
-
-    if (context === 'spotlight') {
-         contentHTML = `<span class="spotlight-year-box">${yearStr}</span>`;
-         contentHTML += `<span class="material-icons-outlined">${icon}</span>`;
-         contentHTML += `<div class="spotlight-memory-content"><span>`;
-
-         // --- Use Fallback Text ---
-         switch (tipo) {
-            case 'Place':
-                contentHTML += `${memoria.LugarNombre || 'Unnamed Place'}`;
-                break;
-            case 'Music':
-                if (memoria.CancionData?.trackName) {
-                    contentHTML += `<strong>${memoria.CancionData.trackName || '?'}</strong> by ${memoria.CancionData.artistName || '?'}`;
-                     if(memoria.CancionData.artworkUrl60) {
-                         artworkHTML = `<img src="${memoria.CancionData.artworkUrl60}" class="memoria-artwork" onerror="this.style.display='none'">`;
-                     }
-                } else {
-                    contentHTML += `${memoria.CancionInfo || 'Unnamed Music'}`;
-                }
-                break;
-            case 'Image':
-                contentHTML += `${memoria.Descripcion || 'Unnamed Image'}`;
-                break;
-            case 'Text':
-            default:
-                 const description = memoria.Descripcion || 'Unnamed Memory';
-                 const maxLength = 40;
-                 contentHTML += description.length > maxLength ? description.substring(0, maxLength) + '...' : description;
-                break;
-         }
-         contentHTML += `</span></div>`;
-
-    } else { // Preview or Edit modal
-        contentHTML = `<small>${yearStr}</small>`;
-        contentHTML += `<span><span class="material-icons-outlined">${icon}</span> `;
-
-        // --- Use Fallback Text ---
-        switch (tipo) {
-            case 'Place':
-                contentHTML += `${memoria.LugarNombre || 'Unnamed Place'}`;
-                break;
-            case 'Music':
-                if (memoria.CancionData?.trackName) {
-                    contentHTML += `<strong>${memoria.CancionData.trackName || '?'}</strong> by ${memoria.CancionData.artistName || '?'}`;
-                    if(memoria.CancionData.artworkUrl60) {
-                        artworkHTML = `<img src="${memoria.CancionData.artworkUrl60}" class="memoria-artwork" onerror="this.style.display='none'">`;
-                    }
-                } else {
-                    contentHTML += `${memoria.CancionInfo || 'Unnamed Music'}`;
-                }
-                break;
-            case 'Image':
-                contentHTML += `${memoria.Descripcion || 'Unnamed Image'}`;
-                if (memoria.ImagenURL) {
-                    contentHTML += ` <small>(<a href="${memoria.ImagenURL}" target="_blank" rel="noopener">View</a>)</small>`;
-                }
-                break;
-            case 'Text':
-            default:
-                 contentHTML += memoria.Descripcion || 'Unnamed Memory';
-                break;
-        }
-         contentHTML += `</span>`;
-    }
-
-    let actionsHTML = '';
-    if (context === 'edit-modal' && memoria?.id) {
-        actionsHTML = `
-            <div class="memoria-actions">
-                <button type="button" class="edit-btn" title="Edit" data-memoria-id="${memoria.id}">
+    previewModal = document.createElement('div');
+    previewModal.id = 'preview-modal';
+    previewModal.className = 'modal-preview';
+    previewModal.innerHTML = `
+        <div class="modal-preview-content">
+            <div class="modal-preview-header">
+                <h3 id="preview-title"></h3>
+                <button id="edit-from-preview-btn" class="modal-icon-btn" title="Editar este día">
                     <span class="material-icons-outlined">edit</span>
                 </button>
-                <button type="button" class="delete-btn" title="Delete" data-memoria-id="${memoria.id}">
-                    <span class="material-icons-outlined">delete_outline</span>
-                </button>
+            </div>
+            <div class="modal-preview-memorias">
+                <h4>Memorias:</h4>
+                <div id="preview-memorias-list"></div>
+            </div>
+            <button id="close-preview-btn" class="aqua-button">Cerrar</button>
+        </div>`;
+    document.body.appendChild(previewModal);
+    
+    // Conectar eventos
+    document.getElementById('close-preview-btn')?.addEventListener('click', closePreviewModal);
+    document.getElementById('edit-from-preview-btn')?.addEventListener('click', () => {
+        // Llama a 'add' pero con el día actual
+        if (callbacks.onFooterAction && _currentDay) {
+            closePreviewModal();
+            // Retraso para que la animación de cierre termine
+            setTimeout(() => {
+                callbacks.onDayClick(_currentDay); // Reutiliza la lógica de clic
+            }, 250);
+        }
+    });
+}
+
+function openPreviewModal(dia, memories) {
+    createPreviewModal(); // Asegurarse de que existe
+    _currentDay = dia; // Guardar día actual para el botón "Editar"
+    
+    const titleEl = document.getElementById('preview-title');
+    const listEl = document.getElementById('preview-memorias-list');
+    
+    const dayName = dia.Nombre_Especial !== 'Unnamed Day' ? ` (${dia.Nombre_Especial})` : '';
+    if (titleEl) titleEl.textContent = `${dia.Nombre_Dia}${dayName}`;
+    
+    // Renderizar lista
+    _renderMemoryList(listEl, memories, false); // false = sin acciones
+
+    previewModal.style.display = 'flex';
+    setTimeout(() => previewModal.classList.add('visible'), 10);
+}
+
+function closePreviewModal() {
+    if (!previewModal) return;
+    previewModal.classList.remove('visible');
+    setTimeout(() => {
+        previewModal.style.display = 'none';
+        _currentDay = null; // Limpiar
+    }, 200);
+}
+
+// --- Modal: Edición (Edit/Add) ---
+
+let editModal = null;
+function createEditModal() {
+    if (editModal) return; // Ya existe
+
+    editModal = document.createElement('div');
+    editModal.id = 'edit-add-modal';
+    editModal.className = 'modal-edit';
+    editModal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-content-scrollable">
+                
+                <!-- Sección de Selección de Día (Solo para 'Añadir') -->
+                <div class="modal-section" id="day-selection-section" style="display: none;">
+                    <h3>Añadir Memoria a...</h3>
+                    <label for="edit-mem-day">Día (MM-DD):</label>
+                    <select id="edit-mem-day"></select>
+                </div>
+
+                <!-- Sección de Nombre del Día (Solo para 'Editar') -->
+                <div class="modal-section" id="day-name-section" style="display: none;">
+                    <h3 id="edit-modal-title"></h3>
+                    <label for="nombre-especial-input">Nombrar este día:</label>
+                    <input type="text" id="nombre-especial-input" placeholder="Ej. Día de la Pizza" maxlength="25">
+                    <button id="save-name-btn" class="aqua-button">Guardar Nombre</button>
+                    <p id="save-status" class="status-message"></p>
+                </div>
+
+                <!-- Sección de Memorias (Siempre visible) -->
+                <div class="modal-section memorias-section">
+                    <h4>Memorias</h4>
+                    <div id="edit-memorias-list"></div>
+                    
+                    <form id="memory-form">
+                        <p class="section-description" id="memory-form-title">Añadir/Editar Memoria</p>
+                        
+                        <label for="memoria-fecha">Fecha Original de la Memoria:</label>
+                        <input type="date" id="memoria-fecha" required>
+                        
+                        <label for="memoria-type">Tipo:</label>
+                        <select id="memoria-type">
+                            <option value="Texto">Nota</option>
+                            <option value="Lugar">Lugar</option>
+                            <option value="Musica">Canción</option>
+                            <option value="Imagen">Foto</option>
+                        </select>
+
+                        <!-- Inputs Dinámicos -->
+                        <div class="add-memory-input-group" id="input-type-Texto">
+                            <label for="memoria-desc">Descripción:</label>
+                            <textarea id="memoria-desc" placeholder="Escribe tu recuerdo..."></textarea>
+                        </div>
+                        <div class="add-memory-input-group" id="input-type-Lugar">
+                            <label for="memoria-place-search">Buscar Lugar:</label>
+                            <input type="text" id="memoria-place-search" placeholder="Ej. Torre Eiffel">
+                            <button type="button" class="aqua-button" id="btn-search-place">Buscar</button>
+                            <div id="place-results" class="search-results"></div>
+                        </div>
+                        <div class="add-memory-input-group" id="input-type-Musica">
+                            <label for="memoria-music-search">Buscar Canción:</label>
+                            <input type="text" id="memoria-music-search" placeholder="Ej. Bohemian Rhapsody">
+                            <button type="button" class="aqua-button" id="btn-search-itunes">Buscar</button>
+                            <div id="itunes-results" class="search-results"></div>
+                        </div>
+                        <div class="add-memory-input-group" id="input-type-Imagen">
+                            <label for="memoria-image-upload">Subir Foto:</label>
+                            <input type="file" id="memoria-image-upload" accept="image/*">
+                            <label for="memoria-image-desc">Descripción (opcional):</label>
+                            <input type="text" id="memoria-image-desc" placeholder="Añade un pie de foto...">
+                            <div id="image-upload-status" class="status-message"></div>
+                        </div>
+                        
+                        <button type="submit" id="save-memoria-btn" class="aqua-button">Añadir Memoria</button>
+                        <p id="memoria-status" class="status-message"></p>
+                    </form>
+                </div>
+
+                <!-- Diálogo de Confirmación (se mueve aquí) -->
+                <div id="confirm-delete-dialog" style="display: none;">
+                    <p id="confirm-delete-text"></p>
+                    <button id="confirm-delete-no" class="aqua-button">Cancelar</button>
+                    <button id="confirm-delete-yes" class="aqua-button delete-confirm">Borrar</button>
+                </div>
+
+            </div> <!-- Fin .modal-content-scrollable -->
+            
+            <div class="modal-main-buttons">
+                <button id="close-edit-add-btn">Cerrar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(editModal);
+    
+    // Conectar eventos del modal
+    _bindEditModalEvents();
+}
+
+/**
+ * Conecta todos los eventos internos del modal de Edición/Añadir
+ */
+function _bindEditModalEvents() {
+    // Botones principales
+    document.getElementById('close-edit-add-btn')?.addEventListener('click', closeEditModal);
+    document.getElementById('save-name-btn')?.addEventListener('click', () => {
+        if (callbacks.onSaveDayName && _currentDay) {
+            const input = document.getElementById('nombre-especial-input');
+            callbacks.onSaveDayName(_currentDay.id, input.value.trim());
+        }
+    });
+
+    // Formulario
+    document.getElementById('memory-form')?.addEventListener('submit', _handleFormSubmit);
+    document.getElementById('memoria-type')?.addEventListener('change', handleMemoryTypeChange);
+    
+    // Botones de búsqueda API
+    document.getElementById('btn-search-itunes')?.addEventListener('click', () => {
+        if (callbacks.onSearchMusic) {
+            const term = document.getElementById('memoria-music-search').value;
+            if (term) callbacks.onSearchMusic(term);
+        }
+    });
+    document.getElementById('btn-search-place')?.addEventListener('click', () => {
+        if (callbacks.onSearchPlace) {
+            const term = document.getElementById('memoria-place-search').value;
+            if (term) callbacks.onSearchPlace(term);
+        }
+    });
+    
+    // Diálogo de confirmación
+    document.getElementById('confirm-delete-no')?.addEventListener('click', () => {
+        document.getElementById('confirm-delete-dialog').style.display = 'none';
+    });
+    
+    // Delegación de eventos para la lista de memorias (Editar/Borrar)
+    const listEl = document.getElementById('edit-memorias-list');
+    listEl?.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.edit-btn');
+        const deleteBtn = e.target.closest('.delete-btn');
+        
+        if (editBtn) {
+            const memoriaId = editBtn.dataset.memoriaId;
+            // CORRECCIÓN: Llamar a la lógica local, no a main.js
+            if (_currentMemories && _currentMemories.length > 0) {
+                const memToEdit = _currentMemories.find(m => m.id === memoriaId);
+                if (memToEdit) {
+                    fillFormForEdit(memToEdit); // Llama a la función local
+                } else {
+                    console.error("No se encontró la memoria en _currentMemories:", memoriaId);
+                    showModalStatus('memoria-status', 'Error: Memoria no encontrada.', true);
+                }
+            }
+        }
+        
+        if (deleteBtn) {
+            const memoriaId = deleteBtn.dataset.memoriaId;
+            const mem = _currentMemories.find(m => m.id === memoriaId);
+            const info = mem ? (mem.Descripcion || mem.LugarNombre || mem.CancionInfo || 'esta memoria') : 'esta memoria';
+            _showConfirmDelete(memoriaId, info);
+        }
+    });
+}
+
+function openEditModal(dia, memories, allDays) {
+    createEditModal(); // Asegurarse de que existe
+    
+    // Guardar estado
+    _currentDay = dia; // Puede ser null (modo 'Añadir')
+    _currentMemories = memories || [];
+    _allDaysData = allDays || []; // Para el <select>
+    
+    const daySelection = document.getElementById('day-selection-section');
+    const dayNameSection = document.getElementById('day-name-section');
+    const titleEl = document.getElementById('edit-modal-title');
+    const nameInput = document.getElementById('nombre-especial-input');
+    const daySelect = document.getElementById('edit-mem-day');
+    
+    if (dia) {
+        // --- Modo Edición (Día existente) ---
+        daySelection.style.display = 'none';
+        dayNameSection.style.display = 'block';
+        
+        const dayName = dia.Nombre_Especial !== 'Unnamed Day' ? ` (${dia.Nombre_Especial})` : '';
+        titleEl.textContent = `Editando: ${dia.Nombre_Dia}${dayName}`;
+        nameInput.value = dia.Nombre_Especial !== 'Unnamed Day' ? dia.Nombre_Especial : '';
+        
+    } else {
+        // --- Modo Añadir (Día=null) ---
+        daySelection.style.display = 'block';
+        dayNameSection.style.display = 'none';
+        
+        // Poblar el <select> si no lo está
+        if (daySelect.options.length === 0 && _allDaysData.length > 0) {
+            _allDaysData.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.Nombre_Dia;
+                daySelect.appendChild(opt);
+            });
+        }
+        
+        // Seleccionar el día de hoy por defecto
+        const today = new Date();
+        const todayId = `${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+        daySelect.value = todayId;
+    }
+    
+    // Renderizar lista de memorias (siempre)
+    _renderMemoryList(document.getElementById('edit-memorias-list'), _currentMemories, true); // true = con acciones
+    
+    resetMemoryForm(); // Limpiar el formulario
+    
+    // Limpiar mensajes de estado
+    showModalStatus('save-status', '', false);
+    showModalStatus('memoria-status', '', false);
+    document.getElementById('confirm-delete-dialog').style.display = 'none';
+
+    editModal.style.display = 'flex';
+    setTimeout(() => editModal.classList.add('visible'), 10);
+}
+
+function closeEditModal() {
+    if (!editModal) return;
+    editModal.classList.remove('visible');
+    setTimeout(() => {
+        editModal.style.display = 'none';
+        // Limpiar estado
+        _currentDay = null;
+        _currentMemories = [];
+        _allDaysData = [];
+        _isEditingMemory = false;
+    }, 200);
+}
+
+// --- Modal: Almacén (Store Selector) ---
+
+let storeModal = null;
+function createStoreModal() {
+    if (storeModal) return;
+    storeModal = document.createElement('div');
+    storeModal.id = 'store-modal';
+    storeModal.className = 'modal-store';
+    
+    const categories = [
+        { type: 'Nombres', icon: 'label', label: 'Nombres de Día' },
+        { type: 'Lugar', icon: 'place', label: 'Lugares' },
+        { type: 'Musica', icon: 'music_note', label: 'Canciones' },
+        { type: 'Imagen', icon: 'image', label: 'Fotos' },
+        { type: 'Texto', icon: 'article', label: 'Notas' }
+    ];
+    
+    let buttonsHTML = categories.map(cat => createStoreCategoryButton(cat.type, cat.icon, cat.label)).join('');
+    
+    storeModal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-preview-header">
+                <h3>Almacén de Memorias</h3>
+            </div>
+            <div class="modal-content-scrollable store-category-list">
+                ${buttonsHTML}
+            </div>
+            <div class="modal-main-buttons">
+                <button id="close-store-btn">Cerrar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(storeModal);
+    
+    // Conectar eventos
+    document.getElementById('close-store-btn')?.addEventListener('click', closeStoreModal);
+    storeModal.querySelector('.store-category-list')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.store-category-button');
+        if (btn && callbacks.onStoreCategoryClick) {
+            callbacks.onStoreCategoryClick(btn.dataset.type);
+        }
+    });
+}
+
+function openStoreModal() {
+    createStoreModal(); // Asegurarse de que existe
+    storeModal.style.display = 'flex';
+    setTimeout(() => storeModal.classList.add('visible'), 10);
+}
+
+function closeStoreModal() {
+    if (!storeModal) return;
+    storeModal.classList.remove('visible');
+    setTimeout(() => storeModal.style.display = 'none', 200);
+}
+
+// --- Modal: Almacén (Store List) ---
+
+let storeListModal = null;
+function createStoreListModal() {
+    if (storeListModal) return;
+    storeListModal = document.createElement('div');
+    storeListModal.id = 'store-list-modal';
+    storeListModal.className = 'modal-store-list'; // Clase diferente
+    storeListModal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-preview-header">
+                <h3 id="store-list-title">Resultados</h3>
+            </div>
+            <div class="modal-content-scrollable" id="store-list-content">
+                <!-- Los items se inyectan aquí -->
+                <p class="list-placeholder">Cargando...</p>
+            </div>
+            <div class="modal-main-buttons">
+                <button id="close-store-list-btn">Volver</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(storeListModal);
+    
+    // Conectar eventos
+    _bindStoreListModalEvents();
+}
+
+function _bindStoreListModalEvents() {
+    document.getElementById('close-store-list-btn')?.addEventListener('click', closeStoreListModal);
+    
+    const contentEl = document.getElementById('store-list-content');
+    contentEl?.addEventListener('click', (e) => {
+        // Clic en "Cargar Más"
+        const loadMoreBtn = e.target.closest('#load-more-btn');
+        if (loadMoreBtn && callbacks.onStoreLoadMore) {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.textContent = 'Cargando...';
+            callbacks.onStoreLoadMore();
+            return; // No propagar clic
+        }
+        
+        // Clic en un item
+        const itemEl = e.target.closest('.store-list-item');
+        if (itemEl && callbacks.onStoreItemClick) {
+            callbacks.onStoreItemClick(itemEl.dataset.diaId);
+        }
+    });
+}
+
+function openStoreListModal(title) {
+    createStoreListModal(); // Asegurarse de que existe
+    
+    const titleEl = document.getElementById('store-list-title');
+    const contentEl = document.getElementById('store-list-content');
+    
+    if (titleEl) titleEl.textContent = title;
+    if (contentEl) contentEl.innerHTML = '<p class="list-placeholder">Cargando...</p>'; // Reset
+    
+    storeListModal.style.display = 'flex';
+    setTimeout(() => storeListModal.classList.add('visible'), 10);
+}
+
+function closeStoreListModal() {
+    if (!storeListModal) return;
+    storeListModal.classList.remove('visible');
+    setTimeout(() => storeListModal.style.display = 'none', 200);
+}
+
+/**
+ * Actualiza la lista en el modal de Almacén
+ * @param {Array} items - Array de memorias o días
+ * @param {boolean} append - true si se añaden, false si se reemplazan
+ * @param {boolean} hasMore - true si hay más items que cargar
+ */
+function updateStoreList(items, append = false, hasMore = false) {
+    const contentEl = document.getElementById('store-list-content');
+    if (!contentEl) return;
+    
+    // Quitar "Cargando..." o "Cargar Más" anterior
+    const placeholder = contentEl.querySelector('.list-placeholder');
+    if (placeholder) placeholder.remove();
+    const loadMoreBtn = contentEl.querySelector('#load-more-btn');
+    if (loadMoreBtn) loadMoreBtn.remove();
+    
+    // Si no es append y no hay items, mostrar placeholder
+    if (!append && (!items || items.length === 0)) {
+        contentEl.innerHTML = '<p class="list-placeholder">No se encontraron resultados.</p>';
+        return;
+    }
+    
+    // Si es la primera carga (no append), limpiar el contenedor
+    if (!append) {
+        contentEl.innerHTML = '';
+    }
+    
+    // Crear y añadir items
+    const fragment = document.createDocumentFragment();
+    items.forEach(item => {
+        const itemEl = createStoreListItem(item);
+        fragment.appendChild(itemEl);
+    });
+    contentEl.appendChild(fragment);
+    
+    // Añadir botón "Cargar Más" si es necesario
+    if (hasMore) {
+        const btn = document.createElement('button');
+        btn.id = 'load-more-btn';
+        btn.className = 'aqua-button';
+        btn.textContent = 'Cargar Más (+10)';
+        contentEl.appendChild(btn);
+    } else if (items.length > 0) {
+        // No hay más, pero hay items
+        const end = document.createElement('p');
+        end.className = 'list-placeholder';
+        end.textContent = 'Fin de los resultados.';
+        contentEl.appendChild(end);
+    }
+}
+
+// --- Funciones de Ayuda (Helpers) de UI ---
+
+/**
+ * Renderiza la lista de memorias en un elemento contenedor
+ * @param {HTMLElement} listEl - El <div> donde se renderiza la lista
+ * @param {Array} memories - Array de objetos de memoria
+ * @param {boolean} showActions - true para mostrar botones Editar/Borrar
+ */
+function _renderMemoryList(listEl, memories, showActions) {
+    if (!listEl) return;
+    listEl.innerHTML = ''; // Limpiar
+    
+    if (!memories || memories.length === 0) {
+        listEl.innerHTML = '<p class="list-placeholder">No hay memorias para este día.</p>';
+        return;
+    }
+    
+    const fragment = document.createDocumentFragment();
+    memories.forEach(mem => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'memoria-item';
+        itemEl.innerHTML = createMemoryItemHTML(mem, showActions);
+        fragment.appendChild(itemEl);
+    });
+    listEl.appendChild(fragment);
+}
+
+/**
+ * Crea el HTML para un solo item de memoria
+ * @param {Object} mem - El objeto de memoria
+ * @param {boolean} showActions - true para mostrar botones
+ * @returns {string} - El HTML interno
+ */
+function createMemoryItemHTML(mem, showActions) {
+    let fechaStr = 'Fecha desconocida';
+    if (mem.Fecha_Original) {
+        try {
+            // Asumimos que es un objeto Timestamp o similar
+            const date = new Date(mem.Fecha_Original.seconds * 1000 || mem.Fecha_Original);
+            fechaStr = date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+        } catch (e) { console.warn("Fecha inválida:", mem.Fecha_Original); }
+    }
+    
+    let contentHTML = `<small>${fechaStr}</small>`;
+    let artworkHTML = '';
+    let icon = 'article'; // Default (Texto)
+
+    switch (mem.Tipo) {
+        case 'Lugar':
+            icon = 'place';
+            contentHTML += `${mem.LugarNombre || 'Lugar sin nombre'}`;
+            break;
+        case 'Musica':
+            icon = 'music_note';
+            if (mem.CancionData?.trackName) {
+                contentHTML += `<strong>${mem.CancionData.trackName}</strong> by ${mem.CancionData.artistName}`;
+                if(mem.CancionData.artworkUrl60) {
+                    artworkHTML = `<img src="${mem.CancionData.artworkUrl60}" class="memoria-artwork" alt="Artwork">`;
+                }
+            } else {
+                contentHTML += `${mem.CancionInfo || 'Canción sin nombre'}`;
+            }
+            break;
+        case 'Imagen':
+            icon = 'image';
+            contentHTML += `${mem.Descripcion || 'Imagen'}`;
+            if (mem.ImagenURL) {
+                artworkHTML = `<img src="${mem.ImagenURL}" class="memoria-artwork" alt="Memoria">`;
+            }
+            break;
+        case 'Texto':
+        default:
+            icon = 'article';
+            contentHTML += mem.Descripcion || 'Nota vacía';
+            break;
+    }
+    
+    // Si no hay artwork, usamos el icono
+    if (!artworkHTML) {
+        artworkHTML = `<span class="memoria-icon material-icons-outlined">${icon}</span>`;
+    }
+
+    const actionsHTML = showActions ? `
+        <div class="memoria-actions">
+            <button class="edit-btn" title="Editar" data-memoria-id="${mem.id}">
+                <span class="material-icons-outlined">edit</span>
+            </button>
+            <button class="delete-btn" title="Borrar" data-memoria-id="${mem.id}">
+                <span class="material-icons-outlined">delete</span>
+            </button>
+        </div>` : '';
+        
+    return `${artworkHTML}<div class="memoria-item-content">${contentHTML}</div>${actionsHTML}`;
+}
+
+/**
+ * Crea el HTML para un botón de categoría del Almacén
+ * @param {string} type - El tipo (ej. 'Lugar')
+ * @param {string} icon - El nombre del icono de Material Icons
+ * @param {string} label - El texto del botón
+ * @returns {string} - El HTML del botón
+ */
+function createStoreCategoryButton(type, icon, label) {
+    return `
+        <button class="store-category-button" data-type="${type}">
+            <span class="material-icons-outlined">${icon}</span>
+            <span>${label}</span>
+            <span class="material-icons-outlined">chevron_right</span>
+        </button>
+    `;
+}
+
+/**
+ * Crea un <div> para un item de la lista del Almacén
+ * @param {Object} item - El objeto (memoria o día)
+ * @returns {HTMLElement} - El elemento <div>
+ */
+function createStoreListItem(item) {
+    const itemEl = document.createElement('div');
+    itemEl.className = 'store-list-item';
+    
+    let contentHTML = '';
+    
+    if (item.type === 'Nombres') {
+        // Es un Día con Nombre
+        itemEl.dataset.diaId = item.id; // El ID del día
+        contentHTML = `
+            <span class="memoria-icon material-icons-outlined">label</span>
+            <div class="memoria-item-content">
+                <small>${item.Nombre_Dia}</small>
+                <strong>${item.Nombre_Especial}</strong>
             </div>
         `;
-    }
-
-    if (context === 'spotlight') {
-         return `${artworkHTML}${contentHTML}`;
     } else {
-         return `${artworkHTML}<div class="memoria-item-content">${contentHTML}</div>${actionsHTML}`;
+        // Es una Memoria (reutilizamos la lógica)
+        itemEl.dataset.diaId = item.diaId; // ID del día al que pertenece
+        itemEl.dataset.id = item.id; // ID de la memoria en sí
+        
+        // Creamos un HTML de memoria, pero sin acciones
+        // Y añadimos el nombre del día
+        const memoryHTML = createMemoryItemHTML(item, false);
+        contentHTML = `
+            ${memoryHTML}
+            <div class="store-item-day-ref">${item.Nombre_Dia}</div>
+        `;
     }
+    
+    itemEl.innerHTML = contentHTML;
+    return itemEl;
 }
-function _renderMemoryList(listId, memories) { /* ... v7.8 logic ... */ }
-function showModalStatus(elementId, message, isError) { /* ... v7.8 logic ... */ }
-function showMusicResults(tracks) { /* ... v7.8 logic ... */ }
-function showPlaceResults(places) { /* ... v7.8 logic ... */ }
-function handleMemoryTypeChange() { /* ... v7.8 logic ... */ }
 
-// --- 6. Creación de Elementos del DOM (Constructores) ---
-
-function _createPreviewModal() {
-    console.log("[ui.js] _createPreviewModal: Attempting...");
-    let modal = null;
-    try {
-        modal = document.createElement('div');
-        modal.id = 'preview-modal';
-        modal.className = 'modal-overlay';
-        console.log("[ui.js] _createPreviewModal: Base div created.");
-        try {
-            // Added type="button"
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <button type="button" class="header-edit-btn" title="Edit Day">
-                             <span class="material-icons-outlined">edit</span>
-                        </button>
-                        <h3></h3>
-                        <button type="button" class="modal-close-btn" title="Close">
-                            <span class="material-icons-outlined">close</span>
-                        </button>
-                    </div>
-                    <div class="modal-content-scrollable">
-                        <div class="modal-section">
-                            <h4>Memories:</h4>
-                            <div id="preview-memorias-list"></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            console.log("[ui.js] _createPreviewModal: innerHTML OK.");
-        } catch (htmlError) {
-             console.error("[ui.js] FATAL ERROR setting innerHTML for Preview modal:", htmlError);
-             throw htmlError;
+/**
+ * Muestra el diálogo de confirmación de borrado
+ * @param {string} memId - ID de la memoria a borrar
+ * @param {string} info - Texto descriptivo de la memoria
+ */
+function _showConfirmDelete(memId, info) {
+    const dialog = document.getElementById('confirm-delete-dialog');
+    const text = document.getElementById('confirm-delete-text');
+    const yesBtn = document.getElementById('confirm-delete-yes');
+    
+    if (!dialog || !text || !yesBtn) return;
+    
+    text.textContent = `¿Seguro que quieres borrar "${info.substring(0, 50)}..."?`;
+    
+    // Limpiar listener anterior y añadir uno nuevo
+    const newYesBtn = yesBtn.cloneNode(true); // Clonar para limpiar
+    newYesBtn.addEventListener('click', () => {
+        if (callbacks.onDeleteMemory && _currentDay) {
+            dialog.style.display = 'none';
+            callbacks.onDeleteMemory(_currentDay.id, memId);
         }
-
-        const closeBtn = modal.querySelector('.modal-close-btn');
-        const editBtn = modal.querySelector('.header-edit-btn');
-        if (closeBtn) { closeBtn.onclick = closePreviewModal; console.log("[ui.js] _createPreviewModal: Close button listener attached."); }
-        else { console.warn("[ui.js] _createPreviewModal: Close button not found!"); }
-        if (editBtn) { editBtn.onclick = _handleEditFromPreview; console.log("[ui.js] _createPreviewModal: Edit button listener attached."); }
-        else { console.warn("[ui.js] _createPreviewModal: Edit button not found!"); }
-        modal.onclick = (e) => { if (e.target === modal) closePreviewModal(); };
-
-        document.body.appendChild(modal);
-        console.log("[ui.js] _createPreviewModal: Success.");
-        return modal;
-    } catch (e) {
-        console.error("[ui.js] CRITICAL ERROR in _createPreviewModal:", e);
-        if (modal?.parentElement) document.body.removeChild(modal);
-        return null; // IMPORTANT: Return null on failure
-    }
+    });
+    yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
+    
+    dialog.style.display = 'block';
 }
 
-function _createEditModal() {
-     console.log("[ui.js] _createEditModal: Attempting...");
-     let modal = null;
-    try {
-        modal = document.createElement('div');
-        modal.id = 'edit-add-modal';
-        modal.className = 'modal-overlay';
-        console.log("[ui.js] _createEditModal: Base div created.");
-        try {
-            // --- FIXED: Corrected button ID ---
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-content-scrollable">
-                        <div class="modal-section" id="day-selection-section" style="display: none;">
-                            <h3>Add Memory To...</h3>
-                            <label for="edit-mem-day">Day:</label>
-                            <select id="edit-mem-day"></select>
-                        </div>
-                        <div class="modal-section" id="day-name-section" style="display: none;">
-                            <h3 id="edit-modal-title">Editing Day</h3>
-                            <label for="nombre-especial-input">Name this day:</label>
-                            <input type="text" id="nombre-especial-input" placeholder="e.g., Pizza Day" maxlength="30">
-                            <button type="button" id="save-name-btn" class="aqua-button">Save Day Name</button>
-                            <p id="save-status" class="modal-status"></p>
-                        </div>
-                        <div class="modal-section memorias-section">
-                            <h4>Memories</h4>
-                            <div id="edit-memorias-list"></div>
-                            <div id="confirm-delete-dialog" style="display: none;">
-                                <p id="confirm-delete-text"></p>
-                                <button type="button" id="confirm-delete-no" class="aqua-button">Cancel</button>
-                                <button type="button" id="confirm-delete-yes" class="aqua-button">Delete</button>
-                            </div>
-                            <h5 id="memory-form-title">Add / Edit Memory</h5>
-                            <form id="memory-form">
-                                <label for="memoria-fecha-year">Original Year:</label>
-                                <input type="number" id="memoria-fecha-year" placeholder="YYYY" min="1800" max="${new Date().getFullYear() + 1}" required>
-                                <label for="memoria-type">Type:</label>
-                                <select id="memoria-type">
-                                    <option value="Text">Text</option>
-                                    <option value="Place">Place</option>
-                                    <option value="Music">Music</option>
-                                    <option value="Image">Image</option>
-                                </select>
-                                <div id="input-type-Text"><label for="memoria-desc">Description:</label><textarea id="memoria-desc" placeholder="Write memory..."></textarea></div>
-                                <div id="input-type-Place" style="display: none;"><label for="memoria-place-search">Search Place:</label><input type="text" id="memoria-place-search" placeholder="e.g., Eiffel Tower"><div id="place-results"></div></div>
-                                <div id="input-type-Music" style="display: none;"><label for="memoria-music-search">Search Music:</label><input type="text" id="memoria-music-search" placeholder="e.g., Bohemian Rhapsody"><div id="itunes-results"></div></div>
-                                <div id="input-type-Image" style="display: none;"><label for="memoria-image-upload">Image File:</label><input type="file" id="memoria-image-upload" accept="image/*"><label for="memoria-image-desc">Description (optional):</label><input type="text" id="memoria-image-desc" placeholder="Image description..."></div>
-                                <button type="submit" id="save-memoria-btn" class="aqua-button">Add Memory</button>
-                                <p id="memoria-status" class="modal-status"></p>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="modal-main-buttons">
-                        <button type="button" id="close-edit-add-btn" class="modal-cancel-btn">Close</button>
-                    </div>
-                </div>
-            `;
-             console.log("[ui.js] _createEditModal: innerHTML set successfully.");
-        } catch (htmlError) {
-             console.error("[ui.js] FATAL ERROR setting innerHTML for Edit modal:", htmlError);
-             throw htmlError;
-        }
-
-        document.body.appendChild(modal);
-        console.log("[ui.js] _createEditModal: Element created and appended successfully.");
-        return modal;
-    } catch (e) {
-        console.error("[ui.js] CRITICAL ERROR in _createEditModal:", e);
-        if (modal?.parentElement) document.body.removeChild(modal);
-        return null;
+/**
+ * Recrea el botón de login/logout (necesario para cambiar listeners)
+ * @param {boolean} isLoggedOut - true si el usuario está logueado (y el botón es para logout)
+ */
+function _createLoginButton(isLoggedOut) {
+    const container = document.getElementById('login-btn-container');
+    if (!container) {
+        // Si no existe, crearlo
+        const loginSection = document.getElementById('login-section');
+        const btnContainer = document.createElement('div');
+        btnContainer.id = 'login-btn-container';
+        loginSection?.appendChild(btnContainer);
+    }
+    
+    const btn = document.createElement('button');
+    btn.id = 'login-btn';
+    btn.className = 'header-login-btn';
+    
+    if (isLoggedOut) {
+        btn.title = 'Cerrar sesión';
+        btn.dataset.action = 'logout';
+        btn.innerHTML = `<span class="material-icons-outlined">logout</span>`;
+    } else {
+        btn.title = 'Iniciar sesión con Google';
+        btn.dataset.action = 'login';
+        // Icono de Google (simplificado)
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.20455c0-.63864-.05727-1.25182-.16909-1.84091H9v3.48182h4.84364c-.20864 1.125-.84273 2.07818-1.77727 2.71136v2.25818h2.90864c1.70182-1.56682 2.68409-3.87409 2.68409-6.61045z"/><path fill="#34A853" d="M9 18c2.43 0 4.47182-.80591 5.96273-2.18045l-2.90864-2.25818c-.80591.54364-1.83682.86591-2.94.86591-2.27318 0-4.20727-1.53318-4.9-3.58227H1.07182v2.33318C2.56636 16.3 5.56 18 9 18z"/><path fill="#FBBC05" d="M4.1 10.71c-.22-.64-.35-1.32-.35-2.03s.13-.139.35-2.03V4.31H1.07C.38 5.67 0 7.29 0 9.03s.38 3.36 1.07 4.72l3.03-2.33v.03z"/><path fill="#EA4335" d="M9 3.57955c1.32136 0 2.50773.45455 3.44091 1.34591l2.58136-2.58136C13.46318.891364 11.4259 0 9 0 5.56 0 2.56636 1.70182 1.07182 4.31l3.02818 2.33318C4.79273 5.11273 6.72682 3.57955 9 3.57955z"/></svg>`;
+    }
+    
+    const oldContainer = document.getElementById('login-btn-container');
+    if(oldContainer) {
+        oldContainer.innerHTML = ''; // Limpiar
+        oldContainer.appendChild(btn); // Añadir nuevo botón
     }
 }
 
 
-function _bindEditModalEvents() {
-    console.log("[ui.js] Binding Edit modal events...");
-    if (!_modals.edit) {
-        console.error("[ui.js] Cannot bind events, Edit modal does not exist.");
-        return; // Exit if modal wasn't created
-    }
-    try {
-        // --- Corrected selector ---
-        const closeBtn = _modals.edit.querySelector('#close-edit-add-btn');
-        console.log("[ui.js] Attempting to find close button #close-edit-add-btn:", closeBtn);
-        if (closeBtn) {
-            console.log("[ui.js] Attaching close event to #close-edit-add-btn...");
-            // --- THE FIX: Assign the function correctly ---
-            closeBtn.onclick = closeEditModal;
-            console.log("[ui.js] Close button event attached.");
+// --- Lógica del Formulario de Memorias ---
+
+let _selectedMusic = null;
+let _selectedPlace = null;
+
+/**
+ * Maneja el envío del formulario de memoria
+ * @param {Event} e - Evento de submit
+ */
+function _handleFormSubmit(e) {
+    e.preventDefault();
+    if (callbacks.onSaveMemory) {
+        const saveBtn = document.getElementById('save-memoria-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Guardando...';
+
+        let diaId;
+        if (_currentDay) {
+            diaId = _currentDay.id;
         } else {
-            console.error("[ui.js] ERROR: Close button #close-edit-add-btn not found! Close will not work.");
+            // Modo "Añadir", coger del <select>
+            diaId = document.getElementById('edit-mem-day').value;
         }
 
-        // ... (rest of the bindings - v7.8 logic with null checks) ...
-         const saveNameBtn = _modals.edit.querySelector('#save-name-btn'); if(saveNameBtn) saveNameBtn.onclick = () => { /* ... */ }; else console.warn("Save name btn not found");
-         const typeSelect = _modals.edit.querySelector('#memoria-type'); if(typeSelect) typeSelect.onchange = handleMemoryTypeChange; else console.warn("Type select not found");
-         const placeInput = _modals.edit.querySelector('#memoria-place-search'); if(placeInput) placeInput.onblur = (e) => { /* ... */ }; else console.warn("Place input not found");
-         const musicInput = _modals.edit.querySelector('#memoria-music-search'); if(musicInput) musicInput.onblur = (e) => { /* ... */ }; else console.warn("Music input not found");
-         const memoryForm = _modals.edit.querySelector('#memory-form'); if(memoryForm) memoryForm.onsubmit = (e) => { /* ... */ }; else console.error("Memory form not found!");
-         const listDiv = _modals.edit.querySelector('#edit-memorias-list'); if(listDiv) listDiv.addEventListener('click', (e) => { /* ... */ }); else console.warn("Memory list div not found");
-         const confirmNoBtn = _modals.edit.querySelector('#confirm-delete-no'); if(confirmNoBtn) confirmNoBtn.onclick = () => { /* ... */ }; else console.warn("Confirm delete 'No' missing");
-         const confirmYesBtn = _modals.edit.querySelector('#confirm-delete-yes'); if(confirmYesBtn) confirmYesBtn.onclick = () => { /* ... */ }; else console.warn("Confirm delete 'Yes' missing");
-
-
-        console.log("[ui.js] Edit modal events bound successfully.");
-
-    } catch (bindError) {
-        console.error("[ui.js] ERROR binding events for Edit modal:", bindError);
-        // Attempt to close modal to prevent broken state
-        closeEditModal();
-    }
-}
-function _showConfirmDelete(memoria) { /* ... v7.8 logic ... */ }
-function _populateDaySelect(allDays) { /* ... v7.8 logic ... */ }
-
-function _createStoreModal() {
-     console.log("[ui.js] _createStoreModal: Attempting...");
-     let modal = null;
-    try {
-        modal = document.createElement('div');
-        modal.id = 'store-modal';
-        modal.className = 'modal-overlay';
-        console.log("[ui.js] _createStoreModal: Base div OK.");
-        try {
-            // --- FIXED: Added missing scrollable div wrapper ---
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Store</h3>
-                        <button type="button" class="modal-close-btn" title="Close"><span class="material-icons-outlined">close</span></button>
-                    </div>
-                    <div class="modal-content-scrollable" style="padding: 0;">
-                       <!-- Category buttons will be appended here -->
-                    </div>
-                </div>
-            `;
-            console.log("[ui.js] _createStoreModal: innerHTML OK.");
-        } catch (htmlError) {
-             console.error("[ui.js] FATAL ERROR setting innerHTML for Store modal:", htmlError);
-             throw htmlError;
-        }
-
-        // --- FIXED: Find the CORRECT scrollable div ---
-        const scrollableDiv = modal.querySelector('.modal-content-scrollable');
-        const categories = [
-             { type: 'Names', icon: 'label', label: 'Named Days' },
-             { type: 'Place', icon: 'place', label: 'Places' },
-             { type: 'Music', icon: 'music_note', label: 'Music' },
-             { type: 'Image', icon: 'image', label: 'Images' },
-             { type: 'Text', icon: 'notes', label: 'Text Notes' },
-        ];
-        if (scrollableDiv) {
-            console.log("[ui.js] _createStoreModal: Found scrollable div. Adding categories...");
-            const fragment = document.createDocumentFragment();
-            let buttonsAdded = 0;
-            try {
-                categories.forEach(cat => {
-                    const btn = _createStoreCategoryButton(cat.type, cat.icon, cat.label);
-                    if (btn instanceof Node) {
-                        fragment.appendChild(btn);
-                        buttonsAdded++;
-                    } else {
-                         console.error(`[ui.js] ERROR: _createStoreCategoryButton for '${cat.type}' failed.`);
-                    }
-                });
-                if (fragment.hasChildNodes()) {
-                    scrollableDiv.appendChild(fragment);
-                    console.log(`[ui.js] _createStoreModal: ${buttonsAdded} categories added OK.`);
+        const formData = {
+            id: _isEditingMemory ? document.getElementById('memory-form').dataset.editingId : null,
+            Fecha_Original: document.getElementById('memoria-fecha').value,
+            Tipo: document.getElementById('memoria-type').value,
+        };
+        
+        // Añadir datos específicos del tipo
+        switch (formData.Tipo) {
+            case 'Texto':
+                formData.Descripcion = document.getElementById('memoria-desc').value;
+                break;
+            case 'Lugar':
+                if (_selectedPlace) {
+                    formData.LugarNombre = _selectedPlace.name;
+                    formData.LugarData = _selectedPlace.data;
                 } else {
-                     console.warn("[ui.js] _createStoreModal: No category buttons were successfully created/appended.");
-                      scrollableDiv.innerHTML = "<p class='list-placeholder'>Error loading categories.</p>"; // Show error
+                    formData.LugarNombre = document.getElementById('memoria-place-search').value;
+                    formData.LugarData = null;
                 }
-            } catch (categoryError) {
-                 console.error("[ui.js] ERROR appending categories in _createStoreModal:", categoryError);
-                 if(scrollableDiv) scrollableDiv.innerHTML = "<p class='list-placeholder error'>Error loading categories.</p>";
-            }
-        } else {
-             // This indicates the innerHTML is still wrong
-             console.error("[ui.js] _createStoreModal: CRITICAL - Could not find '.modal-content-scrollable' div after setting innerHTML!");
+                break;
+            case 'Musica':
+                 if (_selectedMusic) {
+                    formData.CancionInfo = `${_selectedMusic.trackName} - ${_selectedMusic.artistName}`;
+                    formData.CancionData = _selectedMusic;
+                } else {
+                    formData.CancionInfo = document.getElementById('memoria-music-search').value;
+                    formData.CancionData = null;
+                }
+                break;
+            case 'Imagen':
+                const fileInput = document.getElementById('memoria-image-upload');
+                formData.Descripcion = document.getElementById('memoria-image-desc').value;
+                formData.file = (fileInput.files && fileInput.files.length > 0) ? fileInput.files[0] : null;
+                // Si estamos editando y no se sube archivo nuevo, main.js se encargará de mantener la URL antigua
+                formData.ImagenURL = _isEditingMemory ? document.getElementById('memory-form').dataset.existingImageUrl : null;
+                break;
         }
-
-        const closeBtn = modal.querySelector('.modal-close-btn');
-        if(closeBtn) closeBtn.onclick = closeStoreModal; else console.warn("Store close btn missing!");
-        modal.onclick = (e) => { if (e.target === modal) closeStoreModal(); };
-
-        document.body.appendChild(modal);
-        console.log("[ui.js] _createStoreModal: Success.");
-        return modal;
-    } catch(e) {
-        console.error("[ui.js] CRITICAL ERROR in _createStoreModal:", e);
-         if (modal?.parentElement) document.body.removeChild(modal);
-        return null;
-    }
- }
-
-function _createStoreCategoryButton(type, icon, label) {
-    // ... (logic from v7.19) ...
-     try {
-        const btn = document.createElement('button');
-        btn.type = 'button'; // Set type
-        btn.className = 'store-category-btn';
-        btn.innerHTML = `<span class="material-icons-outlined">${icon}</span><span>${label}</span>`;
-        if(typeof _callbacks.onStoreCategoryClick === 'function') {
-            btn.onclick = () => _callbacks.onStoreCategoryClick(type);
-        } else {
-             console.error(`UI: Cannot attach click listener for store category '${type}', callback missing!`);
-             btn.disabled = true;
-        }
-        return btn; // Return the button element
-    } catch (e) {
-         console.error(`[ui.js] ERROR in _createStoreCategoryButton for ${type}:`, e);
-         return null; // Return null on failure
+        
+        callbacks.onSaveMemory(diaId, formData, _isEditingMemory);
     }
 }
-function _createStoreListModal() { /* ... v7.8 logic with try/catch ... */ }
-function _createStoreListItem(item) { /* ... v7.8 logic ... */ }
-function _createSearchModal() { /* ... v7.8 logic with try/catch ... */ }
-function _createDialog(id, title, message) {
-    // ... (logic from v7.19 with type="button") ...
-     console.log(`[ui.js] _createDialog: Attempting id=${id}...`);
-     let dialogOverlay = null;
-    try {
-        dialogOverlay = document.createElement('div');
-        dialogOverlay.id = id;
-        dialogOverlay.className = 'dialog-overlay';
-        console.log("[ui.js] _createDialog: Base div OK.");
+
+/**
+ * Muestra/oculta los inputs del formulario según el tipo de memoria
+ */
+function handleMemoryTypeChange() {
+    const type = document.getElementById('memoria-type').value;
+    ['Texto', 'Lugar', 'Musica', 'Imagen'].forEach(id => {
+        const el = document.getElementById(`input-type-${id}`);
+        if (el) el.style.display = (id === type) ? 'block' : 'none';
+    });
+    // Limpiar selecciones si se cambia de tipo
+    if (type !== 'Musica') showMusicResults([]);
+    if (type !== 'Lugar') showPlaceResults([]);
+}
+
+/**
+ * Rellena el formulario para editar una memoria existente
+ * @param {Object} mem - El objeto de memoria
+ */
+function fillFormForEdit(mem) {
+    if (!mem) return;
+    
+    resetMemoryForm(); // Limpiar primero
+    _isEditingMemory = true;
+    
+    const form = document.getElementById('memory-form');
+    const saveBtn = document.getElementById('save-memoria-btn');
+    const typeSelect = document.getElementById('memoria-type');
+    
+    form.dataset.editingId = mem.id; // Guardar ID para el submit
+    saveBtn.textContent = 'Actualizar Memoria';
+    
+    // Rellenar fecha
+    if (mem.Fecha_Original) {
         try {
-            // Added type="button"
-            dialogOverlay.innerHTML = `
-                <div class="dialog-content">
-                    <h4>${title}</h4>
-                    <p>${message}</p>
-                    <button type="button" class="dialog-button">OK</button>
-                </div>
-            `;
-             console.log("[ui.js] _createDialog: innerHTML OK.");
-        } catch(htmlError) { throw htmlError; }
+            const date = new Date(mem.Fecha_Original.seconds * 1000 || mem.Fecha_Original);
+            document.getElementById('memoria-fecha').value = date.toISOString().split('T')[0];
+        } catch(e) {
+            document.getElementById('memoria-fecha').value = '';
+        }
+    }
+    
+    // Rellenar tipo y campos específicos
+    typeSelect.value = mem.Tipo;
+    handleMemoryTypeChange(); // Mostrar los campos correctos
+    
+    switch (mem.Tipo) {
+        case 'Texto':
+            document.getElementById('memoria-desc').value = mem.Descripcion || '';
+            break;
+        case 'Lugar':
+            document.getElementById('memoria-place-search').value = mem.LugarNombre || '';
+            if (mem.LugarData) {
+                _selectedPlace = { name: mem.LugarNombre, data: mem.LugarData };
+                showPlaceResults([_selectedPlace], true); // true = marcar como seleccionado
+            }
+            break;
+        case 'Musica':
+             document.getElementById('memoria-music-search').value = mem.CancionInfo || '';
+             if (mem.CancionData) {
+                _selectedMusic = mem.CancionData;
+                showMusicResults([_selectedMusic], true); // true = marcar como seleccionado
+             }
+            break;
+        case 'Imagen':
+            document.getElementById('memoria-image-desc').value = mem.Descripcion || '';
+            if (mem.ImagenURL) {
+                document.getElementById('image-upload-status').textContent = `Imagen actual guardada.`;
+                form.dataset.existingImageUrl = mem.ImagenURL; // Guardar URL
+            }
+            break;
+    }
+    
+    // Scroll hasta el formulario
+    document.querySelector('.modal-content-scrollable')?.scrollTo({
+        top: document.getElementById('memory-form').offsetTop,
+        behavior: 'smooth'
+    });
+}
 
-        const closeBtn = dialogOverlay.querySelector('.dialog-button');
-        if (closeBtn) {
-            closeBtn.onclick = () => dialogOverlay.classList.remove('visible');
-             console.log("[ui.js] _createDialog: Close button OK.");
-        } else { console.warn(`Dialog (${id}) close button not found!`); }
+/**
+ * Limpia el formulario de memoria
+ */
+function resetMemoryForm() {
+    _isEditingMemory = false;
+    _selectedMusic = null;
+    _selectedPlace = null;
+    
+    const form = document.getElementById('memory-form');
+    if (!form) return;
+    
+    form.reset();
+    form.dataset.editingId = '';
+    form.dataset.existingImageUrl = '';
+    
+    document.getElementById('save-memoria-btn').textContent = 'Añadir Memoria';
+    document.getElementById('save-memoria-btn').disabled = false;
+    
+    showMusicResults([]);
+    showPlaceResults([]);
+    document.getElementById('image-upload-status').textContent = '';
+    
+    handleMemoryTypeChange(); // Asegurarse de que se muestran los campos correctos
+}
 
-        dialogOverlay.onclick = (e) => { if (e.target === dialogOverlay) dialogOverlay.classList.remove('visible'); };
+/**
+ * Muestra los resultados de búsqueda de iTunes
+ * @param {Array} tracks - Array de pistas
+ * @param {boolean} isSelected - true si solo se muestra el item seleccionado
+ */
+function showMusicResults(tracks, isSelected = false) {
+    const resultsEl = document.getElementById('itunes-results');
+    if (!resultsEl) return;
+    resultsEl.innerHTML = '';
+    _selectedMusic = null;
+    
+    if (isSelected && tracks.length > 0) {
+        // Mostrar solo el seleccionado
+        const track = tracks[0];
+        _selectedMusic = track;
+        resultsEl.innerHTML = `<p class="search-result-selected">Seleccionado: ${track.trackName}</p>`;
+        return;
+    }
+    
+    if (tracks.length === 0) return;
+    
+    tracks.forEach(track => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'search-result-item';
+        const artwork = track.artworkUrl60 || '';
+        itemEl.innerHTML = `
+            <img src="${artwork}" class="memoria-artwork" alt="" ${artwork ? '' : 'style="display:none;"'}>
+            <div class="memoria-item-content">
+                <small>${track.artistName}</small>
+                <strong>${track.trackName}</strong>
+            </div>
+            <span class="material-icons-outlined">add_circle_outline</span>
+        `;
+        itemEl.addEventListener('click', () => {
+            _selectedMusic = track;
+            document.getElementById('memoria-music-search').value = `${track.trackName} - ${track.artistName}`;
+            resultsEl.innerHTML = `<p class="search-result-selected">Seleccionado: ${track.trackName}</p>`;
+        });
+        resultsEl.appendChild(itemEl);
+    });
+}
 
-        document.body.appendChild(dialogOverlay);
-        console.log(`[ui.js] _createDialog: Success for id=${id}.`);
-        return dialogOverlay;
-    } catch(e) {
-        console.error(`[ui.js] CRITICAL ERROR in _createDialog for id=${id}:`, e);
-         if (dialogOverlay?.parentElement) document.body.removeChild(dialogOverlay);
-        return null;
+/**
+ * Muestra los resultados de búsqueda de Nominatim
+ * @param {Array} places - Array de lugares
+ * @param {boolean} isSelected - true si solo se muestra el item seleccionado
+ */
+function showPlaceResults(places, isSelected = false) {
+    const resultsEl = document.getElementById('place-results');
+    if (!resultsEl) return;
+    resultsEl.innerHTML = '';
+    _selectedPlace = null;
+
+    if (isSelected && places.length > 0) {
+        // Mostrar solo el seleccionado
+        const place = places[0];
+        _selectedPlace = { name: place.name, data: place.data };
+        resultsEl.innerHTML = `<p class="search-result-selected">Seleccionado: ${place.name}</p>`;
+        return;
+    }
+
+    if (places.length === 0) return;
+
+    places.forEach(place => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'search-result-item';
+        itemEl.innerHTML = `
+            <span class="memoria-icon material-icons-outlined">place</span>
+            <div class="memoria-item-content">
+                <strong>${place.display_name}</strong>
+            </div>
+            <span class="material-icons-outlined">add_circle_outline</span>
+        `;
+        itemEl.addEventListener('click', () => {
+            _selectedPlace = {
+                name: place.display_name,
+                data: { lat: place.lat, lon: place.lon, osm_id: place.osm_id, osm_type: place.osm_type }
+            };
+            document.getElementById('memoria-place-search').value = place.display_name;
+            resultsEl.innerHTML = `<p class="search-result-selected">Seleccionado: ${place.name}</p>`;
+        });
+        resultsEl.appendChild(itemEl);
+    });
+}
+
+/**
+ * Muestra un mensaje de estado en un modal
+ * @param {string} elementId - ID del elemento <p>
+ * @param {string} message - Mensaje a mostrar
+ * @param {boolean} isError - true si es un error
+ */
+function showModalStatus(elementId, message, isError) {
+    const statusEl = document.getElementById(elementId);
+    if (!statusEl) return;
+    
+    statusEl.textContent = message;
+    statusEl.className = isError ? 'status-message error' : 'status-message success';
+    
+    if (message) {
+        // Ocultar mensaje después de 3 segundos
+        setTimeout(() => {
+            if (statusEl.textContent === message) {
+                statusEl.textContent = '';
+                statusEl.className = 'status-message';
+            }
+        }, 3000);
     }
 }
 
 
-// --- 7. Exportación del Módulo ---
+// --- Exportaciones Públicas ---
+// Se exporta un solo objeto 'ui' que contiene
+// todas las funciones que main.js necesita llamar.
 export const ui = {
     init,
+    setLoading,
     updateLoginUI,
     drawCalendar,
     updateSpotlight,
+    
+    // Modales
     openPreviewModal,
     closePreviewModal,
     openEditModal,
     closeEditModal,
-    resetMemoryForm,
-    showModalStatus,
-    showMusicResults,
-    showPlaceResults,
-    // handleMemoryTypeChange is internal
     openStoreModal,
     closeStoreModal,
     openStoreListModal,
     closeStoreListModal,
+    
+    // Formularios y Listas
     updateStoreList,
-    openSearchModal,
-    closeSearchModal,
-    openSettingsDialog,
+    resetMemoryForm,
+    fillFormForEdit,
+    showMusicResults,
+    showPlaceResults,
+    showModalStatus,
+    handleMemoryTypeChange // Exponer para `window.` (aunque ya no se use)
 };
 
