@@ -338,7 +338,11 @@ function openPreviewModal(dia, memories) {
     if (!_modals.preview) {
         console.log("[ui.js] Creating Preview modal element...");
         _modals.preview = _createPreviewModal(); // Has try/catch
-        if (!_modals.preview) return; // Stop if creation failed
+        if (!_modals.preview) {
+             console.error("[ui.js] FAILED TO CREATE Preview modal in openPreviewModal.");
+             alert("Error opening preview. Check console.");
+             return; // Stop if creation failed
+        }
     }
 
     const title = _modals.preview.querySelector('.modal-header h3');
@@ -608,6 +612,7 @@ function _createPreviewModal() {
         modal.className = 'modal-overlay';
         console.log("[ui.js] _createPreviewModal: Base div created.");
         try {
+            // Added type="button"
             modal.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">
