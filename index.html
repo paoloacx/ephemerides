@@ -1,108 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ephemerides</title>
     
-    <!-- Google Icons -->
+    <!-- Librería de Iconos (Google) -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Icons+Outlined" rel="stylesheet">
     
-    <!-- Google Font (Playfair Display) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-    
-    <!-- Leaflet (para mapas) -->
+    <!-- Librerías de Mapas (Leaflet) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
-    
-    <!-- App Stylesheet (v19) -->
-    <link rel="stylesheet" href="style.css?v=19">
+
+    <!-- Cache buster actualizado a v15 (por los iconos) -->
+    <link rel="stylesheet" href="style.css?v=15">
     
     <style>
+        /* Fuentes base */
         body, button, input, textarea, select {
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
         }
-        /* Ajuste para botones aqua con iconos de Google */
+        
+        /* Ajuste para que los botones "aqua" con iconos se vean bien */
         .aqua-button .material-icons-outlined {
-            font-size: 20px;
-            vertical-align: middle;
-            margin-top: -2px;
-        }
-        .header-icon-btn .material-icons-outlined {
-             font-size: 24px;
+            font-size: 18px; /* Tamaño del icono */
+            line-height: 1; /* Alinear verticalmente */
+            vertical-align: middle; /* Alinear verticalmente */
+            margin-top: -2px; /* Ajuste fino */
         }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>EPHEMERIDES</h1>
-        
-        <!-- CHANGED: Refresh button removed, Search button added -->
-        <button id="header-search-btn" class="header-icon-btn" title="Search">
-             <span class="material-icons-outlined">search</span>
+        <button id="refresh-btn" title="Refrescar Página">
+            <span class="material-icons-outlined">refresh</span>
         </button>
-        
+        <h1>Ephemerides</h1>
         <div id="login-section">
-             <!-- Contenido dinámico (UI.js) -->
+            <div id="user-info" style="display: none;">
+                <img id="user-img" src="" alt="User">
+                <span id="user-name"></span>
+            </div>
+            <button id="login-btn" class="header-login-btn" title="Login with Google">
+                <!-- El contenido se rellena desde ui.js -->
+                <span class="material-icons-outlined">login</span>
+            </button>
         </div>
     </header>
 
     <nav class="month-nav">
-        <button id="prev-month" class="aqua-button">
+        <button id="prev-month" class="aqua-button" title="Mes Anterior">
             <span class="material-icons-outlined">arrow_back_ios</span>
         </button>
-        <span id="month-name-display">Loading...</span>
-        <button id="next-month" class="aqua-button">
+        <span id="month-name-display">Loading Month...</span>
+        <button id="next-month" class="aqua-button" title="Mes Siguiente">
             <span class="material-icons-outlined">arrow_forward_ios</span>
         </button>
     </nav>
 
-    <main>
-        <!-- Spotlight de Hoy -->
-        <div id="today-spotlight-container">
-            <h2 id="spotlight-date-header">Loading Today...</h2>
-            <div id="today-memory-spotlight">
-                <!-- Contenido dinámico (UI.js) -->
-            </div>
-        </div>
-        
-        <!-- Calendario -->
-        <div id="app-content">
-            <!-- Grid del calendario (UI.js) -->
-        </div>
+    <main id="app-content">
+        <p>Loading...</p>
     </main>
-    
-    <!-- Loader Element Removed -->
-    
+
     <footer class="footer-dock">
-         <button class="dock-button" data-action="add" title="Add Memory">
+         <button class="dock-button" id="btn-add-memory" title="Añadir Memoria">
             <span class="material-icons-outlined">add_circle_outline</span>
-            <span>Add</span>
+            <span>Añadir</span>
         </button>
-        <button class="dock-button" data-action="store" title="Store">
+        <button class="dock-button" id="btn-store" title="Almacén">
              <span class="material-icons-outlined">inventory_2</span>
-             <span>Store</span>
+             <span>Almacén</span>
          </button>
-         <button class="dock-button" data-action="shuffle" title="Shuffle">
+        <button class="dock-button" id="btn-shuffle" title="Aleatorio">
              <span class="material-icons-outlined">shuffle</span>
-             <span>Shuffle</span>
+             <span>Aleatorio</span>
          </button>
-         <!-- CHANGED: Search button is now Settings button -->
-         <button class="dock-button" data-action="settings" title="Settings">
-             <span class="material-icons-outlined">settings</span>
-             <span>Settings</span>
+         <button class="dock-button" id="btn-buscar" title="Buscar">
+             <span class="material-icons-outlined">search</span>
+             <span>Buscar</span>
          </button>
     </footer>
 
-    <!-- App Scripts (v4.4) -->
-    <script type="module" src="main.js?v=4.4"></script>
+    <!-- Cargar el main.js (tipo module es clave) -->
+    <script type="module" src="main.js?v=3.2"></script>
 
 </body>
 </html>
